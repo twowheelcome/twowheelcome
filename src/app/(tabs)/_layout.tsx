@@ -14,13 +14,13 @@ export default function TabsLayout() {
           backgroundColor: '#111',
           borderTopColor: '#222',
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 82 : 62,
-          paddingBottom: Platform.OS === 'ios' ? 22 : 10,
+          height: Platform.OS === 'ios' ? 82 : 68,
+          paddingBottom: Platform.OS === 'ios' ? 22 : 12,
           paddingTop: 8,
         },
         tabBarActiveTintColor: '#e8631a',
         tabBarInactiveTintColor: '#ccc',
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
+        tabBarLabelStyle: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5, color: '#ccc' },
       }}
     >
       <Tabs.Screen
