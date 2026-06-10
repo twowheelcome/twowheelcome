@@ -45,6 +45,7 @@ export default function HostMap({ hosts, onHostSelect }: { hosts: Host[]; onHost
   function addMarkers(L: any, currentHosts: Host[]) {
     markersRef.current.forEach(m => m.remove())
     markersRef.current = []
+    ;(window as any).__twwHandlers = {}
 
     currentHosts.forEach(host => {
       if (!host.location_lat || !host.location_lng) return
@@ -58,6 +59,8 @@ export default function HostMap({ hosts, onHostSelect }: { hosts: Host[]; onHost
         iconAnchor: [18, 18],
       })
 
+      ;(window as any).__twwHandlers[host.id] = () => onHostSelect(host)
+
       const marker = L.marker([host.location_lat, host.location_lng], { icon: markerIcon })
         .addTo(mapInstanceRef.current)
         .bindPopup(`
@@ -66,13 +69,12 @@ export default function HostMap({ hosts, onHostSelect }: { hosts: Host[]; onHost
             <span style="color:#666;font-size:12px;">📍 ${host.location_city}, ${host.location_country}</span><br>
             <span style="font-size:12px;">${icon} ${host.parking}</span><br>
             <button
-              onclick="window.__selectHost_${host.id}()"
+              onclick="window.__twwHandlers['${host.id}']()"
               style="margin-top:8px;background:#e8631a;color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;width:100%;font-weight:700;font-size:12px;letter-spacing:1px;"
             >KLEPU NA DVEŘE →</button>
           </div>
         `)
 
-      ;(window as any)[`__selectHost_${host.id}`] = () => onHostSelect(host)
       markersRef.current.push(marker)
     })
   }
