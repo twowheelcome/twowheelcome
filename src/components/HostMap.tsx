@@ -95,7 +95,11 @@ export default function HostMap({ hosts, onHostSelect }: { hosts: Host[]; onHost
       }).addTo(map)
       mapInstanceRef.current = map
       addMarkers(L, hostsRef.current)
-      map.locate({ setView: true, maxZoom: 11 })
+
+      map.on('locationfound', (e: any) => {
+        mapInstanceRef.current?.setView(e.latlng, 11)
+      })
+      map.locate()
     })
 
     return () => {
