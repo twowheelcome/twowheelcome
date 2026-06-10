@@ -37,6 +37,15 @@ function toggleFilter(arr: string[], val: string): string[] {
   return arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val]
 }
 
+// Deterministic ~500m offset from host ID so markers don't jump on refresh
+function fuzzCoords(id: string, lat: number, lng: number): { lat: number; lng: number } {
+  let h = 0
+  for (let i = 0; i < id.length; i++) { h = Math.imul(h ^ id.charCodeAt(i), 0x9e3779b1) }
+  const latOff = ((h & 0xfff) - 0x7ff) / 150000   // ±0.0054° ≈ ±500m
+  const lngOff = (((h >> 12) & 0xfff) - 0x7ff) / 150000
+  return { lat: lat + latOff, lng: lng + lngOff }
+}
+
 function FilterRow({ label, items, active, onToggle }: {
   label: string
   items: { value: string; icon: string; label: string }[]
@@ -122,7 +131,10 @@ export default function MapScreen() {
     const profileMap: Record<string, any> = {}
     profilesData?.forEach(p => { profileMap[p.id] = p })
 
-    setHosts(data.map((h: any) => ({ ...h, profiles: profileMap[h.user_id] || null })))
+    setHosts(data.map((h: any) => {
+      const fuzzed = fuzzCoords(h.id, h.location_lat, h.location_lng)
+      return { ...h, profiles: profileMap[h.user_id] || null, location_lat: fuzzed.lat, location_lng: fuzzed.lng }
+    }))
     setLoading(false)
   }
 
@@ -282,7 +294,7 @@ export default function MapScreen() {
         <View style={{ flex: 1, position: 'relative' }}>
           <HostMap
             hosts={filteredHosts}
-            onHostSelect={(host: any) => { setSelected(host); setShowMap(false) }}
+            onHostSelect={(host: any) => { setSelected(host); setRequesting(true) }}
           />
         </View>
       ) : (
