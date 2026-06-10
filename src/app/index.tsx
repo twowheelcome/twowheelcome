@@ -41,7 +41,7 @@ export default function AuthScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.logo}>TWOWHEEL<Text style={styles.logoAccent}>COME</Text></Text>
+      <Text style={styles.logo}><Text style={styles.logoAccent}>TWO</Text>WHEEL<Text style={styles.logoAccent}>COME</Text></Text>
       <Text style={styles.sub}>Hospitality for two-wheelers</Text>
 
       <TextInput
