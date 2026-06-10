@@ -95,13 +95,7 @@ export default function HostMap({ hosts, onHostSelect }: { hosts: Host[]; onHost
       }).addTo(map)
       mapInstanceRef.current = map
       addMarkers(L, hostsRef.current)
-
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          pos => map.setView([pos.coords.latitude, pos.coords.longitude], 10),
-          () => {} // silent fail — fallback zůstane střed ČR
-        )
-      }
+      map.locate({ setView: true, maxZoom: 11 })
     })
 
     return () => {
