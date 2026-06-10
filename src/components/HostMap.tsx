@@ -94,8 +94,14 @@ export default function HostMap({ hosts, onHostSelect }: { hosts: Host[]; onHost
         maxZoom: 18,
       }).addTo(map)
       mapInstanceRef.current = map
-      // use hostsRef so we get the latest hosts even if they arrived before map init
       addMarkers(L, hostsRef.current)
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => map.setView([pos.coords.latitude, pos.coords.longitude], 10),
+          () => {} // silent fail — fallback zůstane střed ČR
+        )
+      }
     })
 
     return () => {
