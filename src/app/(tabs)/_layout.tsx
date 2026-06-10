@@ -5,6 +5,14 @@ function Icon({ e }: { e: string }) {
   return <Text style={{ fontSize: 22, lineHeight: 26 }}>{e}</Text>
 }
 
+function Label({ title, focused }: { title: string; focused: boolean }) {
+  return (
+    <Text style={{ fontSize: 12, fontWeight: '700', color: focused ? '#e8631a' : '#fff' }}>
+      {title}
+    </Text>
+  )
+}
+
 export default function TabsLayout() {
   return (
     <Tabs
@@ -19,21 +27,32 @@ export default function TabsLayout() {
           paddingTop: 8,
         },
         tabBarActiveTintColor: '#e8631a',
-        tabBarInactiveTintColor: '#ccc',
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5, color: '#ccc' },
+        tabBarInactiveTintColor: '#fff',
       }}
     >
       <Tabs.Screen
         name="map"
-        options={{ title: 'Mapa', tabBarIcon: () => <Icon e="🗺" /> }}
+        options={{
+          title: 'Mapa',
+          tabBarIcon: ({ focused }) => <Icon e="🗺" />,
+          tabBarLabel: ({ focused }) => <Label title="Mapa" focused={focused} />,
+        }}
       />
       <Tabs.Screen
         name="requests"
-        options={{ title: 'Žádosti', tabBarIcon: () => <Icon e="📬" /> }}
+        options={{
+          title: 'Žádosti',
+          tabBarIcon: ({ focused }) => <Icon e="📬" />,
+          tabBarLabel: ({ focused }) => <Label title="Žádosti" focused={focused} />,
+        }}
       />
       <Tabs.Screen
         name="profile"
-        options={{ title: 'Profil', tabBarIcon: () => <Icon e="👤" /> }}
+        options={{
+          title: 'Profil',
+          tabBarIcon: ({ focused }) => <Icon e="👤" />,
+          tabBarLabel: ({ focused }) => <Label title="Profil" focused={focused} />,
+        }}
       />
     </Tabs>
   )
