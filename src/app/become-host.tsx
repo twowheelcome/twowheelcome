@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   optCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2d2d2d', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#333', gap: 12 },
   optIcon: { fontSize: 22, width: 32, textAlign: 'center' },
   optLabel: { color: '#eee', fontWeight: '700', fontSize: 14 },
-  optDesc: { color: '#888', fontSize: 12, marginTop: 2 },
+  optDesc: { color: '#aaa', fontSize: 12, marginTop: 2 },
   check: { fontSize: 18, fontWeight: '900' },
 
   optCardSleep: { borderColor: '#a855f7', backgroundColor: '#a855f712' },
@@ -403,22 +403,22 @@ const styles = StyleSheet.create({
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#2d2d2d', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: '#333' },
   chipActive: { borderColor: '#e8631a', backgroundColor: '#e8631a15' },
   chipIcon: { fontSize: 15 },
-  chipLabel: { color: '#666', fontSize: 13, fontWeight: '600' },
+  chipLabel: { color: '#aaa', fontSize: 13, fontWeight: '600' },
   chipLabelActive: { color: '#e8631a' },
 
   counter: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 4 },
   cBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#2d2d2d', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#333' },
   cBtnText: { color: '#eee', fontSize: 22, fontWeight: '700', lineHeight: 26 },
   cVal: { color: '#eee', fontSize: 32, fontWeight: '900', minWidth: 40, textAlign: 'center' },
-  cDesc: { color: '#888', fontSize: 13 },
+  cDesc: { color: '#aaa', fontSize: 13 },
 
   pricingRow: { flexDirection: 'row', gap: 8 },
   pCard: { flex: 1, backgroundColor: '#2d2d2d', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#333', alignItems: 'center', gap: 4 },
   pCardActive: { borderColor: '#e8631a', backgroundColor: '#e8631a15' },
   pIcon: { fontSize: 24 },
-  pLabel: { color: '#666', fontSize: 12, fontWeight: '700' },
+  pLabel: { color: '#aaa', fontSize: 12, fontWeight: '700' },
   pLabelActive: { color: '#e8631a' },
-  pDesc: { color: '#777', fontSize: 10, textAlign: 'center' },
+  pDesc: { color: '#999', fontSize: 10, textAlign: 'center' },
 
   textarea: { backgroundColor: '#2d2d2d', borderRadius: 10, padding: 14, color: '#eee', fontSize: 14, borderWidth: 1, borderColor: '#333', minHeight: 110, textAlignVertical: 'top', lineHeight: 20 },
 
@@ -427,12 +427,12 @@ const styles = StyleSheet.create({
 
   saveBtn: { backgroundColor: '#e8631a', borderRadius: 12, padding: 16, alignItems: 'center', minHeight: 52, justifyContent: 'center' },
   saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15, letterSpacing: 0.5 },
-  hint: { color: '#666', fontSize: 12, textAlign: 'center', lineHeight: 18 },
+  hint: { color: '#888', fontSize: 12, textAlign: 'center', lineHeight: 18 },
 
-  availHint: { color: '#777', fontSize: 12, lineHeight: 17, marginTop: -8 },
+  availHint: { color: '#999', fontSize: 12, lineHeight: 17, marginTop: -8 },
   dateRow: { flexDirection: 'row', gap: 10 },
   dateFld: { flex: 1, gap: 6 },
-  dateLabel: { color: '#777', fontSize: 10, fontWeight: '700', letterSpacing: 1.5 },
+  dateLabel: { color: '#999', fontSize: 10, fontWeight: '700', letterSpacing: 1.5 },
   dateInput: { backgroundColor: '#2d2d2d', borderRadius: 10, padding: 14, color: '#eee', fontSize: 14, borderWidth: 1, borderColor: '#333' },
   errorBox: { backgroundColor: '#ef444415', borderWidth: 1, borderColor: '#ef444450', borderRadius: 10, padding: 14 },
   errorText: { color: '#ef4444', fontSize: 13, lineHeight: 18 },
