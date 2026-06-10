@@ -1,98 +1,136 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Session } from '@supabase/supabase-js'
+import { router } from 'expo-router'
+import { useEffect, useState } from 'react'
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { supabase } from '../lib/supabase'
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+export default function AuthScreen() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [isLogin, setIsLogin] = useState(true)
+  const [session, setSession] = useState<Session | null>(null)
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+    })
+    supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (session) {
+      router.replace('/(tabs)/map')
+    }
+  }, [session])
+
+  async function handleAuth() {
+    setLoading(true)
+    if (isLogin) {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) Alert.alert('Chyba', error.message)
+    } else {
+      const { error } = await supabase.auth.signUp({ email, password })
+      if (error) Alert.alert('Chyba', error.message)
+      else Alert.alert('Hotovo!', 'Zkontroluj email a potvrď registraci. 🤘')
+    }
+    setLoading(false)
   }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+    <View style={styles.container}>
+      <Text style={styles.logo}>TWOWHEEL<Text style={styles.logoAccent}>COME</Text></Text>
+      <Text style={styles.sub}>Hospitality for two-wheelers</Text>
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+      <TextInput
+        style={styles.input}
+        placeholder="Email"
+        placeholderTextColor="#666"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Heslo"
+        placeholderTextColor="#666"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+      />
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+      <TouchableOpacity style={styles.button} onPress={handleAuth} disabled={loading}>
+        <Text style={styles.buttonText}>
+          {loading ? 'Moment...' : isLogin ? 'PŘIHLÁSIT SE' : 'REGISTROVAT SE'}
+        </Text>
+      </TouchableOpacity>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
-  );
+      <TouchableOpacity onPress={() => setIsLogin(!isLogin)}>
+        <Text style={styles.toggle}>
+          {isLogin ? 'Nemáš účet? Registruj se' : 'Už máš účet? Přihlaš se'}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
+    backgroundColor: '#1a1a1a',
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    padding: 24,
   },
-  title: {
-    textAlign: 'center',
+  logo: {
+    fontFamily: 'System',
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#eeeeee',
+    letterSpacing: 2,
+    marginBottom: 4,
   },
-  code: {
+  logoAccent: {
+    color: '#e8631a',
+  },
+  sub: {
+    color: '#666',
+    fontSize: 12,
+    letterSpacing: 2,
     textTransform: 'uppercase',
+    marginBottom: 48,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  input: {
+    width: '100%',
+    backgroundColor: '#2d2d2d',
+    borderRadius: 10,
+    padding: 14,
+    color: '#eee',
+    fontSize: 15,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#333',
   },
-});
+  button: {
+    width: '100%',
+    backgroundColor: '#e8631a',
+    borderRadius: 10,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
+    letterSpacing: 1,
+  },
+  toggle: {
+    color: '#666',
+    fontSize: 14,
+  },
+})
