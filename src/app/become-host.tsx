@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform } from 'react-native'
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform, ViewStyle } from 'react-native'
 import { supabase } from '../lib/supabase'
 import { router } from 'expo-router'
 import type { Pin } from '../components/LocationPicker'
@@ -42,17 +42,53 @@ interface Location {
   parking: string
   sleepTypes: string[]
   amenities: string[]
+  availableFrom: string
+  availableTo: string
   maxGuests: number
   pricing: string
   notes: string
 }
 
 function emptyLocation(): Location {
-  return { pin: null, parking: 'yard', sleepTypes: [], amenities: [], maxGuests: 2, pricing: 'free', notes: '' }
+  return { pin: null, parking: 'yard', sleepTypes: [], amenities: [], availableFrom: '', availableTo: '', maxGuests: 2, pricing: 'free', notes: '' }
 }
 
 function toggle(arr: string[], value: string): string[] {
   return arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value]
+}
+
+function DateInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
+  if (Platform.OS === 'web') {
+    return (
+      <input
+        type="date"
+        value={value}
+        onChange={e => onChange((e.target as HTMLInputElement).value)}
+        placeholder={placeholder}
+        style={{
+          flex: 1,
+          backgroundColor: '#2d2d2d',
+          border: '1px solid #333',
+          borderRadius: 10,
+          padding: '12px 14px',
+          color: value ? '#eee' : '#555',
+          fontSize: 14,
+          colorScheme: 'dark',
+          outline: 'none',
+        } as React.CSSProperties}
+      />
+    )
+  }
+  return (
+    <TextInput
+      style={styles.dateInput}
+      placeholder={placeholder}
+      placeholderTextColor="#555"
+      value={value}
+      onChangeText={onChange}
+      keyboardType="numbers-and-punctuation"
+    />
+  )
 }
 
 export default function BecomeHostScreen() {
@@ -82,6 +118,8 @@ export default function BecomeHostScreen() {
         parking: d.parking || 'yard',
         sleepTypes: d.sleep_types || [],
         amenities: d.amenities || [],
+        availableFrom: d.available_from || '',
+        availableTo: d.available_to || '',
         maxGuests: d.max_guests || 2,
         pricing: d.pricing || 'free',
         notes: d.notes || '',
@@ -133,6 +171,8 @@ export default function BecomeHostScreen() {
           parking: l.parking,
           sleep_types: l.sleepTypes,
           amenities: l.amenities,
+          available_from: l.availableFrom || null,
+          available_to: l.availableTo || null,
           max_guests: l.maxGuests,
           pricing: l.pricing,
           notes: l.notes.trim(),
@@ -233,6 +273,28 @@ export default function BecomeHostScreen() {
             })}
           </View>
 
+          {/* Dostupnost */}
+          <Text style={styles.label}>📅 KDY JSI DOMA?</Text>
+          <Text style={styles.availHint}>Nech prázdné = kdykoli. Vyplň jen když přijíždíš nebo odjíždíš.</Text>
+          <View style={styles.dateRow}>
+            <View style={styles.dateFld}>
+              <Text style={styles.dateLabel}>OD</Text>
+              <DateInput
+                value={loc.availableFrom}
+                onChange={v => updateLocation(index, { availableFrom: v })}
+                placeholder="rrrr-mm-dd"
+              />
+            </View>
+            <View style={styles.dateFld}>
+              <Text style={styles.dateLabel}>DO</Text>
+              <DateInput
+                value={loc.availableTo}
+                onChange={v => updateLocation(index, { availableTo: v })}
+                placeholder="rrrr-mm-dd"
+              />
+            </View>
+          </View>
+
           {/* Počet hostů */}
           <Text style={styles.label}>👥 MAXIMÁLNÍ POČET JEZDCŮ</Text>
           <View style={styles.counter}>
@@ -330,7 +392,7 @@ const styles = StyleSheet.create({
   optCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2d2d2d', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#333', gap: 12 },
   optIcon: { fontSize: 22, width: 32, textAlign: 'center' },
   optLabel: { color: '#eee', fontWeight: '700', fontSize: 14 },
-  optDesc: { color: '#555', fontSize: 12, marginTop: 2 },
+  optDesc: { color: '#888', fontSize: 12, marginTop: 2 },
   check: { fontSize: 18, fontWeight: '900' },
 
   optCardSleep: { borderColor: '#a855f7', backgroundColor: '#a855f712' },
@@ -348,7 +410,7 @@ const styles = StyleSheet.create({
   cBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#2d2d2d', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#333' },
   cBtnText: { color: '#eee', fontSize: 22, fontWeight: '700', lineHeight: 26 },
   cVal: { color: '#eee', fontSize: 32, fontWeight: '900', minWidth: 40, textAlign: 'center' },
-  cDesc: { color: '#555', fontSize: 13 },
+  cDesc: { color: '#888', fontSize: 13 },
 
   pricingRow: { flexDirection: 'row', gap: 8 },
   pCard: { flex: 1, backgroundColor: '#2d2d2d', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#333', alignItems: 'center', gap: 4 },
@@ -356,7 +418,7 @@ const styles = StyleSheet.create({
   pIcon: { fontSize: 24 },
   pLabel: { color: '#666', fontSize: 12, fontWeight: '700' },
   pLabelActive: { color: '#e8631a' },
-  pDesc: { color: '#444', fontSize: 10, textAlign: 'center' },
+  pDesc: { color: '#777', fontSize: 10, textAlign: 'center' },
 
   textarea: { backgroundColor: '#2d2d2d', borderRadius: 10, padding: 14, color: '#eee', fontSize: 14, borderWidth: 1, borderColor: '#333', minHeight: 110, textAlignVertical: 'top', lineHeight: 20 },
 
@@ -365,7 +427,13 @@ const styles = StyleSheet.create({
 
   saveBtn: { backgroundColor: '#e8631a', borderRadius: 12, padding: 16, alignItems: 'center', minHeight: 52, justifyContent: 'center' },
   saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15, letterSpacing: 0.5 },
-  hint: { color: '#444', fontSize: 12, textAlign: 'center', lineHeight: 18 },
+  hint: { color: '#666', fontSize: 12, textAlign: 'center', lineHeight: 18 },
+
+  availHint: { color: '#777', fontSize: 12, lineHeight: 17, marginTop: -8 },
+  dateRow: { flexDirection: 'row', gap: 10 },
+  dateFld: { flex: 1, gap: 6 },
+  dateLabel: { color: '#777', fontSize: 10, fontWeight: '700', letterSpacing: 1.5 },
+  dateInput: { backgroundColor: '#2d2d2d', borderRadius: 10, padding: 14, color: '#eee', fontSize: 14, borderWidth: 1, borderColor: '#333' },
   errorBox: { backgroundColor: '#ef444415', borderWidth: 1, borderColor: '#ef444450', borderRadius: 10, padding: 14 },
   errorText: { color: '#ef4444', fontSize: 13, lineHeight: 18 },
   successBox: { backgroundColor: '#22c55e15', borderWidth: 1, borderColor: '#22c55e50', borderRadius: 10, padding: 16, gap: 12 },
