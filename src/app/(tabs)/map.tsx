@@ -204,7 +204,7 @@ export default function MapScreen() {
             <TextInput
               style={styles.textarea}
               placeholder="Ahoj, jedu přes tvoje město, máš místo?..."
-              placeholderTextColor="#555"
+              placeholderTextColor="#666"
               value={message}
               onChangeText={setMessage}
               multiline

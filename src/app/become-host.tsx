@@ -329,7 +329,7 @@ export default function BecomeHostScreen() {
           <TextInput
             style={styles.textarea}
             placeholder={'Co nabízíš? Kde přesně parkovat?\nSprcha, wifi, večeře? Jak tě kontaktovat?'}
-            placeholderTextColor="#444"
+            placeholderTextColor="#666"
             value={loc.notes}
             onChangeText={text => updateLocation(index, { notes: text })}
             multiline
