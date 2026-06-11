@@ -102,7 +102,12 @@ function RequestCard({
           <Text style={rc.detailIcon}>📅</Text>
           <Text style={rc.detailText}>
             {fmtDateStr(req.arrival_date)} → {fmtDateStr(req.departure_date)}
-            {req.arrival_time ? `  ·  cca ${req.arrival_time}` : ''}
+          </Text>
+        </View>
+        <View style={rc.detailRow}>
+          <Text style={rc.detailIcon}>🕐</Text>
+          <Text style={rc.detailText}>
+            {req.arrival_time ? `Příjezd cca ${req.arrival_time}` : 'Čas příjezdu neurčen'}
           </Text>
         </View>
         <View style={rc.detailRow}>

@@ -91,6 +91,11 @@ const filterStyles = StyleSheet.create({
   chipLabelOn: { color: C.accent },
 })
 
+function defaultArrivalTime() {
+  const d = new Date(Date.now() + 3600000)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 export default function MapScreen() {
   const [hosts, setHosts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -107,7 +112,7 @@ export default function MapScreen() {
   const fileInputRef = useRef<any>(null)
   const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().split('T')[0])
   const [departureDate, setDepartureDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0])
-  const [arrivalTime, setArrivalTime] = useState('')
+  const [arrivalTime, setArrivalTime] = useState(() => defaultArrivalTime())
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [showMap, setShowMap] = useState(Platform.OS === 'web')
   const [HostMap, setHostMap] = useState<any>(null)
@@ -145,7 +150,7 @@ export default function MapScreen() {
       setGuestVehicle('')
       setArrivalDate(new Date().toISOString().split('T')[0])
       setDepartureDate(new Date(Date.now() + 86400000).toISOString().split('T')[0])
-      setArrivalTime('')
+      setArrivalTime(defaultArrivalTime())
       setPhotoFile(null)
       setPhotoPreview(null)
     }
@@ -361,7 +366,7 @@ export default function MapScreen() {
               </View>
             </View>
             <View style={{ gap: 6, marginTop: 4 }}>
-              <Text style={styles.dateFieldLabel}>CCA PŘÍJEZD <Text style={{ color: C.textFaint, fontWeight: '400', letterSpacing: 0 }}>(volitelné)</Text></Text>
+              <Text style={styles.dateFieldLabel}>CCA PŘÍJEZD</Text>
               {Platform.OS === 'web' ? (
                 <input type="time" value={arrivalTime}
                   onChange={(e: any) => setArrivalTime(e.target.value)}
