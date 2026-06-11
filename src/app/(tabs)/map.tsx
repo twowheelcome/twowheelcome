@@ -252,7 +252,8 @@ export default function MapScreen() {
         setRequesting(false)
         setMessage('')
         setSelected(null)
-      }, 2500)
+        router.push({ pathname: '/(tabs)/requests', params: { openConv: convId } })
+      }, 1500)
     } catch (e: any) {
       setSendError(e?.message || 'Neočekávaná chyba')
     } finally {

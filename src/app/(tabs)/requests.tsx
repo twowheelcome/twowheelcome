@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   FlatList, Image, KeyboardAvoidingView, Platform,
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
+import { useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { C } from '../../lib/theme'
 
@@ -16,6 +17,9 @@ type ConvRow = {
   user_b: string
   last_message_at: string
   other: OtherUser
+  lastMsgBody: string | null
+  lastMsgSenderId: string | null
+  lastMsgIsRequest: boolean
 }
 
 type RequestData = {
@@ -45,68 +49,73 @@ type MsgRow = {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-const statusLabel: Record<string, { text: string; color: string }> = {
-  PENDING:  { text: '⏳ Čeká na odpověď', color: C.warning },
-  ACCEPTED: { text: '✅ Přijato',          color: C.success },
-  REJECTED: { text: '❌ Odmítnuto',        color: C.error },
+const STATUS: Record<string, { label: string; color: string; bg: string }> = {
+  PENDING:  { label: '⏳ Čeká na odpověď', color: C.warning,  bg: 'rgba(230,126,34,0.12)' },
+  ACCEPTED: { label: '✅ Přijato',          color: C.success,  bg: 'rgba(39,174,96,0.12)' },
+  REJECTED: { label: '❌ Odmítnuto',        color: C.error,    bg: 'rgba(231,76,60,0.12)' },
 }
 
 function fmtDate(iso: string) {
-  const d = new Date(iso)
-  return d.toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' })
+  return new Date(iso).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' })
 }
 
 function fmtTime(iso: string) {
-  const d = new Date(iso)
-  return d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })
 }
 
-// ── RequestCard (embedded in chat) ────────────────────────────────────────
+// ── RequestCard ───────────────────────────────────────────────────────────
 
 function RequestCard({
-  req, isHost, onRespond,
+  req, body, isHost, onRespond,
 }: {
   req: RequestData
+  body: string | null
   isHost: boolean
   onRespond: (id: string, status: 'ACCEPTED' | 'REJECTED') => void
 }) {
-  const s = statusLabel[req.status] || statusLabel.PENDING
+  const s = STATUS[req.status] || STATUS.PENDING
+  const vehicle = req.guest_vehicle === 'moto' ? '🏍 Moto' : req.guest_vehicle === 'bicycle' ? '🚴 Kolo' : null
+  const guestsLabel = req.guests_count === 1 ? '1 jezdec' : `${req.guests_count} jezdci`
+
   return (
     <View style={rc.card}>
-      <Text style={rc.title}>🤞 ŽÁDOST O UBYTOVÁNÍ</Text>
-      <View style={rc.row}>
-        <Text style={rc.badge} numberOfLines={1}>{s.text}</Text>
+      <Text style={rc.cardTitle}>🤞 ŽÁDOST O UBYTOVÁNÍ</Text>
+
+      {/* Status */}
+      <View style={[rc.statusBadge, { backgroundColor: s.bg }]}>
+        <Text style={[rc.statusText, { color: s.color }]}>{s.label}</Text>
       </View>
 
-      {req.status === 'ACCEPTED' && (
-        <View style={rc.acceptedBlock}>
-          <Text style={rc.acceptedDates}>
-            📅 {req.arrival_date} → {req.departure_date}
+      {/* Details */}
+      <View style={rc.details}>
+        <View style={rc.detailRow}>
+          <Text style={rc.detailIcon}>📅</Text>
+          <Text style={rc.detailText}>
+            {req.arrival_date} → {req.departure_date}
             {req.arrival_time ? `  ·  cca ${req.arrival_time}` : ''}
           </Text>
-          <Text style={rc.acceptedGuests}>
-            👥 {req.guests_count} {req.guests_count === 1 ? 'jezdec' : 'jezdci'}
-            {req.guest_vehicle === 'moto' ? '  ·  🏍 Moto' : req.guest_vehicle === 'bicycle' ? '  ·  🚴 Kolo' : ''}
-          </Text>
-          {req.photo_url ? (
-            <Image source={{ uri: req.photo_url }} style={rc.photo} resizeMode="cover" />
-          ) : null}
         </View>
-      )}
-
-      {req.status !== 'ACCEPTED' && (
-        <View style={rc.details}>
-          <Text style={rc.detail}>📅 {req.arrival_date} → {req.departure_date}{req.arrival_time ? `  ·  cca ${req.arrival_time}` : ''}</Text>
-          <Text style={rc.detail}>
-            👥 {req.guests_count} {req.guests_count === 1 ? 'jezdec' : 'jezdci'}
-            {req.guest_vehicle === 'moto' ? '  ·  🏍 Moto' : req.guest_vehicle === 'bicycle' ? '  ·  🚴 Kolo' : ''}
+        <View style={rc.detailRow}>
+          <Text style={rc.detailIcon}>👥</Text>
+          <Text style={rc.detailText}>
+            {guestsLabel}{vehicle ? `  ·  ${vehicle}` : ''}
           </Text>
-          {req.photo_url ? (
-            <Image source={{ uri: req.photo_url }} style={rc.photo} resizeMode="cover" />
-          ) : null}
         </View>
-      )}
+      </View>
 
+      {/* Message text */}
+      {body ? (
+        <View style={rc.msgBlock}>
+          <Text style={rc.msgText}>"{body}"</Text>
+        </View>
+      ) : null}
+
+      {/* Photo */}
+      {req.photo_url ? (
+        <Image source={{ uri: req.photo_url }} style={rc.photo} resizeMode="cover" />
+      ) : null}
+
+      {/* Actions */}
       {isHost && req.status === 'PENDING' && (
         <View style={rc.actions}>
           <TouchableOpacity style={rc.acceptBtn} onPress={() => onRespond(req.id, 'ACCEPTED')}>
@@ -122,20 +131,29 @@ function RequestCard({
 }
 
 const rc = StyleSheet.create({
-  card: { backgroundColor: C.surface, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 14, gap: 10, maxWidth: '88%' },
-  title: { color: C.textMuted, fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  badge: { color: C.text, fontSize: 13, fontWeight: '700' },
-  acceptedBlock: { gap: 6, paddingTop: 4, borderTopWidth: 1, borderTopColor: C.border },
-  acceptedDates: { color: C.success, fontSize: 14, fontWeight: '700' },
-  acceptedGuests: { color: C.text, fontSize: 13 },
-  details: { gap: 4 },
-  detail: { color: C.textMuted, fontSize: 13 },
-  photo: { width: '100%', height: 180, borderRadius: 10, marginTop: 4 },
-  actions: { flexDirection: 'row', gap: 8 },
-  acceptBtn: { flex: 1, backgroundColor: C.success, borderRadius: 8, padding: 10, alignItems: 'center' },
+  card: {
+    backgroundColor: C.surface, borderRadius: 14,
+    borderWidth: 1, borderColor: C.border,
+    padding: 14, gap: 10, maxWidth: '88%',
+  },
+  cardTitle: { color: C.textMuted, fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
+  statusBadge: { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  statusText: { fontSize: 13, fontWeight: '700' },
+  details: { gap: 5 },
+  detailRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+  detailIcon: { fontSize: 13, lineHeight: 20 },
+  detailText: { color: C.text, fontSize: 13, lineHeight: 20, flex: 1 },
+  msgBlock: {
+    backgroundColor: C.elevated, borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 8,
+    borderLeftWidth: 3, borderLeftColor: C.accent,
+  },
+  msgText: { color: C.textMuted, fontSize: 13, lineHeight: 19, fontStyle: 'italic' },
+  photo: { width: '100%', height: 200, borderRadius: 10 },
+  actions: { flexDirection: 'row', gap: 8, paddingTop: 4 },
+  acceptBtn: { flex: 1, backgroundColor: C.success, borderRadius: 8, padding: 11, alignItems: 'center' },
   acceptTxt: { color: C.white, fontWeight: '700', fontSize: 12, letterSpacing: 0.5 },
-  rejectBtn: { flex: 1, borderRadius: 8, padding: 10, alignItems: 'center', borderWidth: 1, borderColor: C.error },
+  rejectBtn: { flex: 1, borderRadius: 8, padding: 11, alignItems: 'center', borderWidth: 1, borderColor: C.error },
   rejectTxt: { color: C.error, fontWeight: '700', fontSize: 12, letterSpacing: 0.5 },
 })
 
@@ -149,14 +167,36 @@ export default function RequestsScreen() {
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const [seenConvIds, setSeenConvIds] = useState<Set<string>>(new Set())
   const flatRef = useRef<FlatList<MsgRow>>(null)
   const channelRef = useRef<any>(null)
+  const autoOpenedRef = useRef<string | null>(null)
+
+  const { openConv: openConvParam } = useLocalSearchParams<{ openConv?: string }>()
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) { setCurrentUser(user); loadConvs(user.id) }
     })
   }, [])
+
+  // Refresh convs every time the tab gets focus
+  useFocusEffect(
+    useCallback(() => {
+      if (currentUser) loadConvs(currentUser.id)
+    }, [currentUser])
+  )
+
+  // Auto-open conversation when navigated from map with openConv param
+  useEffect(() => {
+    if (openConvParam && convs.length > 0 && autoOpenedRef.current !== openConvParam) {
+      const conv = convs.find(c => c.id === openConvParam)
+      if (conv) {
+        autoOpenedRef.current = openConvParam
+        openConv(conv)
+      }
+    }
+  }, [convs, openConvParam])
 
   // Reload convs when navigating back from chat
   useEffect(() => {
@@ -173,23 +213,40 @@ export default function RequestsScreen() {
 
     if (!convData || convData.length === 0) { setConvs([]); setLoading(false); return }
 
+    const convIds = convData.map((c: any) => c.id)
     const otherIds = convData.map((c: any) => c.user_a === userId ? c.user_b : c.user_a)
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, full_name')
-      .in('id', otherIds)
+
+    const [{ data: profiles }, { data: lastMsgs }] = await Promise.all([
+      supabase.from('profiles').select('id, full_name').in('id', otherIds),
+      supabase.from('messages')
+        .select('conversation_id, body, sender_id, request_id, created_at')
+        .in('conversation_id', convIds)
+        .order('created_at', { ascending: false }),
+    ])
 
     const profileMap: Record<string, string | null> = {}
     profiles?.forEach((p: any) => { profileMap[p.id] = p.full_name })
 
+    // Take the most recent message per conversation
+    const lastMsgMap: Record<string, { body: string | null; sender_id: string; request_id: string | null }> = {}
+    lastMsgs?.forEach((m: any) => {
+      if (!lastMsgMap[m.conversation_id]) {
+        lastMsgMap[m.conversation_id] = { body: m.body, sender_id: m.sender_id, request_id: m.request_id }
+      }
+    })
+
     setConvs(convData.map((c: any) => {
       const otherId = c.user_a === userId ? c.user_b : c.user_a
+      const last = lastMsgMap[c.id]
       return {
         id: c.id,
         user_a: c.user_a,
         user_b: c.user_b,
         last_message_at: c.last_message_at,
         other: { id: otherId, full_name: profileMap[otherId] ?? null },
+        lastMsgBody: last?.body ?? null,
+        lastMsgSenderId: last?.sender_id ?? null,
+        lastMsgIsRequest: !!last?.request_id,
       }
     }))
     setLoading(false)
@@ -197,6 +254,7 @@ export default function RequestsScreen() {
 
   async function openConv(conv: ConvRow) {
     setSelected(conv)
+    setSeenConvIds(prev => new Set([...prev, conv.id]))
     setMessages([])
     const { data: msgData } = await supabase
       .from('messages')
@@ -214,14 +272,13 @@ export default function RequestsScreen() {
 
     const senderIds = [...new Set(msgData.map((m: any) => m.sender_id))]
     const { data: senderProfiles } = await supabase
-      .from('profiles')
-      .select('id, full_name')
-      .in('id', senderIds)
+      .from('profiles').select('id, full_name').in('id', senderIds)
     const senderMap: Record<string, string | null> = {}
     senderProfiles?.forEach((p: any) => { senderMap[p.id] = p.full_name })
 
     setMessages(msgData.map((m: any) => normalizeMsg({ ...m, sender: { full_name: senderMap[m.sender_id] ?? null } })))
     subscribeToConv(conv.id)
+    setTimeout(() => flatRef.current?.scrollToEnd({ animated: false }), 100)
   }
 
   function normalizeMsg(m: any): MsgRow {
@@ -233,7 +290,7 @@ export default function RequestsScreen() {
       body: m.body,
       photo_url: m.photo_url,
       request_id: m.request_id,
-      request: m.request ?? null,
+      request: Array.isArray(m.request) ? (m.request[0] ?? null) : (m.request ?? null),
       created_at: m.created_at,
     }
   }
@@ -243,9 +300,7 @@ export default function RequestsScreen() {
     channelRef.current = supabase
       .channel(`conv:${convId}`)
       .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
+        event: 'INSERT', schema: 'public', table: 'messages',
         filter: `conversation_id=eq.${convId}`,
       }, async (payload) => {
         const { data } = await supabase
@@ -314,9 +369,11 @@ export default function RequestsScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => { setSelected(null); if (channelRef.current) supabase.removeChannel(channelRef.current) }}>
+          <TouchableOpacity onPress={() => {
+            setSelected(null)
+            if (channelRef.current) supabase.removeChannel(channelRef.current)
+          }}>
             <Text style={styles.back}>←</Text>
           </TouchableOpacity>
           <View style={styles.chatAvatar}>
@@ -325,7 +382,6 @@ export default function RequestsScreen() {
           <Text style={styles.chatName}>{otherName}</Text>
         </View>
 
-        {/* Messages */}
         <FlatList
           ref={flatRef}
           data={messages}
@@ -341,6 +397,7 @@ export default function RequestsScreen() {
                 <View style={[styles.msgRow, isMine ? styles.msgRowRight : styles.msgRowLeft]}>
                   <RequestCard
                     req={m.request}
+                    body={m.body}
                     isHost={isHost}
                     onRespond={respondToRequest}
                   />
@@ -362,7 +419,6 @@ export default function RequestsScreen() {
           }}
         />
 
-        {/* Input */}
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
@@ -407,20 +463,35 @@ export default function RequestsScreen() {
         <ScrollView contentContainerStyle={{ paddingVertical: 8 }}>
           {convs.map(conv => {
             const name = conv.other.full_name || 'Jezdec'
+            const isUnread = !!conv.lastMsgSenderId
+              && conv.lastMsgSenderId !== currentUser?.id
+              && !seenConvIds.has(conv.id)
+            const preview = conv.lastMsgIsRequest
+              ? '🤞 Žádost o ubytování'
+              : (conv.lastMsgBody ?? '')
             return (
               <TouchableOpacity
                 key={conv.id}
                 style={styles.convRow}
                 onPress={() => openConv(conv)}
               >
-                <View style={styles.convAvatar}>
-                  <Text style={styles.convAvatarText}>{name.charAt(0).toUpperCase()}</Text>
+                <View style={styles.convAvatarWrap}>
+                  <View style={styles.convAvatar}>
+                    <Text style={styles.convAvatarText}>{name.charAt(0).toUpperCase()}</Text>
+                  </View>
+                  {isUnread && <View style={styles.unreadDot} />}
                 </View>
                 <View style={styles.convInfo}>
-                  <Text style={styles.convName}>{name}</Text>
-                  <Text style={styles.convTime}>{fmtDate(conv.last_message_at)}</Text>
+                  <View style={styles.convTopRow}>
+                    <Text style={[styles.convName, isUnread && styles.convNameUnread]}>{name}</Text>
+                    <Text style={styles.convTime}>{fmtDate(conv.last_message_at)}</Text>
+                  </View>
+                  {preview ? (
+                    <Text style={[styles.convPreview, isUnread && styles.convPreviewUnread]} numberOfLines={1}>
+                      {preview}
+                    </Text>
+                  ) : null}
                 </View>
-                <Text style={styles.convArrow}>›</Text>
               </TouchableOpacity>
             )
           })}
@@ -491,16 +562,26 @@ const styles = StyleSheet.create({
   emptyText: { color: C.textFaint, fontSize: 13, textAlign: 'center', lineHeight: 20 },
   convRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    paddingHorizontal: 20, paddingVertical: 14,
+    paddingHorizontal: 20, paddingVertical: 13,
     borderBottomWidth: 1, borderBottomColor: C.surface,
   },
+  convAvatarWrap: { position: 'relative' },
   convAvatar: {
     width: 48, height: 48, borderRadius: 24,
     backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center',
   },
   convAvatarText: { color: C.white, fontWeight: '700', fontSize: 18 },
+  unreadDot: {
+    position: 'absolute', top: 0, right: 0,
+    width: 13, height: 13, borderRadius: 7,
+    backgroundColor: C.accent,
+    borderWidth: 2, borderColor: C.bg,
+  },
   convInfo: { flex: 1, gap: 3 },
-  convName: { color: C.text, fontWeight: '700', fontSize: 15 },
+  convTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  convName: { color: C.text, fontWeight: '600', fontSize: 15 },
+  convNameUnread: { fontWeight: '800' },
   convTime: { color: C.textDim, fontSize: 12 },
-  convArrow: { color: C.textDim, fontSize: 22, fontWeight: '300' },
+  convPreview: { color: C.textDim, fontSize: 13, lineHeight: 18 },
+  convPreviewUnread: { color: C.textMuted, fontWeight: '600' },
 })
