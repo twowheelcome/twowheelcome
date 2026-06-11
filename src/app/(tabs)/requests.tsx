@@ -6,6 +6,7 @@ import {
 import { useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { C } from '../../lib/theme'
+import { unreadStore } from '../../lib/unreadStore'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -55,8 +56,16 @@ const STATUS: Record<string, { label: string; color: string; bg: string }> = {
   REJECTED: { label: '❌ Odmítnuto',        color: C.error,    bg: 'rgba(231,76,60,0.12)' },
 }
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' })
+// For DATE strings (YYYY-MM-DD) — manual parse to avoid timezone shifts
+function fmtDateStr(s: string): string {
+  const [y, m, d] = s.split('-')
+  return `${d}.${m}.${y.slice(2)}`
+}
+
+// For full ISO timestamps (last_message_at etc.)
+function fmtDate(iso: string): string {
+  const d = new Date(iso)
+  return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(2)}`
 }
 
 function fmtTime(iso: string) {
@@ -91,7 +100,7 @@ function RequestCard({
         <View style={rc.detailRow}>
           <Text style={rc.detailIcon}>📅</Text>
           <Text style={rc.detailText}>
-            {req.arrival_date} → {req.departure_date}
+            {fmtDateStr(req.arrival_date)} → {fmtDateStr(req.departure_date)}
             {req.arrival_time ? `  ·  cca ${req.arrival_time}` : ''}
           </Text>
         </View>
@@ -202,6 +211,14 @@ export default function RequestsScreen() {
   useEffect(() => {
     if (!selected && currentUser) loadConvs(currentUser.id)
   }, [selected])
+
+  // Sync unread indicator to tab bar
+  useEffect(() => {
+    const anyUnread = convs.some(c =>
+      c.lastMsgSenderId && c.lastMsgSenderId !== currentUser?.id && !seenConvIds.has(c.id)
+    )
+    unreadStore.set(anyUnread)
+  }, [convs, currentUser, seenConvIds])
 
   async function loadConvs(userId: string) {
     setLoading(true)
@@ -352,6 +369,23 @@ export default function RequestsScreen() {
     supabase.functions.invoke('notify-request', {
       body: { request_id: requestId, event: status === 'ACCEPTED' ? 'accepted' : 'rejected' },
     }).catch(() => {})
+
+    // Auto-message in chat
+    if (selected && currentUser) {
+      const autoBody = status === 'ACCEPTED'
+        ? '✅ Přijato! Těšíme se na tebe, ozvi se s podrobnostmi. 🏍🚴'
+        : 'Bohužel tentokrát to u mě nevyjde. Hodně zdaru na cestě! 🤞'
+      await supabase.from('messages').insert({
+        conversation_id: selected.id,
+        sender_id: currentUser.id,
+        body: autoBody,
+      })
+      await supabase
+        .from('conversations')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', selected.id)
+    }
+
     setMessages(prev => prev.map(m =>
       m.request?.id === requestId
         ? { ...m, request: { ...m.request!, status } }

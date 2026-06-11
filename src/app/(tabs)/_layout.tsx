@@ -1,9 +1,22 @@
+import { useEffect, useState } from 'react'
 import { Tabs } from 'expo-router'
-import { Platform, Text } from 'react-native'
+import { Platform, Text, View } from 'react-native'
 import { C } from '../../lib/theme'
+import { unreadStore } from '../../lib/unreadStore'
 
-function Icon({ e }: { e: string }) {
-  return <Text style={{ fontSize: 22, lineHeight: 26 }}>{e}</Text>
+function Icon({ e, dot }: { e: string; dot?: boolean }) {
+  return (
+    <View style={{ position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ fontSize: 22, lineHeight: 26 }}>{e}</Text>
+      {dot && (
+        <View style={{
+          position: 'absolute', top: -1, right: -5,
+          width: 10, height: 10, borderRadius: 5,
+          backgroundColor: C.accent, borderWidth: 2, borderColor: C.bg,
+        }} />
+      )}
+    </View>
+  )
 }
 
 function Label({ title, focused }: { title: string; focused: boolean }) {
@@ -15,6 +28,10 @@ function Label({ title, focused }: { title: string; focused: boolean }) {
 }
 
 export default function TabsLayout() {
+  const [hasUnread, setHasUnread] = useState(unreadStore.get())
+
+  useEffect(() => unreadStore.subscribe(setHasUnread), [])
+
   return (
     <Tabs
       screenOptions={{
@@ -43,7 +60,7 @@ export default function TabsLayout() {
         name="requests"
         options={{
           title: 'Žádosti',
-          tabBarIcon: ({ focused }) => <Icon e="📬" />,
+          tabBarIcon: ({ focused }) => <Icon e="📬" dot={hasUnread} />,
           tabBarLabel: ({ focused }) => <Label title="Žádosti" focused={focused} />,
         }}
       />
