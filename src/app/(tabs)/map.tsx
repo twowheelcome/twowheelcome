@@ -97,6 +97,7 @@ export default function MapScreen() {
   const [message, setMessage] = useState('')
   const [guests, setGuests] = useState(1)
   const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState('')
   const [guestVehicle, setGuestVehicle] = useState('')
   const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().split('T')[0])
   const [departureDate, setDepartureDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0])
@@ -166,9 +167,10 @@ export default function MapScreen() {
   async function sendRequest() {
     if (!currentUser || !selected) return
     if (!message.trim()) {
-      Alert.alert('Hej!', 'Napiš hostiteli zprávu. Aspoň pár slov. 😄')
+      setSendError('Napiš hostiteli zprávu. Aspoň pár slov. 😄')
       return
     }
+    setSendError('')
     setSending(true)
     const { data: insertData, error } = await supabase.from('stay_requests').insert({
       guest_id: currentUser.id,
@@ -183,14 +185,15 @@ export default function MapScreen() {
     }).select('id')
     setSending(false)
     if (error) {
-      Alert.alert('Chyba', error.message)
+      setSendError(error.message)
     } else {
       supabase.functions.invoke('notify-request', {
         body: { request_id: insertData?.[0]?.id, event: 'new_request' },
       }).catch(() => {})
-      Alert.alert('🤞 Žádost letí!', 'Teď jeď a doufej že má otevřeno.', [
-        { text: 'OK', onPress: () => { setRequesting(false); setMessage(''); setSelected(null) } }
-      ])
+      setRequesting(false)
+      setMessage('')
+      setSelected(null)
+      Alert.alert('🤞 Žádost letí!', 'Teď jeď a doufej že má otevřeno.')
     }
   }
 
@@ -328,6 +331,11 @@ export default function MapScreen() {
             </View>
           )}
 
+          {sendError ? (
+            <View style={[styles.infoBox, { borderColor: '#ef444450', backgroundColor: '#ef444410' }]}>
+              <Text style={[styles.infoText, { color: '#ef4444' }]}>⚠️ {sendError}</Text>
+            </View>
+          ) : null}
           <TouchableOpacity style={styles.button} onPress={sendRequest} disabled={sending}>
             <Text style={styles.buttonText}>{sending ? 'ODESÍLÁM... 🤞' : 'ODESLAT ŽÁDOST →'}</Text>
           </TouchableOpacity>
