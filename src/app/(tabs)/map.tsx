@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, Platform } from 'react-native'
 import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
@@ -101,6 +101,9 @@ export default function MapScreen() {
   const [sendError, setSendError] = useState('')
   const [sendSuccess, setSendSuccess] = useState(false)
   const [guestVehicle, setGuestVehicle] = useState('')
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const fileInputRef = useRef<any>(null)
   const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().split('T')[0])
   const [departureDate, setDepartureDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0])
   const [arrivalTime, setArrivalTime] = useState('')
@@ -142,6 +145,8 @@ export default function MapScreen() {
       setArrivalDate(new Date().toISOString().split('T')[0])
       setDepartureDate(new Date(Date.now() + 86400000).toISOString().split('T')[0])
       setArrivalTime('')
+      setPhotoFile(null)
+      setPhotoPreview(null)
     }
   }, [requesting])
 
@@ -174,24 +179,73 @@ export default function MapScreen() {
     }
     setSendError('')
     setSending(true)
-    const { data: insertData, error } = await supabase.from('stay_requests').insert({
-      guest_id: currentUser.id,
-      host_id: selected.user_id,
-      status: 'PENDING',
-      guests_count: guests,
-      message: message.trim(),
-      arrival_date: arrivalDate,
-      departure_date: departureDate,
-      arrival_time: arrivalTime.trim() || null,
-      guest_vehicle: guestVehicle || null,
-    }).select('id')
-    setSending(false)
-    if (error) {
-      setSendError(error.message)
-    } else {
+    try {
+      // 1. Upload photo
+      let uploadedPhotoUrl: string | null = null
+      if (photoFile) {
+        const ext = photoFile.name.split('.').pop() || 'jpg'
+        const name = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+        const { error: upErr } = await supabase.storage.from('request-photos').upload(name, photoFile)
+        if (!upErr) {
+          uploadedPhotoUrl = supabase.storage.from('request-photos').getPublicUrl(name).data.publicUrl
+        }
+      }
+
+      // 2. Find or create conversation (user_a = lexicographically smaller ID)
+      const [ua, ub] = [currentUser.id, selected.user_id].sort()
+      let convId: string
+      const { data: existing } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('user_a', ua)
+        .eq('user_b', ub)
+        .maybeSingle()
+
+      if (existing) {
+        convId = existing.id
+        await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', convId)
+      } else {
+        const { data: newConv, error: convErr } = await supabase
+          .from('conversations')
+          .insert({ user_a: ua, user_b: ub })
+          .select('id')
+          .single()
+        if (convErr || !newConv) { setSendError(convErr?.message || 'Chyba konverzace'); setSending(false); return }
+        convId = newConv.id
+      }
+
+      // 3. Insert stay_request
+      const { data: reqData, error: reqErr } = await supabase
+        .from('stay_requests')
+        .insert({
+          guest_id: currentUser.id,
+          host_id: selected.user_id,
+          status: 'PENDING',
+          guests_count: guests,
+          message: message.trim(),
+          arrival_date: arrivalDate,
+          departure_date: departureDate,
+          arrival_time: arrivalTime.trim() || null,
+          guest_vehicle: guestVehicle || null,
+          conversation_id: convId,
+          photo_url: uploadedPhotoUrl,
+        })
+        .select('id')
+        .single()
+      if (reqErr || !reqData) { setSendError(reqErr?.message || 'Chyba žádosti'); setSending(false); return }
+
+      // 4. Insert message linked to request
+      await supabase.from('messages').insert({
+        conversation_id: convId,
+        sender_id: currentUser.id,
+        body: message.trim(),
+        request_id: reqData.id,
+      })
+
       supabase.functions.invoke('notify-request', {
-        body: { request_id: insertData?.[0]?.id, event: 'new_request' },
+        body: { request_id: reqData.id, event: 'new_request' },
       }).catch(() => {})
+
       setSendSuccess(true)
       setTimeout(() => {
         setSendSuccess(false)
@@ -199,6 +253,10 @@ export default function MapScreen() {
         setMessage('')
         setSelected(null)
       }, 2500)
+    } catch (e: any) {
+      setSendError(e?.message || 'Neočekávaná chyba')
+    } finally {
+      setSending(false)
     }
   }
 
@@ -312,12 +370,46 @@ export default function MapScreen() {
             </View>
           </View>
 
+          {Platform.OS === 'web' && (
+            <View style={styles.card}>
+              <Text style={styles.sectionLabel}>FOTO TVÉHO KOLA (volitelné)</Text>
+              {/* hidden file input */}
+              {(Platform.OS as string) === 'web' && (
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e: any) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    setPhotoFile(file)
+                    setPhotoPreview(URL.createObjectURL(file))
+                  }}
+                />
+              )}
+              <TouchableOpacity
+                style={[styles.photoBtn, photoPreview ? styles.photoBtnFilled : null]}
+                onPress={() => fileInputRef.current?.click()}
+              >
+                {photoPreview ? (
+                  <View style={{ alignItems: 'center', gap: 8 }}>
+                    <img src={photoPreview} style={{ width: 200, height: 140, objectFit: 'cover', borderRadius: 10 } as any} alt="preview" />
+                    <Text style={{ color: C.accent, fontSize: 12, fontWeight: '600' }}>Změnit foto</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.photoBtnText}>📷 Přidat foto motorky / kola</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+
           <View style={styles.card}>
             <Text style={styles.sectionLabel}>ZPRÁVA HOSTITELI</Text>
             <TextInput
               style={styles.textarea}
               placeholder="Ahoj, jedu přes tvoje město, máš místo?..."
-              placeholderTextColor="#888"
+              placeholderTextColor={C.placeholder}
               value={message}
               onChangeText={setMessage}
               multiline
@@ -553,4 +645,10 @@ const styles = StyleSheet.create({
   textarea: { backgroundColor: C.bg, borderRadius: 8, padding: 12, color: C.text, fontSize: 14, minHeight: 100, borderWidth: 1, borderColor: C.border, textAlignVertical: 'top' },
   infoBox: { borderRadius: 10, borderWidth: 1, padding: 12 },
   infoText: { fontSize: 13, lineHeight: 18 },
+  photoBtn: {
+    borderWidth: 1, borderColor: C.border, borderRadius: 10,
+    borderStyle: 'dashed', padding: 20, alignItems: 'center', justifyContent: 'center',
+  },
+  photoBtnFilled: { borderStyle: 'solid', borderColor: C.accent },
+  photoBtnText: { color: C.textMuted, fontSize: 13, fontWeight: '600' },
 })
