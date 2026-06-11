@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { C } from '../lib/theme'
 
 export interface Pin {
   lat: number
@@ -122,7 +123,7 @@ export default function LocationPicker({ pin, onChange }: Props) {
     }
     const icon = L.divIcon({
       html: `<div style="
-        background:#e8631a;width:32px;height:32px;
+        background:${C.accent};width:32px;height:32px;
         border-radius:50% 50% 50% 0;transform:rotate(-45deg);
         border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.5);
         display:flex;align-items:center;justify-content:center;cursor:pointer;
@@ -192,8 +193,8 @@ export default function LocationPicker({ pin, onChange }: Props) {
     <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
       {/* Search box */}
       <div style={{ position: 'relative', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', background: '#2d2d2d', borderBottom: '1px solid #333' }}>
-          <span style={{ padding: '0 10px', fontSize: 14, color: '#555' }}>🔍</span>
+        <div style={{ display: 'flex', alignItems: 'center', background: C.elevated, borderBottom: `1px solid ${C.border}` }}>
+          <span style={{ padding: '0 10px', fontSize: 14, color: C.textFaint }}>🔍</span>
           <input
             type="text"
             value={query}
@@ -201,30 +202,30 @@ export default function LocationPicker({ pin, onChange }: Props) {
             placeholder="Hledat adresu..."
             style={{
               flex: 1, background: 'transparent', border: 'none', outline: 'none',
-              color: '#eee', fontSize: 13, padding: '10px 0', fontFamily: 'sans-serif',
+              color: C.text, fontSize: 13, padding: '10px 0', fontFamily: 'sans-serif',
             }}
           />
           {searching && (
-            <span style={{ padding: '0 10px', color: '#555', fontSize: 11 }}>...</span>
+            <span style={{ padding: '0 10px', color: C.textFaint, fontSize: 11 }}>...</span>
           )}
           {query && !searching && (
             <button
               onClick={() => { setQuery(''); setResults([]) }}
-              style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: '0 10px', fontSize: 14 }}
+              style={{ background: 'none', border: 'none', color: C.textFaint, cursor: 'pointer', padding: '0 10px', fontSize: 14 }}
             >✕</button>
           )}
           <button
             onClick={locateMe}
             disabled={locating}
             title="Najdi mě"
-            style={{ background: 'none', border: 'none', color: locating ? '#555' : '#e8631a', cursor: 'pointer', padding: '0 10px', fontSize: 16, opacity: locating ? 0.5 : 1 }}
+            style={{ background: 'none', border: 'none', color: locating ? C.textFaint : C.accent, cursor: 'pointer', padding: '0 10px', fontSize: 16, opacity: locating ? 0.5 : 1 }}
           >{locating ? '…' : '📍'}</button>
         </div>
         {/* Výsledky */}
         {results.length > 0 && (
           <div style={{
             position: 'absolute', top: '100%', left: 0, right: 0,
-            background: '#2d2d2d', borderBottom: '1px solid #444',
+            background: C.elevated, borderBottom: `1px solid ${C.borderMid}`,
             zIndex: 2000, maxHeight: 200, overflowY: 'auto',
           }}>
             {results.map((r, i) => (
@@ -233,11 +234,11 @@ export default function LocationPicker({ pin, onChange }: Props) {
                 onClick={() => selectResult(r)}
                 style={{
                   display: 'block', width: '100%', textAlign: 'left',
-                  background: 'none', border: 'none', borderBottom: '1px solid #333',
-                  color: '#eee', padding: '9px 14px', cursor: 'pointer',
+                  background: 'none', border: 'none', borderBottom: `1px solid ${C.border}`,
+                  color: C.text, padding: '9px 14px', cursor: 'pointer',
                   fontSize: 12, fontFamily: 'sans-serif', lineHeight: 1.4,
                 }}
-                onMouseEnter={e => (e.currentTarget.style.background = '#383838')}
+                onMouseEnter={e => (e.currentTarget.style.background = C.hover)}
                 onMouseLeave={e => (e.currentTarget.style.background = 'none')}
               >
                 {r.display_name}
@@ -253,7 +254,7 @@ export default function LocationPicker({ pin, onChange }: Props) {
         {!pin && (
           <div style={{
             position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
-            background: 'rgba(26,26,26,0.85)', color: '#aaa', fontSize: 11,
+            background: 'rgba(26,34,41,0.88)', color: C.textMuted, fontSize: 11,
             padding: '4px 10px', borderRadius: 20, zIndex: 1000, pointerEvents: 'none',
             whiteSpace: 'nowrap',
           }}>

@@ -3,6 +3,7 @@ import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { supabase } from '../lib/supabase'
+import { C } from '../lib/theme'
 
 export default function AuthScreen() {
   const [email, setEmail] = useState('')
@@ -80,7 +81,7 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: C.bg,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -89,15 +90,15 @@ const styles = StyleSheet.create({
     fontFamily: 'System',
     fontSize: 32,
     fontWeight: '900',
-    color: '#eeeeee',
+    color: C.text,
     letterSpacing: 2,
     marginBottom: 4,
   },
   logoAccent: {
-    color: '#e8631a',
+    color: C.accent,
   },
   sub: {
-    color: '#666',
+    color: C.textDim,
     fontSize: 12,
     letterSpacing: 2,
     textTransform: 'uppercase',
@@ -105,18 +106,18 @@ const styles = StyleSheet.create({
   },
   input: {
     width: '100%',
-    backgroundColor: '#2d2d2d',
+    backgroundColor: C.elevated,
     borderRadius: 10,
     padding: 14,
-    color: '#eee',
+    color: C.text,
     fontSize: 15,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: C.border,
   },
   button: {
     width: '100%',
-    backgroundColor: '#e8631a',
+    backgroundColor: C.accent,
     borderRadius: 10,
     padding: 16,
     alignItems: 'center',
@@ -124,13 +125,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   buttonText: {
-    color: '#fff',
+    color: C.white,
     fontWeight: '700',
     fontSize: 15,
     letterSpacing: 1,
   },
   toggle: {
-    color: '#666',
+    color: C.textDim,
     fontSize: 14,
   },
 })

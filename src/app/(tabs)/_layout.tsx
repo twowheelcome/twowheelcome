@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router'
 import { Platform, Text } from 'react-native'
+import { C } from '../../lib/theme'
 
 function Icon({ e }: { e: string }) {
   return <Text style={{ fontSize: 22, lineHeight: 26 }}>{e}</Text>
@@ -7,7 +8,7 @@ function Icon({ e }: { e: string }) {
 
 function Label({ title, focused }: { title: string; focused: boolean }) {
   return (
-    <Text style={{ fontSize: 12, fontWeight: '700', color: focused ? '#e8631a' : '#fff' }}>
+    <Text style={{ fontSize: 12, fontWeight: '700', color: focused ? C.accent : C.text }}>
       {title}
     </Text>
   )
@@ -19,15 +20,15 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#111',
-          borderTopColor: '#222',
+          backgroundColor: C.bg,
+          borderTopColor: C.surface,
           borderTopWidth: 1,
           height: Platform.OS === 'ios' ? 82 : 68,
           paddingBottom: Platform.OS === 'ios' ? 22 : 12,
           paddingTop: 8,
         },
-        tabBarActiveTintColor: '#e8631a',
-        tabBarInactiveTintColor: '#fff',
+        tabBarActiveTintColor: C.accent,
+        tabBarInactiveTintColor: C.text,
       }}
     >
       <Tabs.Screen

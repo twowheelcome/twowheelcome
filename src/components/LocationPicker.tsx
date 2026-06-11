@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native'
+import { C } from '../lib/theme'
 
 export interface Pin {
   lat: number
@@ -23,10 +24,10 @@ export default function LocationPicker(_props: Props) {
 const styles = StyleSheet.create({
   placeholder: {
     height: '100%' as any,
-    backgroundColor: '#2d2d2d',
+    backgroundColor: C.elevated,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
   },
-  text: { color: '#555', fontSize: 13, textAlign: 'center' },
+  text: { color: C.textFaint, fontSize: 13, textAlign: 'center' },
 })

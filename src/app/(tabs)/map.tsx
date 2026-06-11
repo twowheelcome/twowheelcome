@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, Platform } from 'react-native'
 import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
+import { C } from '../../lib/theme'
 
 const parkingMeta: Record<string, { icon: string; label: string; color: string }> = {
-  garage_locked: { icon: '🔒', label: 'Uzamčená garáž', color: '#22c55e' },
-  carport: { icon: '🔐', label: 'Přístřešek za plotem', color: '#3b82f6' },
-  yard: { icon: '🛡', label: 'Dvůr za plotem', color: '#e8631a' },
+  garage_locked: { icon: '🔒', label: 'Uzamčená garáž', color: C.success },
+  carport: { icon: '🔐', label: 'Přístřešek za plotem', color: C.info },
+  yard: { icon: '🛡', label: 'Dvůr za plotem', color: C.accent },
   street: { icon: '🛣', label: 'Ulice před domem', color: '#94a3b8' },
 }
 
@@ -80,13 +81,13 @@ function FilterRow({ label, items, active, onToggle }: {
 
 const filterStyles = StyleSheet.create({
   row: { gap: 6 },
-  rowLabel: { color: '#999', fontSize: 10, fontWeight: '700', letterSpacing: 1.5 },
+  rowLabel: { color: C.placeholder, fontSize: 10, fontWeight: '700', letterSpacing: 1.5 },
   chips: { flexDirection: 'row', gap: 6 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#2d2d2d', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: '#333' },
-  chipOn: { borderColor: '#e8631a', backgroundColor: '#e8631a20' },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.elevated, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: C.border },
+  chipOn: { borderColor: C.accent, backgroundColor: C.accentSoft },
   chipIcon: { fontSize: 13 },
-  chipLabel: { color: '#999', fontSize: 12, fontWeight: '600' },
-  chipLabelOn: { color: '#e8631a' },
+  chipLabel: { color: C.placeholder, fontSize: 12, fontWeight: '600' },
+  chipLabelOn: { color: C.accent },
 })
 
 export default function MapScreen() {
@@ -264,12 +265,12 @@ export default function MapScreen() {
               {[{ value: 'moto', icon: '🏍', label: 'Moto' }, { value: 'bicycle', icon: '🚴', label: 'Kolo' }].map(v => (
                 <TouchableOpacity
                   key={v.value}
-                  style={[{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: '#333', backgroundColor: '#1a1a1a' },
-                    guestVehicle === v.value && { borderColor: '#e8631a', backgroundColor: '#e8631a15' }]}
+                  style={[{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: C.bg },
+                    guestVehicle === v.value && { borderColor: C.accent, backgroundColor: C.accentSoft }]}
                   onPress={() => setGuestVehicle(guestVehicle === v.value ? '' : v.value)}
                 >
                   <Text style={{ fontSize: 22 }}>{v.icon}</Text>
-                  <Text style={[{ color: '#aaa', fontWeight: '700', fontSize: 15 }, guestVehicle === v.value && { color: '#e8631a' }]}>{v.label}</Text>
+                  <Text style={[{ color: C.textMuted, fontWeight: '700', fontSize: 15 }, guestVehicle === v.value && { color: C.accent }]}>{v.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -283,9 +284,9 @@ export default function MapScreen() {
                 {Platform.OS === 'web' ? (
                   <input type="date" value={arrivalDate}
                     onChange={(e: any) => setArrivalDate(e.target.value)}
-                    style={{ background: '#1a1a1a', border: '1px solid #444', borderRadius: 8, padding: '10px 12px', color: '#eee', fontSize: 13, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any} />
+                    style={{ background: C.bg, border: `1px solid ${C.borderMid}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontSize: 13, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any} />
                 ) : (
-                  <TextInput style={styles.dateInput} value={arrivalDate} onChangeText={setArrivalDate} placeholderTextColor="#777" />
+                  <TextInput style={styles.dateInput} value={arrivalDate} onChangeText={setArrivalDate} placeholderTextColor={C.textDim} />
                 )}
               </View>
               <View style={{ flex: 1, gap: 6 }}>
@@ -293,18 +294,18 @@ export default function MapScreen() {
                 {Platform.OS === 'web' ? (
                   <input type="date" value={departureDate}
                     onChange={(e: any) => setDepartureDate(e.target.value)}
-                    style={{ background: '#1a1a1a', border: '1px solid #444', borderRadius: 8, padding: '10px 12px', color: '#eee', fontSize: 13, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any} />
+                    style={{ background: C.bg, border: `1px solid ${C.borderMid}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontSize: 13, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any} />
                 ) : (
-                  <TextInput style={styles.dateInput} value={departureDate} onChangeText={setDepartureDate} placeholderTextColor="#777" />
+                  <TextInput style={styles.dateInput} value={departureDate} onChangeText={setDepartureDate} placeholderTextColor={C.textDim} />
                 )}
               </View>
             </View>
             <View style={{ gap: 6, marginTop: 4 }}>
-              <Text style={styles.dateFieldLabel}>CCA PŘÍJEZD <Text style={{ color: '#555', fontWeight: '400', letterSpacing: 0 }}>(volitelné)</Text></Text>
+              <Text style={styles.dateFieldLabel}>CCA PŘÍJEZD <Text style={{ color: C.textFaint, fontWeight: '400', letterSpacing: 0 }}>(volitelné)</Text></Text>
               {Platform.OS === 'web' ? (
                 <input type="time" value={arrivalTime}
                   onChange={(e: any) => setArrivalTime(e.target.value)}
-                  style={{ background: '#1a1a1a', border: '1px solid #444', borderRadius: 8, padding: '10px 12px', color: arrivalTime ? '#eee' : '#555', fontSize: 13, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any} />
+                  style={{ background: C.bg, border: `1px solid ${C.borderMid}`, borderRadius: 8, padding: '10px 12px', color: arrivalTime ? C.text : C.textFaint, fontSize: 13, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any} />
               ) : (
                 <TextInput style={styles.dateInput} value={arrivalTime} onChangeText={setArrivalTime} placeholder="např. 17:00" placeholderTextColor="#777" />
               )}
@@ -325,24 +326,24 @@ export default function MapScreen() {
           </View>
 
           {selectedPricings.includes('tip') && (
-            <View style={[styles.infoBox, { borderColor: '#f59e0b50', backgroundColor: '#f59e0b10' }]}>
-              <Text style={[styles.infoText, { color: '#f59e0b' }]}>🙏 Tip není povinný, ale pivo nebo příběh u táboráku potěší. 🍺</Text>
+            <View style={[styles.infoBox, { borderColor: C.warningBorder, backgroundColor: C.warningSoft }]}>
+              <Text style={[styles.infoText, { color: C.warning }]}>🙏 Tip není povinný, ale pivo nebo příběh u táboráku potěší. 🍺</Text>
             </View>
           )}
           {selectedPricings.includes('fixed') && (
-            <View style={[styles.infoBox, { borderColor: '#3b82f650', backgroundColor: '#3b82f610' }]}>
-              <Text style={[styles.infoText, { color: '#3b82f6' }]}>💶 Domluv se s hostitelem přímo — žádná provize.</Text>
+            <View style={[styles.infoBox, { borderColor: C.infoBorder, backgroundColor: C.infoSoft }]}>
+              <Text style={[styles.infoText, { color: C.info }]}>💶 Domluv se s hostitelem přímo — žádná provize.</Text>
             </View>
           )}
 
           {sendSuccess ? (
-            <View style={[styles.infoBox, { borderColor: '#22c55e50', backgroundColor: '#22c55e15' }]}>
-              <Text style={[styles.infoText, { color: '#22c55e', fontSize: 15, fontWeight: '700' }]}>🤞 Žádost letí! Teď jeď a doufej že má otevřeno.</Text>
+            <View style={[styles.infoBox, { borderColor: C.successBorder, backgroundColor: C.successSoft }]}>
+              <Text style={[styles.infoText, { color: C.success, fontSize: 15, fontWeight: '700' }]}>🤞 Žádost letí! Teď jeď a doufej že má otevřeno.</Text>
             </View>
           ) : null}
           {sendError ? (
-            <View style={[styles.infoBox, { borderColor: '#ef444450', backgroundColor: '#ef444410' }]}>
-              <Text style={[styles.infoText, { color: '#ef4444' }]}>⚠️ {sendError}</Text>
+            <View style={[styles.infoBox, { borderColor: C.errorBorder, backgroundColor: C.errorSoft }]}>
+              <Text style={[styles.infoText, { color: C.error }]}>⚠️ {sendError}</Text>
             </View>
           ) : null}
           <TouchableOpacity style={styles.button} onPress={sendRequest} disabled={sending || sendSuccess}>
@@ -467,8 +468,8 @@ export default function MapScreen() {
                             const meta = FILTER_VEHICLES.find(f => f.value === v)
                             if (!meta) return null
                             return (
-                              <View key={v} style={[styles.tag, { borderColor: '#e8631a50', backgroundColor: '#e8631a10' }]}>
-                                <Text style={[styles.tagText, { color: '#e8631a' }]}>{meta.icon} {meta.label}</Text>
+                              <View key={v} style={[styles.tag, { borderColor: C.accentBorder, backgroundColor: C.accentSoft }]}>
+                                <Text style={[styles.tagText, { color: C.accent }]}>{meta.icon} {meta.label}</Text>
                               </View>
                             )
                           })}
@@ -496,60 +497,60 @@ export default function MapScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1a1a' },
-  header: { padding: 20, paddingTop: 52, borderBottomWidth: 1, borderBottomColor: '#2d2d2d' },
-  logo: { fontSize: 22, fontWeight: '900', color: '#eee', letterSpacing: 2 },
-  accent: { color: '#e8631a' },
-  sub: { color: '#999', fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 4 },
-  back: { color: '#e8631a', fontSize: 16, marginBottom: 8 },
-  headerTitle: { color: '#eee', fontSize: 18, fontWeight: '700' },
+  container: { flex: 1, backgroundColor: C.bg },
+  header: { padding: 20, paddingTop: 52, borderBottomWidth: 1, borderBottomColor: C.surface },
+  logo: { fontSize: 22, fontWeight: '900', color: C.text, letterSpacing: 2 },
+  accent: { color: C.accent },
+  sub: { color: C.placeholder, fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 4 },
+  back: { color: C.accent, fontSize: 16, marginBottom: 8 },
+  headerTitle: { color: C.text, fontSize: 18, fontWeight: '700' },
   tabsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 },
   tabs: { flexDirection: 'row', gap: 8 },
-  filterToggle: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: '#333' },
-  filterToggleActive: { borderColor: '#e8631a', backgroundColor: '#e8631a20' },
-  filterToggleText: { color: '#999', fontSize: 11, fontWeight: '700', letterSpacing: 1 },
-  filterToggleTextActive: { color: '#e8631a' },
-  filterPanel: { marginTop: 12, gap: 10, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#2d2d2d' },
-  clearFilters: { color: '#999', fontSize: 12, textAlign: 'right', marginTop: 2 },
-  tab: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#333' },
-  tabActive: { backgroundColor: '#e8631a', borderColor: '#e8631a' },
-  tabText: { color: '#999', fontSize: 13 },
-  tabTextActive: { color: '#fff', fontWeight: '700' },
+  filterToggle: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: C.border },
+  filterToggleActive: { borderColor: C.accent, backgroundColor: C.accentSoft },
+  filterToggleText: { color: C.placeholder, fontSize: 11, fontWeight: '700', letterSpacing: 1 },
+  filterToggleTextActive: { color: C.accent },
+  filterPanel: { marginTop: 12, gap: 10, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.surface },
+  clearFilters: { color: C.placeholder, fontSize: 12, textAlign: 'right', marginTop: 2 },
+  tab: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: C.border },
+  tabActive: { backgroundColor: C.accent, borderColor: C.accent },
+  tabText: { color: C.placeholder, fontSize: 13 },
+  tabTextActive: { color: C.white, fontWeight: '700' },
   list: { flex: 1 },
   empty: { alignItems: 'center', justifyContent: 'center', padding: 40 },
   emptyEmoji: { fontSize: 64, marginBottom: 16 },
-  emptyTitle: { color: '#eee', fontSize: 20, fontWeight: '700', marginBottom: 8 },
-  emptyText: { color: '#999', fontSize: 14, textAlign: 'center', lineHeight: 20 },
-  card: { backgroundColor: '#2d2d2d', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#333', marginBottom: 12 },
-  cardSelected: { borderColor: '#e8631a' },
+  emptyTitle: { color: C.text, fontSize: 20, fontWeight: '700', marginBottom: 8 },
+  emptyText: { color: C.placeholder, fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  card: { backgroundColor: C.elevated, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: C.border, marginBottom: 12 },
+  cardSelected: { borderColor: C.accent },
   cardRow: { flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 10 },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#e8631a', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 18 },
+  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: C.white, fontWeight: '700', fontSize: 18 },
   cardInfo: { flex: 1 },
-  cardName: { color: '#eee', fontWeight: '700', fontSize: 15 },
-  ownBadge: { color: '#e8631a', fontSize: 13 },
-  cardLocation: { color: '#999', fontSize: 12, marginTop: 2 },
+  cardName: { color: C.text, fontWeight: '700', fontSize: 15 },
+  ownBadge: { color: C.accent, fontSize: 13 },
+  cardLocation: { color: C.placeholder, fontSize: 12, marginTop: 2 },
   tags: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   tag: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
   tagText: { fontSize: 11 },
-  detail: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#333', gap: 8 },
-  detailBio: { color: '#aaa', fontSize: 13, lineHeight: 18 },
-  detailInfo: { color: '#999', fontSize: 12 },
-  requestButton: { backgroundColor: '#e8631a', borderRadius: 10, padding: 12, alignItems: 'center' },
-  requestButtonText: { color: '#fff', fontWeight: '700', fontSize: 13, letterSpacing: 1 },
-  editButton: { borderWidth: 1, borderColor: '#e8631a', borderRadius: 10, padding: 12, alignItems: 'center' },
-  editButtonText: { color: '#e8631a', fontWeight: '700', fontSize: 13, letterSpacing: 1 },
-  button: { backgroundColor: '#e8631a', borderRadius: 10, padding: 14, alignItems: 'center' },
-  buttonText: { color: '#fff', fontWeight: '700', fontSize: 14, letterSpacing: 1 },
-  sectionLabel: { color: '#bbb', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
-  dateFieldLabel: { color: '#aaa', fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
-  dateInput: { backgroundColor: '#1a1a1a', borderRadius: 8, padding: 12, color: '#eee', fontSize: 13, borderWidth: 1, borderColor: '#444' },
+  detail: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.border, gap: 8 },
+  detailBio: { color: C.textMuted, fontSize: 13, lineHeight: 18 },
+  detailInfo: { color: C.placeholder, fontSize: 12 },
+  requestButton: { backgroundColor: C.accent, borderRadius: 10, padding: 12, alignItems: 'center' },
+  requestButtonText: { color: C.white, fontWeight: '700', fontSize: 13, letterSpacing: 1 },
+  editButton: { borderWidth: 1, borderColor: C.accent, borderRadius: 10, padding: 12, alignItems: 'center' },
+  editButtonText: { color: C.accent, fontWeight: '700', fontSize: 13, letterSpacing: 1 },
+  button: { backgroundColor: C.accent, borderRadius: 10, padding: 14, alignItems: 'center' },
+  buttonText: { color: C.white, fontWeight: '700', fontSize: 14, letterSpacing: 1 },
+  sectionLabel: { color: C.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
+  dateFieldLabel: { color: C.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
+  dateInput: { backgroundColor: C.bg, borderRadius: 8, padding: 12, color: C.text, fontSize: 13, borderWidth: 1, borderColor: C.borderMid },
   counter: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  counterBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#333', alignItems: 'center', justifyContent: 'center' },
-  counterBtnText: { color: '#eee', fontSize: 18, fontWeight: '700' },
-  counterValue: { color: '#eee', fontSize: 20, fontWeight: '700', minWidth: 20, textAlign: 'center' },
-  counterMax: { color: '#999', fontSize: 12 },
-  textarea: { backgroundColor: '#1a1a1a', borderRadius: 8, padding: 12, color: '#eee', fontSize: 14, minHeight: 100, borderWidth: 1, borderColor: '#333', textAlignVertical: 'top' },
+  counterBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: C.border, alignItems: 'center', justifyContent: 'center' },
+  counterBtnText: { color: C.text, fontSize: 18, fontWeight: '700' },
+  counterValue: { color: C.text, fontSize: 20, fontWeight: '700', minWidth: 20, textAlign: 'center' },
+  counterMax: { color: C.placeholder, fontSize: 12 },
+  textarea: { backgroundColor: C.bg, borderRadius: 8, padding: 12, color: C.text, fontSize: 14, minHeight: 100, borderWidth: 1, borderColor: C.border, textAlignVertical: 'top' },
   infoBox: { borderRadius: 10, borderWidth: 1, padding: 12 },
   infoText: { fontSize: 13, lineHeight: 18 },
 })

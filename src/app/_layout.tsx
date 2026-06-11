@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router'
+import { C } from '../lib/theme'
 
 export default function RootLayout() {
   return (
@@ -11,9 +12,9 @@ export default function RootLayout() {
           presentation: 'modal',
           headerShown: true,
           title: 'Stát se hostitelem',
-          headerStyle: { backgroundColor: '#1a1a1a' },
-          headerTintColor: '#e8631a',
-          headerTitleStyle: { color: '#eee', fontWeight: '700' },
+          headerStyle: { backgroundColor: C.bg },
+          headerTintColor: C.accent,
+          headerTitleStyle: { color: C.text, fontWeight: '700' },
           headerBackTitle: 'Zpět',
         }}
       />

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native'
 import { supabase } from '../../lib/supabase'
+import { C } from '../../lib/theme'
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   PENDING: { label: '⏳ Čeká na odpověď', color: '#f59e0b' },
@@ -76,7 +77,7 @@ export default function RequestsScreen() {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color="#e8631a" size="large" />
+          <ActivityIndicator color={C.accent} size="large" />
         </View>
       ) : list.length === 0 ? (
         <View style={styles.center}>
@@ -158,33 +159,33 @@ export default function RequestsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1a1a' },
-  header: { padding: 20, paddingTop: 52, borderBottomWidth: 1, borderBottomColor: '#2d2d2d' },
-  title: { color: '#eee', fontSize: 22, fontWeight: '900', letterSpacing: 2 },
+  container: { flex: 1, backgroundColor: C.bg },
+  header: { padding: 20, paddingTop: 52, borderBottomWidth: 1, borderBottomColor: C.surface },
+  title: { color: C.text, fontSize: 22, fontWeight: '900', letterSpacing: 2 },
   tabs: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  tab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: '#333' },
-  tabActive: { backgroundColor: '#e8631a', borderColor: '#e8631a' },
-  tabText: { color: '#555', fontSize: 13, fontWeight: '600' },
-  tabTextActive: { color: '#fff' },
+  tab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: C.border },
+  tabActive: { backgroundColor: C.accent, borderColor: C.accent },
+  tabText: { color: C.textFaint, fontSize: 13, fontWeight: '600' },
+  tabTextActive: { color: C.white },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   emptyEmoji: { fontSize: 56, marginBottom: 16 },
-  emptyTitle: { color: '#eee', fontSize: 18, fontWeight: '700', marginBottom: 8, textAlign: 'center' },
-  emptyText: { color: '#555', fontSize: 13, textAlign: 'center', lineHeight: 20 },
-  card: { backgroundColor: '#2d2d2d', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#333', gap: 10, marginBottom: 12 },
+  emptyTitle: { color: C.text, fontSize: 18, fontWeight: '700', marginBottom: 8, textAlign: 'center' },
+  emptyText: { color: C.textFaint, fontSize: 13, textAlign: 'center', lineHeight: 20 },
+  card: { backgroundColor: C.elevated, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: C.border, gap: 10, marginBottom: 12 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   badge: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
   badgeText: { fontSize: 12, fontWeight: '700' },
-  date: { color: '#555', fontSize: 11 },
-  guests: { color: '#aaa', fontSize: 13 },
+  date: { color: C.textFaint, fontSize: 11 },
+  guests: { color: C.textMuted, fontSize: 13 },
   personRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  personAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#e8631a', alignItems: 'center', justifyContent: 'center' },
-  personAvatarText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  personName: { color: '#eee', fontWeight: '700', fontSize: 14 },
-  personSub: { color: '#555', fontSize: 11, marginTop: 1 },
-  message: { color: '#777', fontSize: 13, lineHeight: 19, fontStyle: 'italic', borderTopWidth: 1, borderTopColor: '#333', paddingTop: 10 },
+  personAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
+  personAvatarText: { color: C.white, fontWeight: '700', fontSize: 15 },
+  personName: { color: C.text, fontWeight: '700', fontSize: 14 },
+  personSub: { color: C.textFaint, fontSize: 11, marginTop: 1 },
+  message: { color: C.textDim, fontSize: 13, lineHeight: 19, fontStyle: 'italic', borderTopWidth: 1, borderTopColor: C.border, paddingTop: 10 },
   actions: { flexDirection: 'row', gap: 8, paddingTop: 4 },
-  acceptBtn: { flex: 1, backgroundColor: '#22c55e', borderRadius: 8, padding: 11, alignItems: 'center' },
-  acceptBtnText: { color: '#fff', fontWeight: '700', fontSize: 12, letterSpacing: 0.5 },
-  rejectBtn: { flex: 1, borderRadius: 8, padding: 11, alignItems: 'center', borderWidth: 1, borderColor: '#ef4444' },
-  rejectBtnText: { color: '#ef4444', fontWeight: '700', fontSize: 12, letterSpacing: 0.5 },
+  acceptBtn: { flex: 1, backgroundColor: C.success, borderRadius: 8, padding: 11, alignItems: 'center' },
+  acceptBtnText: { color: C.white, fontWeight: '700', fontSize: 12, letterSpacing: 0.5 },
+  rejectBtn: { flex: 1, borderRadius: 8, padding: 11, alignItems: 'center', borderWidth: 1, borderColor: C.error },
+  rejectBtnText: { color: C.error, fontWeight: '700', fontSize: 12, letterSpacing: 0.5 },
 })

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Activi
 import { supabase } from '../lib/supabase'
 import { router } from 'expo-router'
 import type { Pin } from '../components/LocationPicker'
+import { C } from '../lib/theme'
 
 const VEHICLE_TYPES = [
   { value: 'moto', icon: '🏍', label: 'Moto' },
@@ -10,9 +11,9 @@ const VEHICLE_TYPES = [
 ]
 
 const PARKING = [
-  { value: 'garage_locked', icon: '🔒', label: 'Uzamčená garáž', desc: 'Fort Knox — nejlepší ochrana', color: '#22c55e' },
-  { value: 'carport', icon: '🔐', label: 'Přístřešek za plotem', desc: 'Krytý a za plotem', color: '#3b82f6' },
-  { value: 'yard', icon: '🛡', label: 'Dvůr za plotem', desc: 'Bezpečný dvůr', color: '#e8631a' },
+  { value: 'garage_locked', icon: '🔒', label: 'Uzamčená garáž', desc: 'Fort Knox — nejlepší ochrana', color: C.success },
+  { value: 'carport', icon: '🔐', label: 'Přístřešek za plotem', desc: 'Krytý a za plotem', color: C.info },
+  { value: 'yard', icon: '🛡', label: 'Dvůr za plotem', desc: 'Bezpečný dvůr', color: C.accent },
   { value: 'street', icon: '🛣', label: 'Ulice před domem', desc: 'Na vlastní riziko', color: '#94a3b8' },
 ]
 
@@ -188,7 +189,7 @@ export default function BecomeHostScreen() {
           <View style={styles.mapWrap}>
             {LocationPicker
               ? <LocationPicker pin={loc.pin} onChange={(pin: Pin) => updateLocation(index, { pin })} />
-              : <View style={styles.mapLoading}><ActivityIndicator color="#e8631a" /></View>
+              : <View style={styles.mapLoading}><ActivityIndicator color={C.accent} /></View>
             }
           </View>
 
@@ -334,7 +335,7 @@ export default function BecomeHostScreen() {
       {/* Uložit */}
       <TouchableOpacity style={styles.saveBtn} onPress={save} disabled={saving}>
         {saving
-          ? <ActivityIndicator color="#fff" />
+          ? <ActivityIndicator color={C.white} />
           : <Text style={styles.saveBtnText}>🏠 ULOŽIT A JÍT NA MAPU →</Text>
         }
       </TouchableOpacity>
@@ -347,65 +348,65 @@ export default function BecomeHostScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1a1a' },
+  container: { flex: 1, backgroundColor: C.bg },
   content: { padding: 20, paddingBottom: 60, gap: 16 },
 
-  locationCard: { backgroundColor: '#222', borderRadius: 14, borderWidth: 1, borderColor: '#333', padding: 16, gap: 14 },
+  locationCard: { backgroundColor: C.surface, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 16, gap: 14 },
   locationHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  locationBadge: { backgroundColor: '#e8631a', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
-  locationBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', letterSpacing: 1.5 },
-  removeLocation: { color: '#555', fontSize: 13 },
+  locationBadge: { backgroundColor: C.accent, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
+  locationBadgeText: { color: C.white, fontSize: 11, fontWeight: '800', letterSpacing: 1.5 },
+  removeLocation: { color: C.textFaint, fontSize: 13 },
 
-  label: { color: '#777', fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' },
-  pinLabel: { color: '#e8631a', fontSize: 13, fontWeight: '600', marginTop: -8 },
+  label: { color: C.textDim, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' },
+  pinLabel: { color: C.accent, fontSize: 13, fontWeight: '600', marginTop: -8 },
 
-  mapWrap: { height: 220, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#333' },
-  mapLoading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#2d2d2d' },
+  mapWrap: { height: 220, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: C.border },
+  mapLoading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.elevated },
 
-  optCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2d2d2d', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#333', gap: 12 },
+  optCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.elevated, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: C.border, gap: 12 },
   optIcon: { fontSize: 22, width: 32, textAlign: 'center' },
-  optLabel: { color: '#eee', fontWeight: '700', fontSize: 14 },
-  optDesc: { color: '#aaa', fontSize: 12, marginTop: 2 },
+  optLabel: { color: C.text, fontWeight: '700', fontSize: 14 },
+  optDesc: { color: C.textMuted, fontSize: 12, marginTop: 2 },
   check: { fontSize: 18, fontWeight: '900' },
 
-  optCardSleep: { borderColor: '#a855f7', backgroundColor: '#a855f712' },
-  optLabelSleep: { color: '#a855f7' },
-  checkSleep: { fontSize: 18, fontWeight: '900', color: '#a855f7' },
+  optCardSleep: { borderColor: C.purple, backgroundColor: C.purpleSoft },
+  optLabelSleep: { color: C.purple },
+  checkSleep: { fontSize: 18, fontWeight: '900', color: C.purple },
 
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#2d2d2d', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: '#333' },
-  chipActive: { borderColor: '#e8631a', backgroundColor: '#e8631a15' },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.elevated, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: C.border },
+  chipActive: { borderColor: C.accent, backgroundColor: C.accentSoft },
   chipIcon: { fontSize: 15 },
-  chipLabel: { color: '#aaa', fontSize: 13, fontWeight: '600' },
-  chipLabelActive: { color: '#e8631a' },
+  chipLabel: { color: C.textMuted, fontSize: 13, fontWeight: '600' },
+  chipLabelActive: { color: C.accent },
 
   counter: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 4 },
-  cBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#2d2d2d', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#333' },
-  cBtnText: { color: '#eee', fontSize: 22, fontWeight: '700', lineHeight: 26 },
-  cVal: { color: '#eee', fontSize: 32, fontWeight: '900', minWidth: 40, textAlign: 'center' },
-  cDesc: { color: '#aaa', fontSize: 13 },
+  cBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: C.elevated, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
+  cBtnText: { color: C.text, fontSize: 22, fontWeight: '700', lineHeight: 26 },
+  cVal: { color: C.text, fontSize: 32, fontWeight: '900', minWidth: 40, textAlign: 'center' },
+  cDesc: { color: C.textMuted, fontSize: 13 },
 
   pricingRow: { flexDirection: 'row', gap: 8 },
-  pCard: { flex: 1, backgroundColor: '#2d2d2d', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#333', alignItems: 'center', gap: 4 },
-  pCardActive: { borderColor: '#e8631a', backgroundColor: '#e8631a15' },
+  pCard: { flex: 1, backgroundColor: C.elevated, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: C.border, alignItems: 'center', gap: 4 },
+  pCardActive: { borderColor: C.accent, backgroundColor: C.accentSoft },
   pIcon: { fontSize: 24 },
-  pLabel: { color: '#aaa', fontSize: 12, fontWeight: '700' },
-  pLabelActive: { color: '#e8631a' },
-  pDesc: { color: '#999', fontSize: 10, textAlign: 'center' },
+  pLabel: { color: C.textMuted, fontSize: 12, fontWeight: '700' },
+  pLabelActive: { color: C.accent },
+  pDesc: { color: C.placeholder, fontSize: 10, textAlign: 'center' },
 
-  textarea: { backgroundColor: '#2d2d2d', borderRadius: 10, padding: 14, color: '#eee', fontSize: 14, borderWidth: 1, borderColor: '#333', minHeight: 110, textAlignVertical: 'top', lineHeight: 20 },
+  textarea: { backgroundColor: C.elevated, borderRadius: 10, padding: 14, color: C.text, fontSize: 14, borderWidth: 1, borderColor: C.border, minHeight: 110, textAlignVertical: 'top', lineHeight: 20 },
 
-  addBtn: { borderWidth: 1, borderColor: '#e8631a', borderRadius: 12, padding: 14, alignItems: 'center', borderStyle: 'dashed' },
-  addBtnText: { color: '#e8631a', fontWeight: '700', fontSize: 14, letterSpacing: 1 },
+  addBtn: { borderWidth: 1, borderColor: C.accent, borderRadius: 12, padding: 14, alignItems: 'center', borderStyle: 'dashed' },
+  addBtnText: { color: C.accent, fontWeight: '700', fontSize: 14, letterSpacing: 1 },
 
-  saveBtn: { backgroundColor: '#e8631a', borderRadius: 12, padding: 16, alignItems: 'center', minHeight: 52, justifyContent: 'center' },
-  saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15, letterSpacing: 0.5 },
-  hint: { color: '#888', fontSize: 12, textAlign: 'center', lineHeight: 18 },
+  saveBtn: { backgroundColor: C.accent, borderRadius: 12, padding: 16, alignItems: 'center', minHeight: 52, justifyContent: 'center' },
+  saveBtnText: { color: C.white, fontWeight: '700', fontSize: 15, letterSpacing: 0.5 },
+  hint: { color: C.placeholder, fontSize: 12, textAlign: 'center', lineHeight: 18 },
 
-  errorBox: { backgroundColor: '#ef444415', borderWidth: 1, borderColor: '#ef444450', borderRadius: 10, padding: 14 },
-  errorText: { color: '#ef4444', fontSize: 13, lineHeight: 18 },
-  successBox: { backgroundColor: '#22c55e15', borderWidth: 1, borderColor: '#22c55e50', borderRadius: 10, padding: 16, gap: 12 },
-  successText: { color: '#22c55e', fontSize: 14, lineHeight: 20 },
-  backBtn: { backgroundColor: '#22c55e', borderRadius: 8, padding: 12, alignItems: 'center' },
-  backBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  errorBox: { backgroundColor: C.errorSoft, borderWidth: 1, borderColor: C.errorBorder, borderRadius: 10, padding: 14 },
+  errorText: { color: C.error, fontSize: 13, lineHeight: 18 },
+  successBox: { backgroundColor: C.successSoft, borderWidth: 1, borderColor: C.successBorder, borderRadius: 10, padding: 16, gap: 12 },
+  successText: { color: C.success, fontSize: 14, lineHeight: 20 },
+  backBtn: { backgroundColor: C.success, borderRadius: 8, padding: 12, alignItems: 'center' },
+  backBtnText: { color: C.white, fontWeight: '700', fontSize: 13 },
 })

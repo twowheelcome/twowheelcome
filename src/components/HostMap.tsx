@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { C } from '../lib/theme'
 
 interface Host {
   id: string
@@ -12,9 +13,9 @@ interface Host {
 }
 
 const parkingColors: Record<string, string> = {
-  garage_locked: '#22c55e',
-  carport: '#3b82f6',
-  yard: '#e8631a',
+  garage_locked: C.success,
+  carport: C.info,
+  yard: C.accent,
   street: '#94a3b8',
 }
 
@@ -79,7 +80,7 @@ export default function HostMap({ hosts, onHostSelect }: { hosts: Host[]; onHost
             <span style="font-size:12px;">${icon} ${host.parking}</span><br>
             <button
               onclick="window.__twwHandlers['${host.id}']()"
-              style="margin-top:8px;background:#e8631a;color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;width:100%;font-weight:700;font-size:12px;letter-spacing:1px;"
+              style="margin-top:8px;background:${C.accent};color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;width:100%;font-weight:700;font-size:12px;letter-spacing:1px;"
             >KLEPU NA DVEŘE →</button>
           </div>
         `)
@@ -133,8 +134,8 @@ export default function HostMap({ hosts, onHostSelect }: { hosts: Host[]; onHost
           bottom: 24,
           right: 16,
           zIndex: 1000,
-          background: '#1a1a1a',
-          border: '2px solid #e8631a',
+          background: C.bg,
+          border: `2px solid ${C.accent}`,
           borderRadius: 12,
           padding: '10px 16px',
           color: 'white',
