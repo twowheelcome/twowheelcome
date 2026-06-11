@@ -26,7 +26,7 @@ export default function RequestsScreen() {
     const [s, r] = await Promise.all([
       supabase
         .from('stay_requests')
-        .select('*, host:profiles!host_id(full_name), host_profile:host_profiles!host_id(location_city, location_country)')
+        .select('*, host:profiles!host_id(full_name)')
         .eq('guest_id', userId)
         .order('created_at', { ascending: false }),
       supabase
@@ -113,9 +113,6 @@ export default function RequestsScreen() {
                     </View>
                     <View>
                       <Text style={styles.personName}>{req.host.full_name}</Text>
-                      {req.host_profile?.location_city ? (
-                        <Text style={styles.personSub}>📍 {req.host_profile.location_city}, {req.host_profile.location_country}</Text>
-                      ) : null}
                     </View>
                   </View>
                 ) : null}

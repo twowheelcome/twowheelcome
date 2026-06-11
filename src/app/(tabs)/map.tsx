@@ -98,6 +98,7 @@ export default function MapScreen() {
   const [guests, setGuests] = useState(1)
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState('')
+  const [sendSuccess, setSendSuccess] = useState(false)
   const [guestVehicle, setGuestVehicle] = useState('')
   const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().split('T')[0])
   const [departureDate, setDepartureDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0])
@@ -190,10 +191,13 @@ export default function MapScreen() {
       supabase.functions.invoke('notify-request', {
         body: { request_id: insertData?.[0]?.id, event: 'new_request' },
       }).catch(() => {})
-      setRequesting(false)
-      setMessage('')
-      setSelected(null)
-      Alert.alert('🤞 Žádost letí!', 'Teď jeď a doufej že má otevřeno.')
+      setSendSuccess(true)
+      setTimeout(() => {
+        setSendSuccess(false)
+        setRequesting(false)
+        setMessage('')
+        setSelected(null)
+      }, 2500)
     }
   }
 
@@ -331,12 +335,17 @@ export default function MapScreen() {
             </View>
           )}
 
+          {sendSuccess ? (
+            <View style={[styles.infoBox, { borderColor: '#22c55e50', backgroundColor: '#22c55e15' }]}>
+              <Text style={[styles.infoText, { color: '#22c55e', fontSize: 15, fontWeight: '700' }]}>🤞 Žádost letí! Teď jeď a doufej že má otevřeno.</Text>
+            </View>
+          ) : null}
           {sendError ? (
             <View style={[styles.infoBox, { borderColor: '#ef444450', backgroundColor: '#ef444410' }]}>
               <Text style={[styles.infoText, { color: '#ef4444' }]}>⚠️ {sendError}</Text>
             </View>
           ) : null}
-          <TouchableOpacity style={styles.button} onPress={sendRequest} disabled={sending}>
+          <TouchableOpacity style={styles.button} onPress={sendRequest} disabled={sending || sendSuccess}>
             <Text style={styles.buttonText}>{sending ? 'ODESÍLÁM... 🤞' : 'ODESLAT ŽÁDOST →'}</Text>
           </TouchableOpacity>
         </ScrollView>
