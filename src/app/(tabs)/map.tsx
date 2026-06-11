@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert,
 import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
 import { C } from '../../lib/theme'
+import { UserChip } from '../../components/UserChip'
 
 const parkingMeta: Record<string, { icon: string; label: string; color: string }> = {
   garage_locked: { icon: '🔒', label: 'Uzamčená garáž', color: C.success },
@@ -451,7 +452,10 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.logo}><Text style={styles.accent}>TWO</Text>WHEEL<Text style={styles.accent}>COME</Text></Text>
+        <View style={styles.logoRow}>
+          <Text style={styles.logo}><Text style={styles.accent}>TWO</Text>WHEEL<Text style={styles.accent}>COME</Text></Text>
+          <UserChip />
+        </View>
         <Text style={styles.sub}>
           {loading ? 'Hledám parťáky... 🔍' : `${hosts.length} ${hosts.length === 1 ? 'hostitel' : 'hostitelé'} na trase`}
         </Text>
@@ -592,6 +596,7 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   header: { padding: 20, paddingTop: 52, borderBottomWidth: 1, borderBottomColor: C.surface },
+  logoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   logo: { fontSize: 22, fontWeight: '900', color: C.text, letterSpacing: 2 },
   accent: { color: C.accent },
   sub: { color: C.placeholder, fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 4 },

@@ -7,6 +7,7 @@ import { useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { C } from '../../lib/theme'
 import { unreadStore } from '../../lib/unreadStore'
+import { UserChip } from '../../components/UserChip'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -481,6 +482,7 @@ export default function RequestsScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>ZPRÁVY</Text>
+        <UserChip />
       </View>
 
       {loading ? (
