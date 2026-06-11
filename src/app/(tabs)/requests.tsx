@@ -42,6 +42,9 @@ export default function RequestsScreen() {
 
   async function respond(id: string, status: 'ACCEPTED' | 'REJECTED') {
     await supabase.from('stay_requests').update({ status }).eq('id', id)
+    supabase.functions.invoke('notify-request', {
+      body: { request_id: id, event: status === 'ACCEPTED' ? 'accepted' : 'rejected' },
+    }).catch(() => {})
     if (currentUser) loadRequests(currentUser.id)
   }
 
@@ -97,7 +100,10 @@ export default function RequestsScreen() {
                   <View style={[styles.badge, { backgroundColor: s.color + '20', borderColor: s.color + '60' }]}>
                     <Text style={[styles.badgeText, { color: s.color }]}>{s.label}</Text>
                   </View>
-                  <Text style={styles.date}>{req.arrival_date} → {req.departure_date}</Text>
+                  <Text style={styles.date}>
+                    {req.arrival_date} → {req.departure_date}
+                    {req.arrival_time ? `  ·  cca ${req.arrival_time}` : ''}
+                  </Text>
                 </View>
 
                 {tab === 'sent' && req.host?.full_name ? (

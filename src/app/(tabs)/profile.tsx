@@ -3,6 +3,13 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator
 import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
 
+const VEHICLE_TYPES = [
+  { value: 'moto', icon: '🏍', label: 'Motorka' },
+  { value: 'adv', icon: '🏕', label: 'ADV / Enduro' },
+  { value: 'bicycle', icon: '🚴', label: 'Kolo' },
+  { value: 'gravel', icon: '🪨', label: 'Gravel / MTB' },
+]
+
 export default function ProfileScreen() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
@@ -38,6 +45,13 @@ export default function ProfileScreen() {
     if (error) { Alert.alert('Chyba', error.message); return }
     setProfile((p: any) => ({ ...p, full_name: nameInput.trim() }))
     setEditingName(false)
+  }
+
+  async function toggleVehicleType(value: string) {
+    const current: string[] = profile?.vehicle_types || []
+    const next = current.includes(value) ? current.filter((v: string) => v !== value) : [...current, value]
+    await supabase.from('profiles').upsert({ id: user.id, vehicle_types: next })
+    setProfile((p: any) => ({ ...p, vehicle_types: next }))
   }
 
   async function signOut() {
@@ -85,6 +99,28 @@ export default function ProfileScreen() {
         )}
 
         <Text style={styles.email}>{user?.email}</Text>
+      </View>
+
+      <View style={styles.divider} />
+
+      {/* Typ vozidla */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>🛞 CO JEDEŠ?</Text>
+        <View style={styles.chipsWrap}>
+          {VEHICLE_TYPES.map(v => {
+            const active = (profile?.vehicle_types || []).includes(v.value)
+            return (
+              <TouchableOpacity
+                key={v.value}
+                style={[styles.chip, active && styles.chipActive]}
+                onPress={() => toggleVehicleType(v.value)}
+              >
+                <Text style={styles.chipIcon}>{v.icon}</Text>
+                <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{v.label}</Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
       </View>
 
       <View style={styles.divider} />
@@ -170,4 +206,10 @@ const styles = StyleSheet.create({
   becomeHostBtnText: { color: '#fff', fontWeight: '700', fontSize: 14, letterSpacing: 0.5 },
   signOutBtn: { alignItems: 'center', padding: 12 },
   signOutText: { color: '#444', fontSize: 14, textDecorationLine: 'underline' },
+  chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#2d2d2d', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1, borderColor: '#333' },
+  chipActive: { borderColor: '#e8631a', backgroundColor: '#e8631a15' },
+  chipIcon: { fontSize: 16 },
+  chipLabel: { color: '#aaa', fontSize: 13, fontWeight: '600' },
+  chipLabelActive: { color: '#e8631a' },
 })

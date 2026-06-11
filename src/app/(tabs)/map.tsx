@@ -16,6 +16,12 @@ const pricingMeta: Record<string, { icon: string; label: string; color: string }
   fixed: { icon: '💶', label: 'Placené', color: '#3b82f6' },
 }
 
+const FILTER_VEHICLES = [
+  { value: 'moto', icon: '🏍', label: 'Motorka' },
+  { value: 'adv', icon: '🏕', label: 'ADV / Enduro' },
+  { value: 'bicycle', icon: '🚴', label: 'Kolo' },
+  { value: 'gravel', icon: '🪨', label: 'Gravel / MTB' },
+]
 const FILTER_PARKING = [
   { value: 'garage_locked', icon: '🔒', label: 'Garáž' },
   { value: 'carport', icon: '🔐', label: 'Přístřešek' },
@@ -93,19 +99,27 @@ export default function MapScreen() {
   const [message, setMessage] = useState('')
   const [guests, setGuests] = useState(1)
   const [sending, setSending] = useState(false)
+  const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [departureDate, setDepartureDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0])
+  const [arrivalTime, setArrivalTime] = useState('')
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [showMap, setShowMap] = useState(Platform.OS === 'web')
   const [HostMap, setHostMap] = useState<any>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [filterVehicles, setFilterVehicles] = useState<string[]>([])
   const [filterParking, setFilterParking] = useState<string[]>([])
   const [filterSleep, setFilterSleep] = useState<string[]>([])
   const [filterPricing, setFilterPricing] = useState<string[]>([])
 
-  const activeCount = filterParking.length + filterSleep.length + filterPricing.length
+  const activeCount = filterVehicles.length + filterParking.length + filterSleep.length + filterPricing.length
   const filteredHosts = hosts.filter(h => {
+    if (filterVehicles.length > 0 && !filterVehicles.some(v => (h.vehicle_types || []).includes(v))) return false
     if (filterParking.length > 0 && !filterParking.includes(h.parking)) return false
     if (filterSleep.length > 0 && !(h.sleep_types || []).some((s: string) => filterSleep.includes(s))) return false
-    if (filterPricing.length > 0 && !filterPricing.includes(h.pricing)) return false
+    if (filterPricing.length > 0) {
+      const hp: string[] = h.pricings?.length ? h.pricings : (h.pricing ? [h.pricing] : [])
+      if (!filterPricing.some(p => hp.includes(p))) return false
+    }
     return true
   })
 
@@ -116,6 +130,14 @@ export default function MapScreen() {
       import('../../components/HostMap').then(m => setHostMap(() => m.default))
     }
   }, [])
+
+  useEffect(() => {
+    if (requesting) {
+      setArrivalDate(new Date().toISOString().split('T')[0])
+      setDepartureDate(new Date(Date.now() + 86400000).toISOString().split('T')[0])
+      setArrivalTime('')
+    }
+  }, [requesting])
 
   async function fetchHosts() {
     const { data, error } = await supabase.from('host_locations').select('*')
@@ -145,19 +167,23 @@ export default function MapScreen() {
       return
     }
     setSending(true)
-    const { error } = await supabase.from('stay_requests').insert({
+    const { data: insertData, error } = await supabase.from('stay_requests').insert({
       guest_id: currentUser.id,
       host_id: selected.user_id,
       status: 'PENDING',
       guests_count: guests,
       message: message.trim(),
-      arrival_date: new Date().toISOString().split('T')[0],
-      departure_date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-    })
+      arrival_date: arrivalDate,
+      departure_date: departureDate,
+      arrival_time: arrivalTime.trim() || null,
+    }).select('id')
     setSending(false)
     if (error) {
       Alert.alert('Chyba', error.message)
     } else {
+      supabase.functions.invoke('notify-request', {
+        body: { request_id: insertData?.[0]?.id, event: 'new_request' },
+      }).catch(() => {})
       Alert.alert('🤞 Žádost letí!', 'Teď jeď a doufej že má otevřeno.', [
         { text: 'OK', onPress: () => { setRequesting(false); setMessage(''); setSelected(null) } }
       ])
@@ -167,7 +193,7 @@ export default function MapScreen() {
   // --- Formulář žádosti ---
   if (requesting && selected) {
     const pm = parkingMeta[selected.parking] || parkingMeta.street
-    const pricing = pricingMeta[selected.pricing] || pricingMeta.free
+    const selectedPricings: string[] = selected.pricings?.length ? selected.pricings : (selected.pricing ? [selected.pricing] : ['free'])
     return (
       <View style={styles.container}>
         <View style={styles.header}>
@@ -191,9 +217,14 @@ export default function MapScreen() {
               <View style={[styles.tag, { borderColor: pm.color + '50', backgroundColor: pm.color + '15' }]}>
                 <Text style={[styles.tagText, { color: pm.color }]}>{pm.icon} {pm.label}</Text>
               </View>
-              <View style={[styles.tag, { borderColor: pricing.color + '50', backgroundColor: pricing.color + '15' }]}>
-                <Text style={[styles.tagText, { color: pricing.color }]}>{pricing.icon} {pricing.label}</Text>
-              </View>
+              {selectedPricings.map(pv => {
+                const pr = pricingMeta[pv] || pricingMeta.free
+                return (
+                  <View key={pv} style={[styles.tag, { borderColor: pr.color + '50', backgroundColor: pr.color + '15' }]}>
+                    <Text style={[styles.tagText, { color: pr.color }]}>{pr.icon} {pr.label}</Text>
+                  </View>
+                )
+              })}
             </View>
           </View>
 
@@ -212,6 +243,42 @@ export default function MapScreen() {
           </View>
 
           <View style={styles.card}>
+            <Text style={styles.sectionLabel}>KDY PŘIJEDEŠ?</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text style={styles.dateFieldLabel}>PŘÍJEZD</Text>
+                {Platform.OS === 'web' ? (
+                  <input type="date" value={arrivalDate}
+                    onChange={(e: any) => setArrivalDate(e.target.value)}
+                    style={{ background: '#1a1a1a', border: '1px solid #444', borderRadius: 8, padding: '10px 12px', color: '#eee', fontSize: 13, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any} />
+                ) : (
+                  <TextInput style={styles.dateInput} value={arrivalDate} onChangeText={setArrivalDate} placeholderTextColor="#555" />
+                )}
+              </View>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text style={styles.dateFieldLabel}>ODJEZD</Text>
+                {Platform.OS === 'web' ? (
+                  <input type="date" value={departureDate}
+                    onChange={(e: any) => setDepartureDate(e.target.value)}
+                    style={{ background: '#1a1a1a', border: '1px solid #444', borderRadius: 8, padding: '10px 12px', color: '#eee', fontSize: 13, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any} />
+                ) : (
+                  <TextInput style={styles.dateInput} value={departureDate} onChangeText={setDepartureDate} placeholderTextColor="#555" />
+                )}
+              </View>
+            </View>
+            <View style={{ gap: 6, marginTop: 4 }}>
+              <Text style={styles.dateFieldLabel}>CCA PŘÍJEZD <Text style={{ color: '#555', fontWeight: '400', letterSpacing: 0 }}>(volitelné)</Text></Text>
+              {Platform.OS === 'web' ? (
+                <input type="time" value={arrivalTime}
+                  onChange={(e: any) => setArrivalTime(e.target.value)}
+                  style={{ background: '#1a1a1a', border: '1px solid #444', borderRadius: 8, padding: '10px 12px', color: arrivalTime ? '#eee' : '#555', fontSize: 13, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any} />
+              ) : (
+                <TextInput style={styles.dateInput} value={arrivalTime} onChangeText={setArrivalTime} placeholder="např. 17:00" placeholderTextColor="#555" />
+              )}
+            </View>
+          </View>
+
+          <View style={styles.card}>
             <Text style={styles.sectionLabel}>ZPRÁVA HOSTITELI</Text>
             <TextInput
               style={styles.textarea}
@@ -224,12 +291,12 @@ export default function MapScreen() {
             />
           </View>
 
-          {selected.pricing === 'tip' && (
+          {selectedPricings.includes('tip') && (
             <View style={[styles.infoBox, { borderColor: '#f59e0b50', backgroundColor: '#f59e0b10' }]}>
               <Text style={[styles.infoText, { color: '#f59e0b' }]}>🙏 Tip není povinný, ale pivo nebo příběh u táboráku potěší. 🍺</Text>
             </View>
           )}
-          {selected.pricing === 'fixed' && (
+          {selectedPricings.includes('fixed') && (
             <View style={[styles.infoBox, { borderColor: '#3b82f650', backgroundColor: '#3b82f610' }]}>
               <Text style={[styles.infoText, { color: '#3b82f6' }]}>💶 Domluv se s hostitelem přímo — žádná provize.</Text>
             </View>
@@ -278,11 +345,12 @@ export default function MapScreen() {
 
         {filtersOpen && (
           <View style={styles.filterPanel}>
+            <FilterRow label="TYP VOZIDLA" items={FILTER_VEHICLES} active={filterVehicles} onToggle={v => setFilterVehicles(toggleFilter(filterVehicles, v))} />
             <FilterRow label="PARKOVÁNÍ" items={FILTER_PARKING} active={filterParking} onToggle={v => setFilterParking(toggleFilter(filterParking, v))} />
             <FilterRow label="SPANÍ" items={FILTER_SLEEP} active={filterSleep} onToggle={v => setFilterSleep(toggleFilter(filterSleep, v))} />
             <FilterRow label="CENA" items={FILTER_PRICING} active={filterPricing} onToggle={v => setFilterPricing(toggleFilter(filterPricing, v))} />
             {activeCount > 0 && (
-              <TouchableOpacity onPress={() => { setFilterParking([]); setFilterSleep([]); setFilterPricing([]) }}>
+              <TouchableOpacity onPress={() => { setFilterVehicles([]); setFilterParking([]); setFilterSleep([]); setFilterPricing([]) }}>
                 <Text style={styles.clearFilters}>✕ Zrušit filtry</Text>
               </TouchableOpacity>
             )}
@@ -308,7 +376,7 @@ export default function MapScreen() {
           ) : (
             filteredHosts.map((host) => {
               const pm = parkingMeta[host.parking] || parkingMeta.street
-              const pricing = pricingMeta[host.pricing] || pricingMeta.free
+              const hostPricings: string[] = host.pricings?.length ? host.pricings : (host.pricing ? [host.pricing] : ['free'])
               const isOwn = host.user_id === currentUser?.id
               return (
                 <TouchableOpacity
@@ -332,14 +400,32 @@ export default function MapScreen() {
                     <View style={[styles.tag, { borderColor: pm.color + '50', backgroundColor: pm.color + '15' }]}>
                       <Text style={[styles.tagText, { color: pm.color }]}>{pm.icon} {pm.label}</Text>
                     </View>
-                    <View style={[styles.tag, { borderColor: pricing.color + '50', backgroundColor: pricing.color + '15' }]}>
-                      <Text style={[styles.tagText, { color: pricing.color }]}>{pricing.icon} {pricing.label}</Text>
-                    </View>
+                    {hostPricings.map(pv => {
+                      const pr = pricingMeta[pv] || pricingMeta.free
+                      return (
+                        <View key={pv} style={[styles.tag, { borderColor: pr.color + '50', backgroundColor: pr.color + '15' }]}>
+                          <Text style={[styles.tagText, { color: pr.color }]}>{pr.icon} {pr.label}</Text>
+                        </View>
+                      )
+                    })}
                   </View>
                   {selected?.id === host.id && (
                     <View style={styles.detail}>
                       {host.notes ? <Text style={styles.detailBio}>{host.notes}</Text> : null}
                       <Text style={styles.detailInfo}>👥 Max. {host.max_guests} jezdci</Text>
+                      {host.vehicle_types?.length > 0 && (
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                          {(host.vehicle_types as string[]).map(v => {
+                            const meta = FILTER_VEHICLES.find(f => f.value === v)
+                            if (!meta) return null
+                            return (
+                              <View key={v} style={[styles.tag, { borderColor: '#e8631a50', backgroundColor: '#e8631a10' }]}>
+                                <Text style={[styles.tagText, { color: '#e8631a' }]}>{meta.icon} {meta.label}</Text>
+                              </View>
+                            )
+                          })}
+                        </View>
+                      )}
                       {!isOwn ? (
                         <TouchableOpacity style={styles.requestButton} onPress={() => setRequesting(true)}>
                           <Text style={styles.requestButtonText}>KLEPU NA DVEŘE →</Text>
@@ -408,6 +494,8 @@ const styles = StyleSheet.create({
   button: { backgroundColor: '#e8631a', borderRadius: 10, padding: 14, alignItems: 'center' },
   buttonText: { color: '#fff', fontWeight: '700', fontSize: 14, letterSpacing: 1 },
   sectionLabel: { color: '#999', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
+  dateFieldLabel: { color: '#999', fontSize: 10, fontWeight: '700', letterSpacing: 1.5 },
+  dateInput: { backgroundColor: '#1a1a1a', borderRadius: 8, padding: 12, color: '#eee', fontSize: 13, borderWidth: 1, borderColor: '#444' },
   counter: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   counterBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#333', alignItems: 'center', justifyContent: 'center' },
   counterBtnText: { color: '#eee', fontSize: 18, fontWeight: '700' },

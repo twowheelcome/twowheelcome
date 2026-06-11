@@ -62,6 +62,7 @@ export default function LocationPicker({ pin, onChange }: Props) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
+  const [locating, setLocating] = useState(false)
   const searchTimeout = useRef<any>(null)
 
   function handleSearchInput(value: string) {
@@ -74,6 +75,28 @@ export default function LocationPicker({ pin, onChange }: Props) {
       setResults(found)
       setSearching(false)
     }, 400)
+  }
+
+  async function locateMe() {
+    if (!navigator.geolocation || locating) return
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        const { latitude: lat, longitude: lng } = pos.coords
+        const geo = await reverseGeocode(lat, lng)
+        const label = geo.city || `${lat.toFixed(4)}, ${lng.toFixed(4)}`
+        import('leaflet').then(mod => {
+          if (!mapInstanceRef.current) return
+          setMarker(mod.default, lat, lng, label)
+          mapInstanceRef.current.setView([lat, lng], 13)
+        })
+        onChange({ lat, lng, ...geo })
+        setQuery(geo.city || label)
+        setLocating(false)
+      },
+      () => setLocating(false),
+      { timeout: 10000 }
+    )
   }
 
   async function selectResult(result: SearchResult) {
@@ -190,6 +213,12 @@ export default function LocationPicker({ pin, onChange }: Props) {
               style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', padding: '0 10px', fontSize: 14 }}
             >✕</button>
           )}
+          <button
+            onClick={locateMe}
+            disabled={locating}
+            title="Najdi mě"
+            style={{ background: 'none', border: 'none', color: locating ? '#555' : '#e8631a', cursor: 'pointer', padding: '0 10px', fontSize: 16, opacity: locating ? 0.5 : 1 }}
+          >{locating ? '…' : '📍'}</button>
         </div>
         {/* Výsledky */}
         {results.length > 0 && (

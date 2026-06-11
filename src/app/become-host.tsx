@@ -1,8 +1,15 @@
 import { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform, ViewStyle } from 'react-native'
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native'
 import { supabase } from '../lib/supabase'
 import { router } from 'expo-router'
 import type { Pin } from '../components/LocationPicker'
+
+const VEHICLE_TYPES = [
+  { value: 'moto', icon: '🏍', label: 'Motorka' },
+  { value: 'adv', icon: '🏕', label: 'ADV / Enduro' },
+  { value: 'bicycle', icon: '🚴', label: 'Kolo' },
+  { value: 'gravel', icon: '🪨', label: 'Gravel / MTB' },
+]
 
 const PARKING = [
   { value: 'garage_locked', icon: '🔒', label: 'Uzamčená garáž', desc: 'Fort Knox — nejlepší ochrana', color: '#22c55e' },
@@ -39,57 +46,23 @@ const PRICING = [
 
 interface Location {
   pin: Pin | null
+  vehicleTypes: string[]
   parking: string
   sleepTypes: string[]
   amenities: string[]
-  availableFrom: string
-  availableTo: string
   maxGuests: number
-  pricing: string
+  pricings: string[]
   notes: string
 }
 
 function emptyLocation(): Location {
-  return { pin: null, parking: 'yard', sleepTypes: [], amenities: [], availableFrom: '', availableTo: '', maxGuests: 2, pricing: 'free', notes: '' }
+  return { pin: null, vehicleTypes: [], parking: 'yard', sleepTypes: [], amenities: [], maxGuests: 2, pricings: ['free'], notes: '' }
 }
 
 function toggle(arr: string[], value: string): string[] {
   return arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value]
 }
 
-function DateInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
-  if (Platform.OS === 'web') {
-    return (
-      <input
-        type="date"
-        value={value}
-        onChange={e => onChange((e.target as HTMLInputElement).value)}
-        placeholder={placeholder}
-        style={{
-          flex: 1,
-          backgroundColor: '#2d2d2d',
-          border: '1px solid #333',
-          borderRadius: 10,
-          padding: '12px 14px',
-          color: value ? '#eee' : '#555',
-          fontSize: 14,
-          colorScheme: 'dark',
-          outline: 'none',
-        } as React.CSSProperties}
-      />
-    )
-  }
-  return (
-    <TextInput
-      style={styles.dateInput}
-      placeholder={placeholder}
-      placeholderTextColor="#555"
-      value={value}
-      onChangeText={onChange}
-      keyboardType="numbers-and-punctuation"
-    />
-  )
-}
 
 export default function BecomeHostScreen() {
   const [locations, setLocations] = useState<Location[]>([emptyLocation()])
@@ -115,13 +88,12 @@ export default function BecomeHostScreen() {
     if (data && data.length > 0) {
       setLocations(data.map(d => ({
         pin: { lat: d.location_lat, lng: d.location_lng, city: d.location_city, country: d.location_country },
+        vehicleTypes: d.vehicle_types || [],
         parking: d.parking || 'yard',
         sleepTypes: d.sleep_types || [],
         amenities: d.amenities || [],
-        availableFrom: d.available_from || '',
-        availableTo: d.available_to || '',
         maxGuests: d.max_guests || 2,
-        pricing: d.pricing || 'free',
+        pricings: d.pricings?.length ? d.pricings : (d.pricing ? [d.pricing] : ['free']),
         notes: d.notes || '',
       })))
     }
@@ -169,12 +141,12 @@ export default function BecomeHostScreen() {
           location_city: l.pin!.city || '',
           location_country: l.pin!.country || '',
           parking: l.parking,
+          vehicle_types: l.vehicleTypes,
           sleep_types: l.sleepTypes,
           amenities: l.amenities,
-          available_from: l.availableFrom || null,
-          available_to: l.availableTo || null,
           max_guests: l.maxGuests,
-          pricing: l.pricing,
+          pricings: l.pricings,
+          pricing: l.pricings[0] || 'free',
           notes: l.notes.trim(),
         }))
 
@@ -221,8 +193,26 @@ export default function BecomeHostScreen() {
             }
           </View>
 
+          {/* Typ vozidla */}
+          <Text style={styles.label}>🛞 KOHO VÍTÁM?</Text>
+          <View style={styles.chipsWrap}>
+            {VEHICLE_TYPES.map(v => {
+              const active = loc.vehicleTypes.includes(v.value)
+              return (
+                <TouchableOpacity
+                  key={v.value}
+                  style={[styles.chip, active && styles.chipActive]}
+                  onPress={() => updateLocation(index, { vehicleTypes: toggle(loc.vehicleTypes, v.value) })}
+                >
+                  <Text style={styles.chipIcon}>{v.icon}</Text>
+                  <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{v.label}</Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+
           {/* Parkování */}
-          <Text style={styles.label}>🏍 PARKOVÁNÍ PRO MOTORKY</Text>
+          <Text style={styles.label}>🅿️ PARKOVÁNÍ</Text>
           {PARKING.map(p => (
             <TouchableOpacity
               key={p.value}
@@ -273,28 +263,6 @@ export default function BecomeHostScreen() {
             })}
           </View>
 
-          {/* Dostupnost */}
-          <Text style={styles.label}>📅 KDY JSI DOMA?</Text>
-          <Text style={styles.availHint}>Nech prázdné = kdykoli. Vyplň jen když přijíždíš nebo odjíždíš.</Text>
-          <View style={styles.dateRow}>
-            <View style={styles.dateFld}>
-              <Text style={styles.dateLabel}>OD</Text>
-              <DateInput
-                value={loc.availableFrom}
-                onChange={v => updateLocation(index, { availableFrom: v })}
-                placeholder="rrrr-mm-dd"
-              />
-            </View>
-            <View style={styles.dateFld}>
-              <Text style={styles.dateLabel}>DO</Text>
-              <DateInput
-                value={loc.availableTo}
-                onChange={v => updateLocation(index, { availableTo: v })}
-                placeholder="rrrr-mm-dd"
-              />
-            </View>
-          </View>
-
           {/* Počet hostů */}
           <Text style={styles.label}>👥 MAXIMÁLNÍ POČET JEZDCŮ</Text>
           <View style={styles.counter}>
@@ -311,17 +279,20 @@ export default function BecomeHostScreen() {
           {/* Cena */}
           <Text style={styles.label}>💰 CO CHCEŠ ZA TO?</Text>
           <View style={styles.pricingRow}>
-            {PRICING.map(p => (
-              <TouchableOpacity
-                key={p.value}
-                style={[styles.pCard, loc.pricing === p.value && styles.pCardActive]}
-                onPress={() => updateLocation(index, { pricing: p.value })}
-              >
-                <Text style={styles.pIcon}>{p.icon}</Text>
-                <Text style={[styles.pLabel, loc.pricing === p.value && styles.pLabelActive]}>{p.label}</Text>
-                <Text style={styles.pDesc}>{p.desc}</Text>
-              </TouchableOpacity>
-            ))}
+            {PRICING.map(p => {
+              const active = loc.pricings.includes(p.value)
+              return (
+                <TouchableOpacity
+                  key={p.value}
+                  style={[styles.pCard, active && styles.pCardActive]}
+                  onPress={() => updateLocation(index, { pricings: toggle(loc.pricings, p.value) })}
+                >
+                  <Text style={styles.pIcon}>{p.icon}</Text>
+                  <Text style={[styles.pLabel, active && styles.pLabelActive]}>{p.label}</Text>
+                  <Text style={styles.pDesc}>{p.desc}</Text>
+                </TouchableOpacity>
+              )
+            })}
           </View>
 
           {/* Poznámky */}
@@ -429,11 +400,6 @@ const styles = StyleSheet.create({
   saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15, letterSpacing: 0.5 },
   hint: { color: '#888', fontSize: 12, textAlign: 'center', lineHeight: 18 },
 
-  availHint: { color: '#999', fontSize: 12, lineHeight: 17, marginTop: -8 },
-  dateRow: { flexDirection: 'row', gap: 10 },
-  dateFld: { flex: 1, gap: 6 },
-  dateLabel: { color: '#999', fontSize: 10, fontWeight: '700', letterSpacing: 1.5 },
-  dateInput: { backgroundColor: '#2d2d2d', borderRadius: 10, padding: 14, color: '#eee', fontSize: 14, borderWidth: 1, borderColor: '#333' },
   errorBox: { backgroundColor: '#ef444415', borderWidth: 1, borderColor: '#ef444450', borderRadius: 10, padding: 14 },
   errorText: { color: '#ef4444', fontSize: 13, lineHeight: 18 },
   successBox: { backgroundColor: '#22c55e15', borderWidth: 1, borderColor: '#22c55e50', borderRadius: 10, padding: 16, gap: 12 },
