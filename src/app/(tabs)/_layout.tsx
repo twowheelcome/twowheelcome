@@ -11,7 +11,7 @@ function Icon({ e, dot }: { e: string; dot?: boolean }) {
       {dot && (
         <View style={{
           position: 'absolute', top: 0, right: 0,
-          width: 11, height: 11, borderRadius: 6,
+          width: 14, height: 14, borderRadius: 7,
           backgroundColor: C.accent, borderWidth: 2, borderColor: C.bg,
         }} />
       )}
