@@ -6,12 +6,12 @@ import { unreadStore } from '../../lib/unreadStore'
 
 function Icon({ e, dot }: { e: string; dot?: boolean }) {
   return (
-    <View style={{ position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{ width: 32, height: 28, alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
       <Text style={{ fontSize: 22, lineHeight: 26 }}>{e}</Text>
       {dot && (
         <View style={{
-          position: 'absolute', top: -1, right: -5,
-          width: 10, height: 10, borderRadius: 5,
+          position: 'absolute', top: 0, right: 0,
+          width: 11, height: 11, borderRadius: 6,
           backgroundColor: C.accent, borderWidth: 2, borderColor: C.bg,
         }} />
       )}
