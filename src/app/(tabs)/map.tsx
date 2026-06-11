@@ -17,10 +17,8 @@ const pricingMeta: Record<string, { icon: string; label: string; color: string }
 }
 
 const FILTER_VEHICLES = [
-  { value: 'moto', icon: '🏍', label: 'Motorka' },
-  { value: 'adv', icon: '🏕', label: 'ADV / Enduro' },
+  { value: 'moto', icon: '🏍', label: 'Moto' },
   { value: 'bicycle', icon: '🚴', label: 'Kolo' },
-  { value: 'gravel', icon: '🪨', label: 'Gravel / MTB' },
 ]
 const FILTER_PARKING = [
   { value: 'garage_locked', icon: '🔒', label: 'Garáž' },
@@ -99,6 +97,7 @@ export default function MapScreen() {
   const [message, setMessage] = useState('')
   const [guests, setGuests] = useState(1)
   const [sending, setSending] = useState(false)
+  const [guestVehicle, setGuestVehicle] = useState('')
   const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().split('T')[0])
   const [departureDate, setDepartureDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0])
   const [arrivalTime, setArrivalTime] = useState('')
@@ -114,7 +113,10 @@ export default function MapScreen() {
   const activeCount = filterVehicles.length + filterParking.length + filterSleep.length + filterPricing.length
   const filteredHosts = hosts.filter(h => {
     if (filterVehicles.length > 0 && !filterVehicles.some(v => (h.vehicle_types || []).includes(v))) return false
-    if (filterParking.length > 0 && !filterParking.includes(h.parking)) return false
+    if (filterParking.length > 0) {
+      const hp: string[] = h.parkings?.length ? h.parkings : (h.parking ? [h.parking] : [])
+      if (!filterParking.some(p => hp.includes(p))) return false
+    }
     if (filterSleep.length > 0 && !(h.sleep_types || []).some((s: string) => filterSleep.includes(s))) return false
     if (filterPricing.length > 0) {
       const hp: string[] = h.pricings?.length ? h.pricings : (h.pricing ? [h.pricing] : [])
@@ -133,6 +135,7 @@ export default function MapScreen() {
 
   useEffect(() => {
     if (requesting) {
+      setGuestVehicle('')
       setArrivalDate(new Date().toISOString().split('T')[0])
       setDepartureDate(new Date(Date.now() + 86400000).toISOString().split('T')[0])
       setArrivalTime('')
@@ -176,6 +179,7 @@ export default function MapScreen() {
       arrival_date: arrivalDate,
       departure_date: departureDate,
       arrival_time: arrivalTime.trim() || null,
+      guest_vehicle: guestVehicle || null,
     }).select('id')
     setSending(false)
     if (error) {
@@ -192,7 +196,7 @@ export default function MapScreen() {
 
   // --- Formulář žádosti ---
   if (requesting && selected) {
-    const pm = parkingMeta[selected.parking] || parkingMeta.street
+    const selectedParkings: string[] = selected.parkings?.length ? selected.parkings : (selected.parking ? [selected.parking] : [])
     const selectedPricings: string[] = selected.pricings?.length ? selected.pricings : (selected.pricing ? [selected.pricing] : ['free'])
     return (
       <View style={styles.container}>
@@ -214,9 +218,14 @@ export default function MapScreen() {
               </View>
             </View>
             <View style={styles.tags}>
-              <View style={[styles.tag, { borderColor: pm.color + '50', backgroundColor: pm.color + '15' }]}>
-                <Text style={[styles.tagText, { color: pm.color }]}>{pm.icon} {pm.label}</Text>
-              </View>
+              {selectedParkings.map(pv => {
+                const pm = parkingMeta[pv] || parkingMeta.street
+                return (
+                  <View key={pv} style={[styles.tag, { borderColor: pm.color + '50', backgroundColor: pm.color + '15' }]}>
+                    <Text style={[styles.tagText, { color: pm.color }]}>{pm.icon} {pm.label}</Text>
+                  </View>
+                )
+              })}
               {selectedPricings.map(pv => {
                 const pr = pricingMeta[pv] || pricingMeta.free
                 return (
@@ -239,6 +248,23 @@ export default function MapScreen() {
                 <Text style={styles.counterBtnText}>+</Text>
               </TouchableOpacity>
               <Text style={styles.counterMax}>max {selected.max_guests}</Text>
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.sectionLabel}>CO JEDEŠ?</Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {[{ value: 'moto', icon: '🏍', label: 'Moto' }, { value: 'bicycle', icon: '🚴', label: 'Kolo' }].map(v => (
+                <TouchableOpacity
+                  key={v.value}
+                  style={[{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: '#333', backgroundColor: '#1a1a1a' },
+                    guestVehicle === v.value && { borderColor: '#e8631a', backgroundColor: '#e8631a15' }]}
+                  onPress={() => setGuestVehicle(guestVehicle === v.value ? '' : v.value)}
+                >
+                  <Text style={{ fontSize: 22 }}>{v.icon}</Text>
+                  <Text style={[{ color: '#aaa', fontWeight: '700', fontSize: 15 }, guestVehicle === v.value && { color: '#e8631a' }]}>{v.label}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
 
@@ -375,7 +401,7 @@ export default function MapScreen() {
             </View>
           ) : (
             filteredHosts.map((host) => {
-              const pm = parkingMeta[host.parking] || parkingMeta.street
+              const hostParkings: string[] = host.parkings?.length ? host.parkings : (host.parking ? [host.parking] : [])
               const hostPricings: string[] = host.pricings?.length ? host.pricings : (host.pricing ? [host.pricing] : ['free'])
               const isOwn = host.user_id === currentUser?.id
               return (
@@ -397,9 +423,14 @@ export default function MapScreen() {
                     </View>
                   </View>
                   <View style={styles.tags}>
-                    <View style={[styles.tag, { borderColor: pm.color + '50', backgroundColor: pm.color + '15' }]}>
-                      <Text style={[styles.tagText, { color: pm.color }]}>{pm.icon} {pm.label}</Text>
-                    </View>
+                    {hostParkings.map(pv => {
+                      const pm = parkingMeta[pv] || parkingMeta.street
+                      return (
+                        <View key={pv} style={[styles.tag, { borderColor: pm.color + '50', backgroundColor: pm.color + '15' }]}>
+                          <Text style={[styles.tagText, { color: pm.color }]}>{pm.icon} {pm.label}</Text>
+                        </View>
+                      )
+                    })}
                     {hostPricings.map(pv => {
                       const pr = pricingMeta[pv] || pricingMeta.free
                       return (

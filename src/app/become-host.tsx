@@ -5,10 +5,8 @@ import { router } from 'expo-router'
 import type { Pin } from '../components/LocationPicker'
 
 const VEHICLE_TYPES = [
-  { value: 'moto', icon: '🏍', label: 'Motorka' },
-  { value: 'adv', icon: '🏕', label: 'ADV / Enduro' },
+  { value: 'moto', icon: '🏍', label: 'Moto' },
   { value: 'bicycle', icon: '🚴', label: 'Kolo' },
-  { value: 'gravel', icon: '🪨', label: 'Gravel / MTB' },
 ]
 
 const PARKING = [
@@ -47,7 +45,7 @@ const PRICING = [
 interface Location {
   pin: Pin | null
   vehicleTypes: string[]
-  parking: string
+  parkings: string[]
   sleepTypes: string[]
   amenities: string[]
   maxGuests: number
@@ -56,7 +54,7 @@ interface Location {
 }
 
 function emptyLocation(): Location {
-  return { pin: null, vehicleTypes: [], parking: 'yard', sleepTypes: [], amenities: [], maxGuests: 2, pricings: ['free'], notes: '' }
+  return { pin: null, vehicleTypes: [], parkings: [], sleepTypes: [], amenities: [], maxGuests: 2, pricings: ['free'], notes: '' }
 }
 
 function toggle(arr: string[], value: string): string[] {
@@ -89,7 +87,7 @@ export default function BecomeHostScreen() {
       setLocations(data.map(d => ({
         pin: { lat: d.location_lat, lng: d.location_lng, city: d.location_city, country: d.location_country },
         vehicleTypes: d.vehicle_types || [],
-        parking: d.parking || 'yard',
+        parkings: d.parkings?.length ? d.parkings : (d.parking ? [d.parking] : []),
         sleepTypes: d.sleep_types || [],
         amenities: d.amenities || [],
         maxGuests: d.max_guests || 2,
@@ -140,7 +138,8 @@ export default function BecomeHostScreen() {
           location_lng: l.pin!.lng,
           location_city: l.pin!.city || '',
           location_country: l.pin!.country || '',
-          parking: l.parking,
+          parkings: l.parkings,
+          parking: l.parkings[0] || 'yard',
           vehicle_types: l.vehicleTypes,
           sleep_types: l.sleepTypes,
           amenities: l.amenities,
@@ -213,20 +212,23 @@ export default function BecomeHostScreen() {
 
           {/* Parkování */}
           <Text style={styles.label}>🅿️ PARKOVÁNÍ</Text>
-          {PARKING.map(p => (
-            <TouchableOpacity
-              key={p.value}
-              style={[styles.optCard, loc.parking === p.value && { borderColor: p.color, backgroundColor: p.color + '12' }]}
-              onPress={() => updateLocation(index, { parking: p.value })}
-            >
-              <Text style={styles.optIcon}>{p.icon}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.optLabel, loc.parking === p.value && { color: p.color }]}>{p.label}</Text>
-                <Text style={styles.optDesc}>{p.desc}</Text>
-              </View>
-              {loc.parking === p.value && <Text style={[styles.check, { color: p.color }]}>✓</Text>}
-            </TouchableOpacity>
-          ))}
+          {PARKING.map(p => {
+            const active = loc.parkings.includes(p.value)
+            return (
+              <TouchableOpacity
+                key={p.value}
+                style={[styles.optCard, active && { borderColor: p.color, backgroundColor: p.color + '12' }]}
+                onPress={() => updateLocation(index, { parkings: toggle(loc.parkings, p.value) })}
+              >
+                <Text style={styles.optIcon}>{p.icon}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.optLabel, active && { color: p.color }]}>{p.label}</Text>
+                  <Text style={styles.optDesc}>{p.desc}</Text>
+                </View>
+                {active && <Text style={[styles.check, { color: p.color }]}>✓</Text>}
+              </TouchableOpacity>
+            )
+          })}
 
           {/* Spaní */}
           <Text style={styles.label}>🛏 KDE BUDOU SPÁT?</Text>

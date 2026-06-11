@@ -134,6 +134,7 @@ export default function RequestsScreen() {
 
                 <Text style={styles.guests}>
                   👥 {req.guests_count} {req.guests_count === 1 ? 'jezdec' : 'jezdci'}
+                  {req.guest_vehicle === 'moto' ? '  ·  🏍 Moto' : req.guest_vehicle === 'bicycle' ? '  ·  🚴 Kolo' : ''}
                 </Text>
 
                 {req.message ? (

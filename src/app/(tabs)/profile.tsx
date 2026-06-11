@@ -4,10 +4,8 @@ import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
 
 const VEHICLE_TYPES = [
-  { value: 'moto', icon: '🏍', label: 'Motorka' },
-  { value: 'adv', icon: '🏕', label: 'ADV / Enduro' },
+  { value: 'moto', icon: '🏍', label: 'Moto' },
   { value: 'bicycle', icon: '🚴', label: 'Kolo' },
-  { value: 'gravel', icon: '🪨', label: 'Gravel / MTB' },
 ]
 
 export default function ProfileScreen() {
