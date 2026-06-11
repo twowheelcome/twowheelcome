@@ -165,36 +165,43 @@ export default function RequestsScreen() {
 
   async function loadConvs(userId: string) {
     setLoading(true)
-    const { data } = await supabase
+    const { data: convData } = await supabase
       .from('conversations')
-      .select(`
-        id, user_a, user_b, last_message_at,
-        pa:profiles!user_a(id, full_name),
-        pb:profiles!user_b(id, full_name)
-      `)
+      .select('id, user_a, user_b, last_message_at')
       .or(`user_a.eq.${userId},user_b.eq.${userId}`)
       .order('last_message_at', { ascending: false })
 
-    setConvs((data || []).map((c: any) => ({
-      id: c.id,
-      user_a: c.user_a,
-      user_b: c.user_b,
-      last_message_at: c.last_message_at,
-      other: c.user_a === userId
-        ? { id: c.pb?.id, full_name: c.pb?.full_name }
-        : { id: c.pa?.id, full_name: c.pa?.full_name },
-    })))
+    if (!convData || convData.length === 0) { setConvs([]); setLoading(false); return }
+
+    const otherIds = convData.map((c: any) => c.user_a === userId ? c.user_b : c.user_a)
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', otherIds)
+
+    const profileMap: Record<string, string | null> = {}
+    profiles?.forEach((p: any) => { profileMap[p.id] = p.full_name })
+
+    setConvs(convData.map((c: any) => {
+      const otherId = c.user_a === userId ? c.user_b : c.user_a
+      return {
+        id: c.id,
+        user_a: c.user_a,
+        user_b: c.user_b,
+        last_message_at: c.last_message_at,
+        other: { id: otherId, full_name: profileMap[otherId] ?? null },
+      }
+    }))
     setLoading(false)
   }
 
   async function openConv(conv: ConvRow) {
     setSelected(conv)
     setMessages([])
-    const { data } = await supabase
+    const { data: msgData } = await supabase
       .from('messages')
       .select(`
         id, conversation_id, sender_id, body, photo_url, request_id, created_at,
-        sender:profiles!sender_id(full_name),
         request:stay_requests!request_id(
           id, arrival_date, departure_date, arrival_time,
           guests_count, guest_vehicle, status, photo_url, host_id, guest_id
@@ -203,7 +210,17 @@ export default function RequestsScreen() {
       .eq('conversation_id', conv.id)
       .order('created_at', { ascending: true })
 
-    setMessages((data || []).map(normalizeMsg))
+    if (!msgData || msgData.length === 0) { setMessages([]); subscribeToConv(conv.id); return }
+
+    const senderIds = [...new Set(msgData.map((m: any) => m.sender_id))]
+    const { data: senderProfiles } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', senderIds)
+    const senderMap: Record<string, string | null> = {}
+    senderProfiles?.forEach((p: any) => { senderMap[p.id] = p.full_name })
+
+    setMessages(msgData.map((m: any) => normalizeMsg({ ...m, sender: { full_name: senderMap[m.sender_id] ?? null } })))
     subscribeToConv(conv.id)
   }
 
@@ -235,7 +252,6 @@ export default function RequestsScreen() {
           .from('messages')
           .select(`
             id, conversation_id, sender_id, body, photo_url, request_id, created_at,
-            sender:profiles!sender_id(full_name),
             request:stay_requests!request_id(
               id, arrival_date, departure_date, arrival_time,
               guests_count, guest_vehicle, status, photo_url, host_id, guest_id
@@ -244,9 +260,10 @@ export default function RequestsScreen() {
           .eq('id', payload.new.id)
           .single()
         if (!data) return
+        const { data: sp } = await supabase.from('profiles').select('full_name').eq('id', data.sender_id).single()
         setMessages(prev => {
           if (prev.find(m => m.id === data.id)) return prev
-          return [...prev, normalizeMsg(data)]
+          return [...prev, normalizeMsg({ ...data, sender: { full_name: sp?.full_name ?? null } })]
         })
         setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100)
       })
