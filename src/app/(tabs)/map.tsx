@@ -278,7 +278,7 @@ export default function MapScreen() {
                     onChange={(e: any) => setArrivalDate(e.target.value)}
                     style={{ background: '#1a1a1a', border: '1px solid #444', borderRadius: 8, padding: '10px 12px', color: '#eee', fontSize: 13, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any} />
                 ) : (
-                  <TextInput style={styles.dateInput} value={arrivalDate} onChangeText={setArrivalDate} placeholderTextColor="#555" />
+                  <TextInput style={styles.dateInput} value={arrivalDate} onChangeText={setArrivalDate} placeholderTextColor="#777" />
                 )}
               </View>
               <View style={{ flex: 1, gap: 6 }}>
@@ -288,7 +288,7 @@ export default function MapScreen() {
                     onChange={(e: any) => setDepartureDate(e.target.value)}
                     style={{ background: '#1a1a1a', border: '1px solid #444', borderRadius: 8, padding: '10px 12px', color: '#eee', fontSize: 13, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any} />
                 ) : (
-                  <TextInput style={styles.dateInput} value={departureDate} onChangeText={setDepartureDate} placeholderTextColor="#555" />
+                  <TextInput style={styles.dateInput} value={departureDate} onChangeText={setDepartureDate} placeholderTextColor="#777" />
                 )}
               </View>
             </View>
@@ -299,7 +299,7 @@ export default function MapScreen() {
                   onChange={(e: any) => setArrivalTime(e.target.value)}
                   style={{ background: '#1a1a1a', border: '1px solid #444', borderRadius: 8, padding: '10px 12px', color: arrivalTime ? '#eee' : '#555', fontSize: 13, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any} />
               ) : (
-                <TextInput style={styles.dateInput} value={arrivalTime} onChangeText={setArrivalTime} placeholder="např. 17:00" placeholderTextColor="#555" />
+                <TextInput style={styles.dateInput} value={arrivalTime} onChangeText={setArrivalTime} placeholder="např. 17:00" placeholderTextColor="#777" />
               )}
             </View>
           </View>
@@ -309,7 +309,7 @@ export default function MapScreen() {
             <TextInput
               style={styles.textarea}
               placeholder="Ahoj, jedu přes tvoje město, máš místo?..."
-              placeholderTextColor="#666"
+              placeholderTextColor="#888"
               value={message}
               onChangeText={setMessage}
               multiline
@@ -524,8 +524,8 @@ const styles = StyleSheet.create({
   editButtonText: { color: '#e8631a', fontWeight: '700', fontSize: 13, letterSpacing: 1 },
   button: { backgroundColor: '#e8631a', borderRadius: 10, padding: 14, alignItems: 'center' },
   buttonText: { color: '#fff', fontWeight: '700', fontSize: 14, letterSpacing: 1 },
-  sectionLabel: { color: '#999', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
-  dateFieldLabel: { color: '#999', fontSize: 10, fontWeight: '700', letterSpacing: 1.5 },
+  sectionLabel: { color: '#bbb', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
+  dateFieldLabel: { color: '#aaa', fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
   dateInput: { backgroundColor: '#1a1a1a', borderRadius: 8, padding: 12, color: '#eee', fontSize: 13, borderWidth: 1, borderColor: '#444' },
   counter: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   counterBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#333', alignItems: 'center', justifyContent: 'center' },
