@@ -1,13 +1,16 @@
 import { useEffect } from 'react'
 import { Stack } from 'expo-router'
-import { useFonts, Oswald_700Bold } from '@expo-google-fonts/oswald'
+import { useFonts as useOswald, Oswald_700Bold } from '@expo-google-fonts/oswald'
+import { useFonts as useRye, Rye_400Regular } from '@expo-google-fonts/rye'
 import * as SplashScreen from 'expo-splash-screen'
 import { C } from '../lib/theme'
 
 SplashScreen.preventAutoHideAsync()
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({ Oswald_700Bold })
+  const [o] = useOswald({ Oswald_700Bold })
+  const [r] = useRye({ Rye_400Regular })
+  const fontsLoaded = o && r
 
   useEffect(() => {
     if (fontsLoaded) SplashScreen.hideAsync()

@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     backgroundColor: C.bg,
   },
   heroGradient: {
-    height: 260,
+    height: 220,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -186,15 +186,18 @@ const styles = StyleSheet.create({
   },
   logoWrap: {
     alignItems: 'center',
-    paddingTop: 36,
-    paddingBottom: 44,
-    gap: 8,
+    paddingTop: 28,
+    paddingBottom: 36,
+    gap: 10,
+    maxWidth: 440,
+    width: '100%',
+    alignSelf: 'center',
   },
   logo: {
-    fontSize: 34,
-    fontFamily: 'Oswald_700Bold',
+    fontSize: 42,
+    fontFamily: 'Rye_400Regular',
     color: C.text,
-    letterSpacing: 2,
+    letterSpacing: 1,
     textShadowColor: 'rgba(0,0,0,0.9)',
     textShadowOffset: { width: 1, height: 3 },
     textShadowRadius: 6,
@@ -221,6 +224,9 @@ const styles = StyleSheet.create({
   form: {
     paddingHorizontal: 24,
     gap: 12,
+    maxWidth: 440,
+    width: '100%',
+    alignSelf: 'center',
   },
   inputWrap: {
     flexDirection: 'row',
