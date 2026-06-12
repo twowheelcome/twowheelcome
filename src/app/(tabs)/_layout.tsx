@@ -50,21 +50,21 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="map"
         options={{
-          title: 'Mapa',
+          title: 'Map',
           tabBarIcon: ({ color }) => <TabIcon name="map-pin" color={color} />,
         }}
       />
       <Tabs.Screen
         name="requests"
         options={{
-          title: 'Zprávy',
+          title: 'Messages',
           tabBarIcon: ({ color }) => <TabIcon name="message-circle" color={color} dot={hasUnread} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profil',
+          title: 'Profile',
           tabBarIcon: ({ color }) => <TabIcon name="user" color={color} />,
         }}
       />

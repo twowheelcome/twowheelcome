@@ -38,7 +38,7 @@ export default function ProfileScreen() {
     setSavingName(true)
     const { error } = await supabase.from('profiles').upsert({ id: user.id, full_name: nameInput.trim() })
     setSavingName(false)
-    if (error) { Alert.alert('Chyba', error.message); return }
+    if (error) { Alert.alert('Error', error.message); return }
     setProfile((p: any) => ({ ...p, full_name: nameInput.trim() }))
     setEditingName(false)
   }
@@ -50,7 +50,7 @@ export default function ProfileScreen() {
       const ext = file.name.split('.').pop() || 'jpg'
       const path = `${user.id}/avatar.${ext}`
       const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
-      if (upErr) { Alert.alert('Chyba uploadu', upErr.message); return }
+      if (upErr) { Alert.alert('Upload error', upErr.message); return }
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
       const url = `${publicUrl}?t=${Date.now()}`
       await supabase.from('profiles').upsert({ id: user.id, avatar_url: url })
@@ -70,7 +70,7 @@ export default function ProfileScreen() {
   }
 
   const initials = profile?.full_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || '?'
-  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Jezdec'
+  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Rider'
   const isHost = hostLocations.length > 0
 
   return (
@@ -127,16 +127,16 @@ export default function ProfileScreen() {
               style={styles.nameInput}
               value={nameInput}
               onChangeText={setNameInput}
-              placeholder="Tvoje jméno"
+              placeholder="Your name"
               placeholderTextColor={C.textFaint}
               autoFocus
             />
             <View style={styles.nameActions}>
               <TouchableOpacity style={styles.saveNameBtn} onPress={saveName} disabled={savingName}>
-                <Text style={styles.saveNameBtnText}>{savingName ? '...' : 'Uložit'}</Text>
+                <Text style={styles.saveNameBtnText}>{savingName ? '...' : 'Save'}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setEditingName(false)}>
-                <Text style={styles.cancelText}>Zrušit</Text>
+                <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -152,12 +152,12 @@ export default function ProfileScreen() {
         <View style={styles.statsCard}>
           <View style={styles.statItem}>
             <Text style={styles.statNum}>{hostLocations.length}</Text>
-            <Text style={styles.statLabel}>místa</Text>
+            <Text style={styles.statLabel}>locations</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={styles.statNum}>—</Text>
-            <Text style={styles.statLabel}>nocí</Text>
+            <Text style={styles.statLabel}>nights</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
@@ -170,8 +170,8 @@ export default function ProfileScreen() {
         <View style={styles.menuGroup}>
           <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/become-host')}>
             <View style={styles.menuTextWrap}>
-              <Text style={styles.menuTitle}>{isHost ? 'Moje nabídky' : 'Stát se hostitelem'}</Text>
-              <Text style={styles.menuSub}>{isHost ? `${hostLocations.length} aktivní ${hostLocations.length === 1 ? 'místo' : 'místa'}` : 'Přidat nabídku'}</Text>
+              <Text style={styles.menuTitle}>{isHost ? 'My Listings' : 'Become a Host'}</Text>
+              <Text style={styles.menuSub}>{isHost ? `${hostLocations.length} active ${hostLocations.length === 1 ? 'location' : 'locations'}` : 'Add listing'}</Text>
             </View>
             <View style={styles.menuIcon}>
               <Feather name="home" size={18} color={C.accent} />
@@ -180,8 +180,8 @@ export default function ProfileScreen() {
 
           <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuTextWrap}>
-              <Text style={styles.menuTitle}>Historie</Text>
-              <Text style={styles.menuSub}>Zobrazit historii</Text>
+              <Text style={styles.menuTitle}>History</Text>
+              <Text style={styles.menuSub}>View history</Text>
             </View>
             <View style={styles.menuIcon}>
               <Feather name="clock" size={18} color={C.accent} />
@@ -190,8 +190,8 @@ export default function ProfileScreen() {
 
           <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuTextWrap}>
-              <Text style={styles.menuTitle}>Nastavení</Text>
-              <Text style={styles.menuSub}>Upravit profil</Text>
+              <Text style={styles.menuTitle}>Settings</Text>
+              <Text style={styles.menuSub}>Edit profile</Text>
             </View>
             <View style={styles.menuIcon}>
               <Feather name="settings" size={18} color={C.accent} />
@@ -200,7 +200,7 @@ export default function ProfileScreen() {
         </View>
 
         <TouchableOpacity style={styles.signOutBtn} onPress={signOut}>
-          <Text style={styles.signOutText}>Odhlásit se</Text>
+          <Text style={styles.signOutText}>Sign out</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

@@ -6,37 +6,37 @@ import { C } from '../../lib/theme'
 import { UserChip } from '../../components/UserChip'
 
 const parkingMeta: Record<string, { icon: string; label: string; color: string }> = {
-  garage_locked: { icon: '🔒', label: 'Uzamčená garáž', color: C.success },
-  carport: { icon: '🔐', label: 'Přístřešek za plotem', color: C.info },
-  yard: { icon: '🛡', label: 'Dvůr za plotem', color: C.accent },
-  street: { icon: '🛣', label: 'Ulice před domem', color: '#94a3b8' },
+  garage_locked: { icon: '🔒', label: 'Locked Garage', color: C.success },
+  carport: { icon: '🔐', label: 'Covered Carport', color: C.info },
+  yard: { icon: '🛡', label: 'Fenced Yard', color: C.accent },
+  street: { icon: '🛣', label: 'Street Parking', color: '#94a3b8' },
 }
 
 const pricingMeta: Record<string, { icon: string; label: string; color: string }> = {
-  free: { icon: '🤝', label: 'Zdarma', color: '#22c55e' },
-  tip: { icon: '🙏', label: 'Tip welcome', color: '#f59e0b' },
-  fixed: { icon: '💶', label: 'Placené', color: '#3b82f6' },
+  free: { icon: '🤝', label: 'Free', color: '#22c55e' },
+  tip: { icon: '🙏', label: 'Tip Welcome', color: '#f59e0b' },
+  fixed: { icon: '💶', label: 'Paid', color: '#3b82f6' },
 }
 
 const FILTER_VEHICLES = [
   { value: 'moto', icon: '🏍', label: 'Moto' },
-  { value: 'bicycle', icon: '🚴', label: 'Kolo' },
+  { value: 'bicycle', icon: '🚴', label: 'Bicycle' },
 ]
 const FILTER_PARKING = [
-  { value: 'garage_locked', icon: '🔒', label: 'Garáž' },
-  { value: 'carport', icon: '🔐', label: 'Přístřešek' },
-  { value: 'yard', icon: '🛡', label: 'Dvůr' },
-  { value: 'street', icon: '🛣', label: 'Ulice' },
+  { value: 'garage_locked', icon: '🔒', label: 'Garage' },
+  { value: 'carport', icon: '🔐', label: 'Carport' },
+  { value: 'yard', icon: '🛡', label: 'Yard' },
+  { value: 'street', icon: '🛣', label: 'Street' },
 ]
 const FILTER_SLEEP = [
-  { value: 'tent', icon: '⛺', label: 'Stan' },
-  { value: 'roof', icon: '🏠', label: 'Střecha' },
-  { value: 'room', icon: '🛏', label: 'Pokoj' },
+  { value: 'tent', icon: '⛺', label: 'Tent' },
+  { value: 'roof', icon: '🏠', label: 'Roof' },
+  { value: 'room', icon: '🛏', label: 'Room' },
 ]
 const FILTER_PRICING = [
-  { value: 'free', icon: '🤝', label: 'Zdarma' },
+  { value: 'free', icon: '🤝', label: 'Free' },
   { value: 'tip', icon: '🙏', label: 'Tip' },
-  { value: 'fixed', icon: '💶', label: 'Placené' },
+  { value: 'fixed', icon: '💶', label: 'Paid' },
 ]
 
 function toggleFilter(arr: string[], val: string): string[] {
@@ -147,7 +147,7 @@ export default function MapScreen() {
   async function sendRequest() {
     if (!currentUser || !selected) return
     if (!message.trim()) {
-      setSendError('Napiš hostiteli zprávu. Aspoň pár slov. 😄')
+      setSendError('Write the host a message. At least a few words. 😄')
       return
     }
     setSendError('')
@@ -183,7 +183,7 @@ export default function MapScreen() {
           .insert({ user_a: ua, user_b: ub })
           .select('id')
           .single()
-        if (convErr || !newConv) { setSendError(convErr?.message || 'Chyba konverzace'); setSending(false); return }
+        if (convErr || !newConv) { setSendError(convErr?.message || 'Conversation error'); setSending(false); return }
         convId = newConv.id
       }
 
@@ -205,7 +205,7 @@ export default function MapScreen() {
         })
         .select('id')
         .single()
-      if (reqErr || !reqData) { setSendError(reqErr?.message || 'Chyba žádosti'); setSending(false); return }
+      if (reqErr || !reqData) { setSendError(reqErr?.message || 'Request error'); setSending(false); return }
 
       // 4. Insert message linked to request
       await supabase.from('messages').insert({
@@ -228,13 +228,13 @@ export default function MapScreen() {
         router.push({ pathname: '/(tabs)/requests', params: { openConv: convId } })
       }, 1500)
     } catch (e: any) {
-      setSendError(e?.message || 'Neočekávaná chyba')
+      setSendError(e?.message || 'Unexpected error')
     } finally {
       setSending(false)
     }
   }
 
-  // --- Formulář žádosti ---
+  // --- Request form ---
   if (requesting && selected) {
     const selectedParkings: string[] = selected.parkings?.length ? selected.parkings : (selected.parking ? [selected.parking] : [])
     const selectedPricings: string[] = selected.pricings?.length ? selected.pricings : (selected.pricing ? [selected.pricing] : ['free'])
@@ -242,9 +242,9 @@ export default function MapScreen() {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => setRequesting(false)}>
-            <Text style={styles.back}>← Zpět</Text>
+            <Text style={styles.back}>← Back</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>KLEPU NA DVEŘE 🤞</Text>
+          <Text style={styles.headerTitle}>KNOCKING ON THE DOOR 🤞</Text>
         </View>
         <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
           <View style={styles.card}>
@@ -253,7 +253,7 @@ export default function MapScreen() {
                 <Text style={styles.avatarText}>{selected.profiles?.full_name?.charAt(0) || '?'}</Text>
               </View>
               <View style={styles.cardInfo}>
-                <Text style={styles.cardName}>{selected.profiles?.full_name || 'Anonymní jezdec'}</Text>
+                <Text style={styles.cardName}>{selected.profiles?.full_name || 'Anonymous Rider'}</Text>
                 <Text style={styles.cardLocation}>📍 {selected.location_city}, {selected.location_country}</Text>
               </View>
             </View>
@@ -278,7 +278,7 @@ export default function MapScreen() {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.sectionLabel}>POČET JEZDCŮ</Text>
+            <Text style={styles.sectionLabel}>NUMBER OF RIDERS</Text>
             <View style={styles.counter}>
               <TouchableOpacity style={styles.counterBtn} onPress={() => setGuests(Math.max(1, guests - 1))}>
                 <Text style={styles.counterBtnText}>−</Text>
@@ -292,7 +292,7 @@ export default function MapScreen() {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.sectionLabel}>CO JEDEŠ?</Text>
+            <Text style={styles.sectionLabel}>YOUR VEHICLE</Text>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               {[{ value: 'moto', icon: '🏍', label: 'Moto' }, { value: 'bicycle', icon: '🚴', label: 'Kolo' }].map(v => (
                 <TouchableOpacity
@@ -309,10 +309,10 @@ export default function MapScreen() {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.sectionLabel}>KDY PŘIJEDEŠ?</Text>
+            <Text style={styles.sectionLabel}>WHEN ARE YOU ARRIVING?</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <View style={{ flex: 1, gap: 6 }}>
-                <Text style={styles.dateFieldLabel}>PŘÍJEZD</Text>
+                <Text style={styles.dateFieldLabel}>ARRIVAL</Text>
                 {Platform.OS === 'web' ? (
                   <input type="date" value={arrivalDate}
                     onChange={(e: any) => setArrivalDate(e.target.value)}
@@ -322,7 +322,7 @@ export default function MapScreen() {
                 )}
               </View>
               <View style={{ flex: 1, gap: 6 }}>
-                <Text style={styles.dateFieldLabel}>ODJEZD</Text>
+                <Text style={styles.dateFieldLabel}>DEPARTURE</Text>
                 {Platform.OS === 'web' ? (
                   <input type="date" value={departureDate}
                     onChange={(e: any) => setDepartureDate(e.target.value)}
@@ -333,20 +333,20 @@ export default function MapScreen() {
               </View>
             </View>
             <View style={{ gap: 6, marginTop: 4 }}>
-              <Text style={styles.dateFieldLabel}>CCA PŘÍJEZD</Text>
+              <Text style={styles.dateFieldLabel}>EST. ARRIVAL TIME</Text>
               {Platform.OS === 'web' ? (
                 <input type="time" value={arrivalTime}
                   onChange={(e: any) => setArrivalTime(e.target.value)}
                   style={{ background: C.bg, border: `1px solid ${C.borderMid}`, borderRadius: 8, padding: '10px 12px', color: arrivalTime ? C.text : C.textFaint, fontSize: 13, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any} />
               ) : (
-                <TextInput style={styles.dateInput} value={arrivalTime} onChangeText={setArrivalTime} placeholder="např. 17:00" placeholderTextColor="#777" />
+                <TextInput style={styles.dateInput} value={arrivalTime} onChangeText={setArrivalTime} placeholder="e.g. 17:00" placeholderTextColor="#777" />
               )}
             </View>
           </View>
 
           {Platform.OS === 'web' && (
             <View style={styles.card}>
-              <Text style={styles.sectionLabel}>FOTO TVÉHO KOLA (volitelné)</Text>
+              <Text style={styles.sectionLabel}>PHOTO OF YOUR BIKE (optional)</Text>
               {/* hidden file input */}
               {(Platform.OS as string) === 'web' && (
                 <input
@@ -369,20 +369,20 @@ export default function MapScreen() {
                 {photoPreview ? (
                   <View style={{ alignItems: 'center', gap: 8 }}>
                     <img src={photoPreview} style={{ width: 200, height: 140, objectFit: 'cover', borderRadius: 10 } as any} alt="preview" />
-                    <Text style={{ color: C.accent, fontSize: 12, fontWeight: '600' }}>Změnit foto</Text>
+                    <Text style={{ color: C.accent, fontSize: 12, fontWeight: '600' }}>Change photo</Text>
                   </View>
                 ) : (
-                  <Text style={styles.photoBtnText}>📷 Přidat foto motorky / kola</Text>
+                  <Text style={styles.photoBtnText}>📷 Add bike / bicycle photo</Text>
                 )}
               </TouchableOpacity>
             </View>
           )}
 
           <View style={styles.card}>
-            <Text style={styles.sectionLabel}>ZPRÁVA HOSTITELI</Text>
+            <Text style={styles.sectionLabel}>MESSAGE TO HOST</Text>
             <TextInput
               style={styles.textarea}
-              placeholder="Ahoj, jedu přes tvoje město, máš místo?..."
+              placeholder="Hey, I'm riding through your town, got space?..."
               placeholderTextColor={C.placeholder}
               value={message}
               onChangeText={setMessage}
@@ -393,18 +393,18 @@ export default function MapScreen() {
 
           {selectedPricings.includes('tip') && (
             <View style={[styles.infoBox, { borderColor: C.warningBorder, backgroundColor: C.warningSoft }]}>
-              <Text style={[styles.infoText, { color: C.warning }]}>🙏 Tip není povinný, ale pivo nebo příběh u táboráku potěší. 🍺</Text>
+              <Text style={[styles.infoText, { color: C.warning }]}>🙏 A tip is optional, but a beer or a campfire story is always welcome. 🍺</Text>
             </View>
           )}
           {selectedPricings.includes('fixed') && (
             <View style={[styles.infoBox, { borderColor: C.infoBorder, backgroundColor: C.infoSoft }]}>
-              <Text style={[styles.infoText, { color: C.info }]}>💶 Domluv se s hostitelem přímo — žádná provize.</Text>
+              <Text style={[styles.infoText, { color: C.info }]}>💶 Arrange directly with the host — no commission.</Text>
             </View>
           )}
 
           {sendSuccess ? (
             <View style={[styles.infoBox, { borderColor: C.successBorder, backgroundColor: C.successSoft }]}>
-              <Text style={[styles.infoText, { color: C.success, fontSize: 15, fontWeight: '700' }]}>🤞 Žádost letí! Teď jeď a doufej že má otevřeno.</Text>
+              <Text style={[styles.infoText, { color: C.success, fontSize: 15, fontWeight: '700' }]}>🤞 Request sent! Now ride and hope they're home.</Text>
             </View>
           ) : null}
           {sendError ? (
@@ -413,7 +413,7 @@ export default function MapScreen() {
             </View>
           ) : null}
           <TouchableOpacity style={styles.button} onPress={sendRequest} disabled={sending || sendSuccess}>
-            <Text style={styles.buttonText}>{sending ? 'ODESÍLÁM... 🤞' : 'ODESLAT ŽÁDOST →'}</Text>
+            <Text style={styles.buttonText}>{sending ? 'SENDING... 🤞' : 'SEND REQUEST →'}</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -471,7 +471,7 @@ export default function MapScreen() {
     )
   }
 
-  // --- Hlavní obrazovka ---
+  // --- Main screen ---
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -479,13 +479,13 @@ export default function MapScreen() {
           <View>
             <Text style={styles.hostsTitle}>Hosts</Text>
             <Text style={styles.sub}>
-              {loading ? 'Načítám...' : `${filteredHosts.length} hostitelů na trase`}
+              {loading ? 'Loading...' : `${filteredHosts.length} hosts on the road`}
             </Text>
           </View>
           <View style={styles.headerRight}>
             <View style={styles.tabPills}>
               <TouchableOpacity style={[styles.tabPill, !showMap && styles.tabPillActive]} onPress={() => setShowMap(false)}>
-                <Text style={[styles.tabPillText, !showMap && styles.tabPillTextActive]}>Seznam</Text>
+                <Text style={[styles.tabPillText, !showMap && styles.tabPillTextActive]}>List</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.tabPill, showMap && styles.tabPillActive]}
@@ -493,7 +493,7 @@ export default function MapScreen() {
                 disabled={Platform.OS !== 'web'}
               >
                 <Text style={[styles.tabPillText, showMap && styles.tabPillTextActive]}>
-                  Mapa{Platform.OS !== 'web' ? ' (web)' : ''}
+                  Map{Platform.OS !== 'web' ? ' (web)' : ''}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -519,8 +519,8 @@ export default function MapScreen() {
           {filteredHosts.length === 0 && !loading ? (
             <View style={styles.empty}>
               <Text style={styles.emptyEmoji}>🏍</Text>
-              <Text style={styles.emptyTitle}>{activeCount > 0 ? 'Nic nenalezeno' : 'Zatím žádní hostitelé'}</Text>
-              <Text style={styles.emptyText}>{activeCount > 0 ? 'Zkus změnit nebo zrušit filtry.' : 'Buď první! Jdi do záložky Profil a otevři dveře komunitě.'}</Text>
+              <Text style={styles.emptyTitle}>{activeCount > 0 ? 'Nothing found' : 'No hosts yet'}</Text>
+              <Text style={styles.emptyText}>{activeCount > 0 ? 'Try changing or clearing filters.' : 'Be the first! Go to the Profile tab and open your doors to the community.'}</Text>
             </View>
           ) : (
             filteredHosts.map((host) => {
@@ -539,8 +539,8 @@ export default function MapScreen() {
                     </View>
                     <View style={styles.cardInfo}>
                       <Text style={styles.cardName}>
-                        {host.profiles?.full_name || 'Anonymní jezdec'}
-                        {isOwn && <Text style={styles.ownBadge}> (ty)</Text>}
+                        {host.profiles?.full_name || 'Anonymous Rider'}
+                        {isOwn && <Text style={styles.ownBadge}> (you)</Text>}
                       </Text>
                       <Text style={styles.cardLocation}>📍 {host.location_city}, {host.location_country}</Text>
                     </View>
@@ -566,7 +566,7 @@ export default function MapScreen() {
                   {selected?.id === host.id && (
                     <View style={styles.detail}>
                       {host.notes ? <Text style={styles.detailBio}>{host.notes}</Text> : null}
-                      <Text style={styles.detailInfo}>👥 Max. {host.max_guests} jezdci</Text>
+                      <Text style={styles.detailInfo}>👥 Max. {host.max_guests} riders</Text>
                       {host.vehicle_types?.length > 0 && (
                         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                           {(host.vehicle_types as string[]).map(v => {
@@ -582,11 +582,11 @@ export default function MapScreen() {
                       )}
                       {!isOwn ? (
                         <TouchableOpacity style={styles.requestButton} onPress={() => setRequesting(true)}>
-                          <Text style={styles.requestButtonText}>KLEPU NA DVEŘE →</Text>
+                          <Text style={styles.requestButtonText}>KNOCK ON THE DOOR →</Text>
                         </TouchableOpacity>
                       ) : (
                         <TouchableOpacity style={styles.editButton} onPress={() => router.push('/become-host')}>
-                          <Text style={styles.editButtonText}>UPRAVIT NABÍDKU</Text>
+                          <Text style={styles.editButtonText}>EDIT LISTING</Text>
                         </TouchableOpacity>
                       )}
                     </View>

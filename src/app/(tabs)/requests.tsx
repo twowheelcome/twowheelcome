@@ -54,9 +54,9 @@ type MsgRow = {
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 const STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  PENDING:  { label: 'Pending',    color: C.text,    bg: C.accent },
-  ACCEPTED: { label: 'Přijato',    color: C.white,   bg: C.success },
-  REJECTED: { label: 'Odmítnuto', color: C.white,   bg: C.error },
+  PENDING:  { label: 'Pending',  color: C.text,  bg: C.accent },
+  ACCEPTED: { label: 'Accepted', color: C.white, bg: C.success },
+  REJECTED: { label: 'Rejected', color: C.white, bg: C.error },
 }
 
 // For DATE strings (YYYY-MM-DD) — manual parse to avoid timezone shifts
@@ -72,7 +72,7 @@ function fmtDate(iso: string): string {
 }
 
 function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 }
 
 // ── RequestCard ───────────────────────────────────────────────────────────
@@ -87,11 +87,11 @@ function RequestCard({
 }) {
   const s = STATUS[req.status] || STATUS.PENDING
   const vehicle = req.guest_vehicle === 'moto' ? '🏍 Moto' : req.guest_vehicle === 'bicycle' ? '🚴 Kolo' : null
-  const guestsLabel = req.guests_count === 1 ? '1 jezdec' : `${req.guests_count} jezdci`
+  const guestsLabel = req.guests_count === 1 ? '1 rider' : `${req.guests_count} riders`
 
   return (
     <View style={rc.card}>
-      <Text style={rc.cardTitle}>🤞 ŽÁDOST O UBYTOVÁNÍ</Text>
+      <Text style={rc.cardTitle}>🤞 STAY REQUEST</Text>
 
       {/* Status */}
       <View style={[rc.statusBadge, { backgroundColor: s.bg }]}>
@@ -109,7 +109,7 @@ function RequestCard({
         <View style={rc.detailRow}>
           <Text style={rc.detailIcon}>🕐</Text>
           <Text style={rc.detailText}>
-            {req.arrival_time ? `Příjezd cca ${req.arrival_time}` : 'Čas příjezdu neurčen'}
+            {req.arrival_time ? `Arrival approx. ${req.arrival_time}` : 'Arrival time not set'}
           </Text>
         </View>
         <View style={rc.detailRow}>
@@ -136,10 +136,10 @@ function RequestCard({
       {isHost && req.status === 'PENDING' && (
         <View style={rc.actions}>
           <TouchableOpacity style={rc.acceptBtn} onPress={() => onRespond(req.id, 'ACCEPTED')}>
-            <Text style={rc.acceptTxt}>✓ PŘIJMOUT</Text>
+            <Text style={rc.acceptTxt}>✓ ACCEPT</Text>
           </TouchableOpacity>
           <TouchableOpacity style={rc.rejectBtn} onPress={() => onRespond(req.id, 'REJECTED')}>
-            <Text style={rc.rejectTxt}>✕ ODMÍTNOUT</Text>
+            <Text style={rc.rejectTxt}>✕ DECLINE</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -388,8 +388,8 @@ export default function RequestsScreen() {
     // Auto-message in chat
     if (selected && currentUser) {
       const autoBody = status === 'ACCEPTED'
-        ? '✅ Přijato! Těšíme se na tebe, ozvi se s podrobnostmi. 🏍🚴'
-        : 'Bohužel tentokrát to u mě nevyjde. Hodně zdaru na cestě! 🤞'
+        ? '✅ Accepted! Looking forward to having you, reach out with details. 🏍🚴'
+        : "Unfortunately it won't work this time. Have a great ride! 🤞"
       await supabase.from('messages').insert({
         conversation_id: selected.id,
         sender_id: currentUser.id,
@@ -411,7 +411,7 @@ export default function RequestsScreen() {
   // ── Chat view ────────────────────────────────────────────────────────────
 
   if (selected) {
-    const otherName = selected.other.full_name || 'Jezdec'
+    const otherName = selected.other.full_name || 'Rider'
     return (
       <KeyboardAvoidingView
         style={styles.container}
@@ -473,7 +473,7 @@ export default function RequestsScreen() {
             style={styles.input}
             value={text}
             onChangeText={setText}
-            placeholder="Napiš zprávu..."
+            placeholder="Type a message..."
             placeholderTextColor={C.textDim}
             multiline
             onSubmitEditing={Platform.OS === 'web' ? sendMessage : undefined}
@@ -507,37 +507,37 @@ export default function RequestsScreen() {
           style={[styles.tabBarBtn, activeTab === 'requests' && styles.tabBarBtnActive]}
           onPress={() => setActiveTab('requests')}
         >
-          <Text style={[styles.tabBarBtnText, activeTab === 'requests' && styles.tabBarBtnTextActive]}>Moje žádosti</Text>
+          <Text style={[styles.tabBarBtnText, activeTab === 'requests' && styles.tabBarBtnTextActive]}>My Requests</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tabBarBtn, activeTab === 'chats' && styles.tabBarBtnActive]}
           onPress={() => setActiveTab('chats')}
         >
-          <Text style={[styles.tabBarBtnText, activeTab === 'chats' && styles.tabBarBtnTextActive]}>Chaty</Text>
+          <Text style={[styles.tabBarBtnText, activeTab === 'chats' && styles.tabBarBtnTextActive]}>Chats</Text>
         </TouchableOpacity>
       </View>
 
       {loading ? (
         <View style={styles.center}>
-          <Text style={{ color: C.textDim, fontSize: 14 }}>Načítám...</Text>
+          <Text style={{ color: C.textDim, fontSize: 14 }}>Loading...</Text>
         </View>
       ) : convs.length === 0 ? (
         <View style={styles.center}>
           <Text style={styles.emptyEmoji}>📭</Text>
-          <Text style={styles.emptyTitle}>Žádné konverzace</Text>
-          <Text style={styles.emptyText}>Pošli žádost hostiteli z mapy — chat se otevře automaticky.</Text>
+          <Text style={styles.emptyTitle}>No conversations</Text>
+          <Text style={styles.emptyText}>Send a request to a host from the map — the chat will open automatically.</Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
           {convs
             .filter(c => activeTab === 'requests' ? c.hasRequest : true)
             .map(conv => {
-              const name = conv.other.full_name || 'Jezdec'
+              const name = conv.other.full_name || 'Rider'
               const isUnread = !!conv.lastMsgSenderId
                 && conv.lastMsgSenderId !== currentUser?.id
                 && !seenConvIds.has(conv.id)
               const preview = conv.lastMsgIsRequest
-                ? '🤞 Žádost o ubytování'
+                ? '🤞 Stay request'
                 : (conv.lastMsgBody ?? '')
               return (
                 <TouchableOpacity

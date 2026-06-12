@@ -7,40 +7,40 @@ import { C } from '../lib/theme'
 
 const VEHICLE_TYPES = [
   { value: 'moto', icon: '🏍', label: 'Moto' },
-  { value: 'bicycle', icon: '🚴', label: 'Kolo' },
+  { value: 'bicycle', icon: '🚴', label: 'Bicycle' },
 ]
 
 const PARKING = [
-  { value: 'garage_locked', icon: '🔒', label: 'Uzamčená garáž', desc: 'Fort Knox — nejlepší ochrana', color: C.success },
-  { value: 'carport', icon: '🔐', label: 'Přístřešek za plotem', desc: 'Krytý a za plotem', color: C.info },
-  { value: 'yard', icon: '🛡', label: 'Dvůr za plotem', desc: 'Bezpečný dvůr', color: C.accent },
-  { value: 'street', icon: '🛣', label: 'Ulice před domem', desc: 'Na vlastní riziko', color: '#94a3b8' },
+  { value: 'garage_locked', icon: '🔒', label: 'Locked Garage', desc: 'Fort Knox — best protection', color: C.success },
+  { value: 'carport', icon: '🔐', label: 'Covered Carport', desc: 'Covered and gated', color: C.info },
+  { value: 'yard', icon: '🛡', label: 'Fenced Yard', desc: 'Secure yard', color: C.accent },
+  { value: 'street', icon: '🛣', label: 'Street Parking', desc: 'At your own risk', color: '#94a3b8' },
 ]
 
 const SLEEP = [
-  { value: 'tent', icon: '⛺', label: 'Stan', desc: 'Přineseš si vlastní — místo je' },
-  { value: 'roof', icon: '🏠', label: 'Střecha nad hlavou', desc: 'Gauč, karimatka, cokoliv suché' },
-  { value: 'room', icon: '🛏', label: 'Pokoj', desc: 'Postel, soukromí, pořádný spánek' },
+  { value: 'tent', icon: '⛺', label: 'Tent', desc: 'Bring your own — space available' },
+  { value: 'roof', icon: '🏠', label: 'Roof Over Head', desc: 'Couch, mat, anything dry' },
+  { value: 'room', icon: '🛏', label: 'Private Room', desc: 'Bed, privacy, proper sleep' },
 ]
 
 const AMENITIES = [
-  { value: 'shower', icon: '🚿', label: 'Sprcha' },
-  { value: 'toilet', icon: '🚽', label: 'Záchod' },
-  { value: 'kitchen', icon: '🍳', label: 'Kuchyň' },
-  { value: 'laundry', icon: '👕', label: 'Pračka' },
-  { value: 'electricity', icon: '⚡', label: 'Elektrika' },
+  { value: 'shower', icon: '🚿', label: 'Shower' },
+  { value: 'toilet', icon: '🚽', label: 'Toilet' },
+  { value: 'kitchen', icon: '🍳', label: 'Kitchen' },
+  { value: 'laundry', icon: '👕', label: 'Laundry' },
+  { value: 'electricity', icon: '⚡', label: 'Electricity' },
   { value: 'wifi', icon: '📶', label: 'WiFi' },
-  { value: 'pub_nearby', icon: '🍺', label: 'Hospoda do 10 min' },
-  { value: 'breakfast', icon: '☕', label: 'Snídaně' },
-  { value: 'dinner', icon: '🍽', label: 'Večeře' },
-  { value: 'local_routes', icon: '🗺', label: 'Lokální trasy' },
-  { value: 'group_ride', icon: '🏍', label: 'Společná jízda' },
+  { value: 'pub_nearby', icon: '🍺', label: 'Pub within 10 min' },
+  { value: 'breakfast', icon: '☕', label: 'Breakfast' },
+  { value: 'dinner', icon: '🍽', label: 'Dinner' },
+  { value: 'local_routes', icon: '🗺', label: 'Local routes' },
+  { value: 'group_ride', icon: '🏍', label: 'Group ride' },
 ]
 
 const PRICING = [
-  { value: 'free', icon: '🤝', label: 'Zdarma', desc: 'Čistá pohostinnost' },
-  { value: 'tip', icon: '🙏', label: 'Tip welcome', desc: 'Co dáš, to beru' },
-  { value: 'fixed', icon: '💶', label: 'Placené', desc: 'Domluva předem' },
+  { value: 'free', icon: '🤝', label: 'Free', desc: 'Pure hospitality' },
+  { value: 'tip', icon: '🙏', label: 'Tip Welcome', desc: 'Give what you feel' },
+  { value: 'fixed', icon: '💶', label: 'Paid', desc: 'Agreed upfront' },
 ]
 
 interface Location {
@@ -115,16 +115,16 @@ export default function BecomeHostScreen() {
     setSaveOk(false)
     const primary = locations[0]
     if (!primary.pin) {
-      setSaveError('Klikni na mapu u místa č. 1 a vyber polohu.')
+      setSaveError('Click on the map at location #1 and select a position.')
       return
     }
     if (!currentUser) {
-      setSaveError('Nejsi přihlášen — přihlaš se a zkus to znovu.')
+      setSaveError("You're not logged in — please sign in and try again.")
       return
     }
     setSaving(true)
     try {
-      // Smaž stará místa a ulož nová
+      // Delete old locations and save new ones
       const { error: delError } = await supabase
         .from('host_locations')
         .delete()
@@ -157,7 +157,7 @@ export default function BecomeHostScreen() {
         setSaveOk(true)
       }
     } catch (e: any) {
-      setSaveError(e?.message || 'Neočekávaná chyba, zkus to znovu.')
+      setSaveError(e?.message || 'Unexpected error, please try again.')
     } finally {
       setSaving(false)
     }
@@ -167,20 +167,20 @@ export default function BecomeHostScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {locations.map((loc, index) => (
         <View key={index} style={styles.locationCard}>
-          {/* Hlavička místa */}
+          {/* Location header */}
           <View style={styles.locationHeader}>
             <View style={styles.locationBadge}>
-              <Text style={styles.locationBadgeText}>MÍSTO {index + 1}</Text>
+              <Text style={styles.locationBadgeText}>LOCATION {index + 1}</Text>
             </View>
             {locations.length > 1 && (
               <TouchableOpacity onPress={() => removeLocation(index)}>
-                <Text style={styles.removeLocation}>✕ Odebrat</Text>
+                <Text style={styles.removeLocation}>✕ Remove</Text>
               </TouchableOpacity>
             )}
           </View>
 
           {/* Mapa */}
-          <Text style={styles.label}>📍 POLOHA</Text>
+          <Text style={styles.label}>📍 LOCATION</Text>
           {loc.pin && (
             <Text style={styles.pinLabel}>
               {loc.pin.city ? `${loc.pin.city}${loc.pin.country ? ', ' + loc.pin.country : ''}` : `${loc.pin.lat.toFixed(4)}, ${loc.pin.lng.toFixed(4)}`}
@@ -194,7 +194,7 @@ export default function BecomeHostScreen() {
           </View>
 
           {/* Typ vozidla */}
-          <Text style={styles.label}>🛞 KOHO VÍTÁM?</Text>
+          <Text style={styles.label}>🛞 WHO DO I WELCOME?</Text>
           <View style={styles.chipsWrap}>
             {VEHICLE_TYPES.map(v => {
               const active = loc.vehicleTypes.includes(v.value)
@@ -211,8 +211,8 @@ export default function BecomeHostScreen() {
             })}
           </View>
 
-          {/* Parkování */}
-          <Text style={styles.label}>🅿️ PARKOVÁNÍ</Text>
+          {/* Parking */}
+          <Text style={styles.label}>🅿️ PARKING</Text>
           {PARKING.map(p => {
             const active = loc.parkings.includes(p.value)
             return (
@@ -231,8 +231,8 @@ export default function BecomeHostScreen() {
             )
           })}
 
-          {/* Spaní */}
-          <Text style={styles.label}>🛏 KDE BUDOU SPÁT?</Text>
+          {/* Sleeping */}
+          <Text style={styles.label}>🛏 WHERE WILL THEY SLEEP?</Text>
           {SLEEP.map(s => (
             <TouchableOpacity
               key={s.value}
@@ -248,8 +248,8 @@ export default function BecomeHostScreen() {
             </TouchableOpacity>
           ))}
 
-          {/* Vybavení */}
-          <Text style={styles.label}>🔧 CO MÁŠ K DISPOZICI?</Text>
+          {/* Amenities */}
+          <Text style={styles.label}>🔧 WHAT DO YOU OFFER?</Text>
           <View style={styles.chipsWrap}>
             {AMENITIES.map(a => {
               const active = loc.amenities.includes(a.value)
@@ -266,8 +266,8 @@ export default function BecomeHostScreen() {
             })}
           </View>
 
-          {/* Počet hostů */}
-          <Text style={styles.label}>👥 MAXIMÁLNÍ POČET JEZDCŮ</Text>
+          {/* Guest count */}
+          <Text style={styles.label}>👥 MAXIMUM NUMBER OF RIDERS</Text>
           <View style={styles.counter}>
             <TouchableOpacity style={styles.cBtn} onPress={() => updateLocation(index, { maxGuests: Math.max(1, loc.maxGuests - 1) })}>
               <Text style={styles.cBtnText}>−</Text>
@@ -276,11 +276,11 @@ export default function BecomeHostScreen() {
             <TouchableOpacity style={styles.cBtn} onPress={() => updateLocation(index, { maxGuests: Math.min(10, loc.maxGuests + 1) })}>
               <Text style={styles.cBtnText}>+</Text>
             </TouchableOpacity>
-            <Text style={styles.cDesc}>{loc.maxGuests === 1 ? 'jezdec najednou' : 'jezdci najednou'}</Text>
+            <Text style={styles.cDesc}>rider{loc.maxGuests !== 1 ? 's' : ''} at a time</Text>
           </View>
 
           {/* Cena */}
-          <Text style={styles.label}>💰 CO CHCEŠ ZA TO?</Text>
+          <Text style={styles.label}>💰 WHAT DO YOU WANT IN RETURN?</Text>
           <View style={styles.pricingRow}>
             {PRICING.map(p => {
               const active = loc.pricings.includes(p.value)
@@ -298,11 +298,11 @@ export default function BecomeHostScreen() {
             })}
           </View>
 
-          {/* Poznámky */}
-          <Text style={styles.label}>✍️ POPIS PRO JEZDCE</Text>
+          {/* Notes */}
+          <Text style={styles.label}>✍️ DESCRIPTION FOR RIDERS</Text>
           <TextInput
             style={styles.textarea}
-            placeholder={'Co nabízíš? Kde přesně parkovat?\nSprcha, wifi, večeře? Jak tě kontaktovat?'}
+            placeholder={'What do you offer? Where exactly to park?\nShower, wifi, dinner? How to contact you?'}
             placeholderTextColor="#666"
             value={loc.notes}
             onChangeText={text => updateLocation(index, { notes: text })}
@@ -312,9 +312,9 @@ export default function BecomeHostScreen() {
         </View>
       ))}
 
-      {/* Přidat další místo */}
+      {/* Add another location */}
       <TouchableOpacity style={styles.addBtn} onPress={addLocation}>
-        <Text style={styles.addBtnText}>+ PŘIDAT DALŠÍ MÍSTO</Text>
+        <Text style={styles.addBtnText}>+ ADD ANOTHER LOCATION</Text>
       </TouchableOpacity>
 
       {saveError ? (
@@ -325,23 +325,23 @@ export default function BecomeHostScreen() {
 
       {saveOk ? (
         <View style={styles.successBox}>
-          <Text style={styles.successText}>🎉 Jsi na mapě! Nabídka je viditelná pro všechny jezdce.</Text>
+          <Text style={styles.successText}>🎉 You're on the map! Your listing is visible to all riders.</Text>
           <TouchableOpacity onPress={() => router.replace('/(tabs)/map')} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>← Zpět na mapu</Text>
+            <Text style={styles.backBtnText}>← Back to map</Text>
           </TouchableOpacity>
         </View>
       ) : null}
 
-      {/* Uložit */}
+      {/* Save */}
       <TouchableOpacity style={styles.saveBtn} onPress={save} disabled={saving}>
         {saving
           ? <ActivityIndicator color={C.white} />
-          : <Text style={styles.saveBtnText}>🏠 ULOŽIT A JÍT NA MAPU →</Text>
+          : <Text style={styles.saveBtnText}>🏠 SAVE AND GO TO MAP →</Text>
         }
       </TouchableOpacity>
 
       <Text style={styles.hint}>
-        Tvoje nabídka se okamžitě zobrazí na mapě pro všechny registrované jezdce.
+        Your listing will appear immediately on the map for all registered riders.
       </Text>
     </ScrollView>
   )

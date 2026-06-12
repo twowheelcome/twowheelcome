@@ -37,12 +37,12 @@ export default function AuthScreen() {
   async function handleRegister() {
     setAuthError('')
     setAuthSuccess('')
-    if (!email.trim()) { setAuthError('Zadej email.'); return }
-    if (password.length < 6) { setAuthError('Heslo musí mít aspoň 6 znaků.'); return }
+    if (!email.trim()) { setAuthError('Please enter your email.'); return }
+    if (password.length < 6) { setAuthError('Password must be at least 6 characters.'); return }
     setLoading(true)
     const { error } = await supabase.auth.signUp({ email, password })
     if (error) setAuthError(error.message)
-    else setAuthSuccess('Hotovo! Zkontroluj email a potvrď registraci. 🤘')
+    else setAuthSuccess('Done! Check your email to confirm your account. 🤘')
     setLoading(false)
   }
 
@@ -98,7 +98,7 @@ export default function AuthScreen() {
           <Feather name="lock" size={16} color={C.textDim} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder="Heslo"
+            placeholder="Password"
             placeholderTextColor={C.placeholder}
             value={password}
             onChangeText={setPassword}
@@ -112,7 +112,7 @@ export default function AuthScreen() {
           disabled={loading}
         >
           <Text style={styles.btnPrimaryText}>
-            {loading ? 'Moment...' : mode === 'login' ? 'Přihlásit se' : 'Registrovat se'}
+            {loading ? 'Loading...' : mode === 'login' ? 'Sign in' : 'Sign up'}
           </Text>
         </TouchableOpacity>
 
@@ -121,7 +121,7 @@ export default function AuthScreen() {
           onPress={() => setMode(mode === 'login' ? 'register' : 'login')}
         >
           <Text style={styles.btnOutlineText}>
-            {mode === 'login' ? 'Registrovat se' : 'Přihlásit se'}
+            {mode === 'login' ? 'Create account' : 'Sign in'}
           </Text>
         </TouchableOpacity>
 
@@ -139,7 +139,7 @@ export default function AuthScreen() {
 
         {mode === 'login' && (
           <TouchableOpacity style={styles.forgotWrap}>
-            <Text style={styles.forgotText}>Zapomněl(a) jste heslo?</Text>
+            <Text style={styles.forgotText}>Forgot your password?</Text>
           </TouchableOpacity>
         )}
       </View>

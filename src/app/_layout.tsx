@@ -27,11 +27,11 @@ export default function RootLayout() {
         options={{
           presentation: 'modal',
           headerShown: true,
-          title: 'Stát se hostitelem',
+          title: 'Become a Host',
           headerStyle: { backgroundColor: C.bg },
           headerTintColor: C.accent,
           headerTitleStyle: { color: C.text, fontWeight: '700' },
-          headerBackTitle: 'Zpět',
+          headerBackTitle: 'Back',
         }}
       />
     </Stack>
