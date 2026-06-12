@@ -5,6 +5,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const FROM = 'TWOwheelCOME <noreply@twowheelcome.com>'
 const APP_URL = 'https://twowheelcome.com'
+const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -18,6 +19,16 @@ async function sendEmail(to: string, subject: string, html: string) {
     body: JSON.stringify({ from: FROM, to, subject, html }),
   })
   if (!res.ok) console.error('Resend error:', await res.text())
+}
+
+async function sendPush(token: string, title: string, body: string, url?: string) {
+  if (!token?.startsWith('ExponentPushToken')) return
+  const res = await fetch(EXPO_PUSH_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ to: token, title, body, data: url ? { url } : {}, sound: 'default' }),
+  })
+  if (!res.ok) console.error('Expo push error:', await res.text())
 }
 
 Deno.serve(async req => {
@@ -42,52 +53,79 @@ Deno.serve(async req => {
 
   const { data: profiles } = await admin
     .from('profiles')
-    .select('id, full_name')
+    .select('id, full_name, push_token')
     .in('id', [request.host_id, request.guest_id])
 
-  const hostName = profiles?.find(p => p.id === request.host_id)?.full_name || 'hostiteli'
-  const guestName = profiles?.find(p => p.id === request.guest_id)?.full_name || 'Jezdec'
+  const hostProfile  = profiles?.find(p => p.id === request.host_id)
+  const guestProfile = profiles?.find(p => p.id === request.guest_id)
+  const hostName  = hostProfile?.full_name  || 'your host'
+  const guestName = guestProfile?.full_name || 'A rider'
 
-  const dateInfo = `${request.arrival_date}${request.arrival_time ? ' cca ' + request.arrival_time : ''} → ${request.departure_date}`
+  const dateInfo = `${request.arrival_date}${request.arrival_time ? ' ~' + request.arrival_time : ''} → ${request.departure_date}`
+  const chatUrl  = '/(tabs)/requests'
 
-  if (event === 'new_request' && host?.email) {
-    await sendEmail(
-      host.email,
-      `🚪 Někdo klepe na dveře! — TWOwheelCOME`,
-      `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#1a1a1a;color:#eee;padding:32px;border-radius:12px">
-        <h2 style="color:#e8631a;margin:0 0 16px">🚪 Někdo klepe na dveře!</h2>
-        <p><strong>${guestName}</strong> ti poslal žádost o ubytování.</p>
-        <p style="color:#aaa">🗓 ${dateInfo}<br>👥 Jezdců: ${request.guests_count}</p>
-        ${request.message ? `<blockquote style="border-left:3px solid #e8631a;margin:16px 0;padding:8px 16px;color:#ccc">"${request.message}"</blockquote>` : ''}
-        <a href="${APP_URL}" style="display:inline-block;margin-top:16px;background:#e8631a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Otevřít aplikaci →</a>
-      </div>`
-    )
+  if (event === 'new_request') {
+    await Promise.all([
+      host?.email ? sendEmail(
+        host.email,
+        `🚪 Someone's knocking! — TWOwheelCOME`,
+        `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#1a1a1a;color:#eee;padding:32px;border-radius:12px">
+          <h2 style="color:#C47050;margin:0 0 16px">🚪 Someone's knocking!</h2>
+          <p><strong>${guestName}</strong> sent you a stay request.</p>
+          <p style="color:#aaa">🗓 ${dateInfo}<br>👥 Riders: ${request.guests_count}</p>
+          ${request.message ? `<blockquote style="border-left:3px solid #C47050;margin:16px 0;padding:8px 16px;color:#ccc">"${request.message}"</blockquote>` : ''}
+          <a href="${APP_URL}" style="display:inline-block;margin-top:16px;background:#C47050;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Open app →</a>
+        </div>`
+      ) : Promise.resolve(),
+      hostProfile?.push_token ? sendPush(
+        hostProfile.push_token,
+        '🚪 Someone\'s knocking!',
+        `${guestName} wants to stay — ${dateInfo}`,
+        chatUrl,
+      ) : Promise.resolve(),
+    ])
   }
 
-  if (event === 'accepted' && guest?.email) {
-    await sendEmail(
-      guest.email,
-      `✅ Máš kde složit hlavu! — TWOwheelCOME`,
-      `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#1a1a1a;color:#eee;padding:32px;border-radius:12px">
-        <h2 style="color:#22c55e;margin:0 0 16px">✅ Máš kde složit hlavu!</h2>
-        <p><strong>${hostName}</strong> přijal tvoji žádost.</p>
-        <p style="color:#aaa">🗓 ${dateInfo}<br>👥 Jezdců: ${request.guests_count}</p>
-        <p>Domluv se s hostitelem na detailech přímo. Safe travels! 🏍</p>
-        <a href="${APP_URL}" style="display:inline-block;margin-top:16px;background:#22c55e;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Otevřít aplikaci →</a>
-      </div>`
-    )
+  if (event === 'accepted') {
+    await Promise.all([
+      guest?.email ? sendEmail(
+        guest.email,
+        `✅ Address unlocked! — TWOwheelCOME`,
+        `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#1a1a1a;color:#eee;padding:32px;border-radius:12px">
+          <h2 style="color:#76C085;margin:0 0 16px">🔓 Address unlocked!</h2>
+          <p><strong>${hostName}</strong> accepted your request.</p>
+          <p style="color:#aaa">🗓 ${dateInfo}</p>
+          <p>Check the chat for the exact location. Safe travels! 🏍</p>
+          <a href="${APP_URL}" style="display:inline-block;margin-top:16px;background:#76C085;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Open app →</a>
+        </div>`
+      ) : Promise.resolve(),
+      guestProfile?.push_token ? sendPush(
+        guestProfile.push_token,
+        '🔓 Address unlocked!',
+        `${hostName} accepted — exact location is now in chat.`,
+        chatUrl,
+      ) : Promise.resolve(),
+    ])
   }
 
-  if (event === 'rejected' && guest?.email) {
-    await sendEmail(
-      guest.email,
-      `Žádost nebyla přijata — TWOwheelCOME`,
-      `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#1a1a1a;color:#eee;padding:32px;border-radius:12px">
-        <h2 style="margin:0 0 16px">Tentokrát to nevyšlo 🤙</h2>
-        <p><strong>${hostName}</strong> nemá tentokrát místo. Zkus jiného hostitele na mapě — komunit je dost.</p>
-        <a href="${APP_URL}" style="display:inline-block;margin-top:16px;background:#e8631a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Hledat na mapě →</a>
-      </div>`
-    )
+  if (event === 'rejected') {
+    await Promise.all([
+      guest?.email ? sendEmail(
+        guest.email,
+        `Knock declined — TWOwheelCOME`,
+        `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#1a1a1a;color:#eee;padding:32px;border-radius:12px">
+          <h2 style="margin:0 0 16px">No luck this time 🤙</h2>
+          <p><strong>${hostName}</strong> can't host right now. Find another host on the map.</p>
+          <a href="${APP_URL}" style="display:inline-block;margin-top:16px;background:#C47050;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Find on map →</a>
+        </div>`
+      ) : Promise.resolve(),
+      guestProfile?.push_token ? sendPush(
+        guestProfile.push_token,
+        'No luck this time 🤙',
+        `${hostName} can't host right now. Try another host on the map.`,
+        chatUrl,
+      ) : Promise.resolve(),
+    ])
   }
 
   return new Response('OK', { status: 200, headers: CORS })

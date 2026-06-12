@@ -2,59 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Platform } from 'react-native'
 import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
-import { C, SAFETY } from '../../lib/theme'
+import { C } from '../../lib/theme'
 import { UserChip } from '../../components/UserChip'
-
-// DB parking key → SAFETY key (handles legacy keys too)
-function getSafetyKey(parking: string): keyof typeof SAFETY {
-  const map: Record<string, keyof typeof SAFETY> = {
-    garage_locked: 'locked_garage',
-    locked_garage: 'locked_garage',
-    carport:       'carport',
-    yard:          'fenced_yard',
-    fenced_yard:   'fenced_yard',
-    street:        'street',
-  }
-  return map[parking] ?? 'street'
-}
-
-// Best (safest) SAFETY key for a list of parking values
-function bestSafety(parkings: string[]): keyof typeof SAFETY {
-  const order: (keyof typeof SAFETY)[] = ['locked_garage', 'carport', 'fenced_yard', 'street']
-  const keys = parkings.map(getSafetyKey)
-  return order.find(k => keys.includes(k)) ?? 'street'
-}
-
-function SafetyBlock({ parkings }: { parkings: string[] }) {
-  const s = SAFETY[bestSafety(parkings)]
-  return (
-    <View style={[sbStyles.block, { backgroundColor: s.color + '1F', borderColor: s.color + '70' }]}>
-      <Text style={sbStyles.icon}>{s.icon}</Text>
-      <View style={sbStyles.info}>
-        <View style={sbStyles.labelRow}>
-          <Text style={[sbStyles.label, { color: s.color }]}>{s.label.toUpperCase()}</Text>
-          <View style={[sbStyles.rankPill, { borderColor: s.color + '70' }]}>
-            <Text style={[sbStyles.rankText, { color: s.color }]}>{s.rank}</Text>
-          </View>
-        </View>
-        <Text style={sbStyles.sub}>{s.sub}</Text>
-        <Text style={sbStyles.parking}>🏍 parking</Text>
-      </View>
-    </View>
-  )
-}
-
-const sbStyles = StyleSheet.create({
-  block:    { borderRadius: 14, borderWidth: 1, padding: 12, flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginTop: 8 },
-  icon:     { fontSize: 22, marginTop: 2 },
-  info:     { flex: 1, gap: 2 },
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  label:    { fontSize: 13, fontWeight: '700', letterSpacing: 0.5, fontFamily: 'Oswald_700Bold' },
-  rankPill: { borderRadius: 100, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 2 },
-  rankText: { fontSize: 11, fontWeight: '600' },
-  sub:      { color: C.textDim, fontSize: 12, marginTop: 1 },
-  parking:  { color: C.textFaint, fontSize: 11, marginTop: 2 },
-})
+import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
 
 const pricingMeta: Record<string, { icon: string; label: string; color: string }> = {
   free:  { icon: '🤝', label: 'Free',        color: '#22c55e' },

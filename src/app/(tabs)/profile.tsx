@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker'
 import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
 import { C } from '../../lib/theme'
+import { SafetyBlock } from '../../components/SafetyBlock'
 
 export default function ProfileScreen() {
   const [user, setUser] = useState<any>(null)
@@ -16,6 +17,9 @@ export default function ProfileScreen() {
   const [nameInput, setNameInput] = useState('')
   const [savingName, setSavingName] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [bikeModel, setBikeModel] = useState('')
+  const [editingBike, setEditingBike] = useState(false)
+  const [savingBike, setSavingBike] = useState(false)
 
   useEffect(() => { loadAll() }, [])
 
@@ -30,6 +34,7 @@ export default function ProfileScreen() {
     setProfile(p.data)
     setHostLocations(h.data || [])
     setNameInput(p.data?.full_name || '')
+    setBikeModel(p.data?.bike_model || '')
     setLoading(false)
   }
 
@@ -78,6 +83,14 @@ export default function ProfileScreen() {
     } finally {
       setUploadingAvatar(false)
     }
+  }
+
+  async function saveBike() {
+    setSavingBike(true)
+    await supabase.from('profiles').upsert({ id: user.id, bike_model: bikeModel.trim() })
+    setProfile((p: any) => ({ ...p, bike_model: bikeModel.trim() }))
+    setSavingBike(false)
+    setEditingBike(false)
   }
 
   async function signOut() {
@@ -179,6 +192,33 @@ export default function ProfileScreen() {
         )}
         <Text style={styles.email}>{user?.email}</Text>
 
+        {/* Bike model */}
+        {editingBike ? (
+          <View style={styles.nameEdit}>
+            <TextInput
+              style={styles.nameInput}
+              value={bikeModel}
+              onChangeText={setBikeModel}
+              placeholder="e.g. Honda Africa Twin"
+              placeholderTextColor={C.textFaint}
+              autoFocus
+            />
+            <View style={styles.nameActions}>
+              <TouchableOpacity style={styles.saveNameBtn} onPress={saveBike} disabled={savingBike}>
+                <Text style={styles.saveNameBtnText}>{savingBike ? '...' : 'Save'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setEditingBike(false)}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity onPress={() => setEditingBike(true)} style={styles.nameRow}>
+            <Text style={styles.bikeModel}>{bikeModel ? `🏍 ${bikeModel}` : '🏍 Add your bike model'}</Text>
+            <Feather name="edit-2" size={12} color={C.textDim} style={{ marginLeft: 6, marginTop: 1 }} />
+          </TouchableOpacity>
+        )}
+
         {/* Stats */}
         <View style={styles.statsCard}>
           <View style={styles.statItem}>
@@ -196,6 +236,39 @@ export default function ProfileScreen() {
             <Text style={styles.statLabel}>trips</Text>
           </View>
         </View>
+
+        {/* Your place card */}
+        {isHost && (() => {
+          const loc = hostLocations[0]
+          const parkings: string[] = loc.parkings?.length ? loc.parkings : (loc.parking ? [loc.parking] : [])
+          const pricings: string[] = loc.pricings?.length ? loc.pricings : (loc.pricing ? [loc.pricing] : ['free'])
+          const sleepTypes: string[] = loc.sleep_types || []
+          const isFree = pricings.includes('free')
+          return (
+            <View style={styles.placeCard}>
+              <View style={styles.placeCardHeader}>
+                <Text style={styles.placeCardTitle}>YOUR PLACE</Text>
+                {loc.is_open && (
+                  <View style={styles.openTag}>
+                    <Text style={styles.openTagText}>Open</Text>
+                  </View>
+                )}
+              </View>
+              <SafetyBlock parkings={parkings} />
+              <View style={styles.placeDetails}>
+                {sleepTypes.length > 0 && (
+                  <Text style={styles.placeDetailText}>
+                    {sleepTypes.includes('room') ? '🛏 Private room' : sleepTypes.includes('roof') ? '🏠 Roof over head' : '⛺ Tent space'}
+                    {loc.max_guests ? `  ·  max ${loc.max_guests} riders` : ''}
+                  </Text>
+                )}
+                <Text style={styles.placeDetailText}>
+                  {isFree ? '🤝 Free · beer welcome 🍺' : pricings.includes('tip') ? '🙏 Tip welcome' : '💶 Paid'}
+                </Text>
+              </View>
+            </View>
+          )
+        })()}
 
         {/* Menu items */}
         <View style={styles.menuGroup}>
@@ -284,8 +357,16 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
-  name: { color: C.text, fontSize: 24, fontWeight: '800', letterSpacing: 0.3 },
+  name: { color: C.text, fontSize: 24, fontWeight: '800', letterSpacing: 0.3, fontFamily: 'Oswald_700Bold' },
   email: { color: C.textDim, fontSize: 13, marginTop: -12 },
+  bikeModel: { color: C.textMuted, fontSize: 14, marginTop: -8 },
+  placeCard: { backgroundColor: C.surface, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: C.border },
+  placeCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  placeCardTitle: { color: C.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 2, fontFamily: 'Oswald_700Bold' },
+  openTag: { backgroundColor: C.successSoft, borderRadius: 100, borderWidth: 1, borderColor: C.successBorder, paddingHorizontal: 10, paddingVertical: 3 },
+  openTagText: { color: C.success, fontSize: 11, fontWeight: '700' },
+  placeDetails: { marginTop: 10, gap: 4 },
+  placeDetailText: { color: C.textMuted, fontSize: 13 },
 
   nameEdit: { gap: 10 },
   nameInput: {
