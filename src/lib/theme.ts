@@ -1,33 +1,34 @@
-// TWO WHEELCOME – design system
-// Warm earth tones — chocolate, terracotta, cream
+// TWOWHEELCOME — design system  ·  "Living Green" scheme
+// Olive-warm earth + vibrant moss green. Terracotta = the only action
+// colour; moss green = availability / community; gold = "buddy on the route".
 
 export const C = {
   // ── Backgrounds ────────────────────────────────────────────────
-  bg:        '#100C08',  // near-black warm brown
-  surface:   '#1E1510',  // cards, panels
-  elevated:  '#2A1C12',  // inputs, chips
-  border:    '#3D2A18',
-  borderMid: '#4E3822',
-  hover:     '#261A0E',
+  bg:        '#0E0D09',  // near-black olive-brown — app canvas
+  surface:   '#201E15',  // cards, panels (lifted for separation)
+  elevated:  '#2D2A1B',  // inputs, chips, wells
+  border:    '#463F2B',  // default hairline
+  borderMid: '#5A5135',  // outline buttons, dividers
+  hover:     '#29261A',
 
   // ── Text ───────────────────────────────────────────────────────
-  text:        '#EDE5D5',  // warm cream
-  textMuted:   '#A89070',
-  textDim:     '#6A5040',
-  textFaint:   '#4A3828',
-  placeholder: '#7A6050',
+  text:        '#F0E8D7',  // warm cream
+  textMuted:   '#C0B08B',  // secondary
+  textDim:     '#897C5C',  // labels, meta
+  textFaint:   '#5A4F38',  // disabled
+  placeholder: '#847651',
 
-  // ── Accent — terracotta rust ────────────────────────────────────
+  // ── Accent — terracotta rust (PRIMARY action — every CTA) ───────
   accent:       '#C47050',
   accentSoft:   '#C4705018',
   accentBorder: '#C4705055',
 
-  // ── Forest green ────────────────────────────────────────────────
-  forest:       '#2D4A2D',
-  forestSoft:   '#2D4A2D18',
-  forestBorder: '#2D4A2D55',
+  // ── Forest green (structural depth, hero gradients) ─────────────
+  forest:       '#234A2C',
+  forestSoft:   '#234A2C30',
+  forestBorder: '#234A2C80',
 
-  // ── Leather brown ────────────────────────────────────────────────
+  // ── Leather brown ───────────────────────────────────────────────
   leather:       '#3D2314',
   leatherSoft:   '#3D231418',
   leatherBorder: '#3D231455',
@@ -38,27 +39,55 @@ export const C = {
   secondaryBorder: '#7A5C4055',
 
   // ── Semantic ────────────────────────────────────────────────────
-  success:       '#5A9C6E',
-  successSoft:   '#5A9C6E18',
-  successBorder: '#5A9C6E55',
+  success:       '#76C085',
+  successSoft:   '#76C0851F',
+  successBorder: '#76C08566',
 
-  error:       '#C04030',
-  errorSoft:   '#C0403018',
-  errorBorder: '#C0403055',
+  error:       '#CB4636',
+  errorSoft:   '#CB46361A',
+  errorBorder: '#CB463655',
 
-  warning:       '#C87040',
-  warningSoft:   '#C8704015',
-  warningBorder: '#C8704055',
+  warning:       '#D08049',
+  warningSoft:   '#D0804918',
+  warningBorder: '#D0804955',
 
-  info:       '#4A7C9C',
-  infoSoft:   '#4A7C9C15',
-  infoBorder: '#4A7C9C55',
+  info:       '#5A8FAE',
+  infoSoft:   '#5A8FAE18',
+  infoBorder: '#5A8FAE55',
 
-  purple:       '#7C5C7C',
-  purpleSoft:   '#7C5C7C15',
-  purpleBorder: '#7C5C7C55',
+  purple:       '#8A6A8A',
+  purpleSoft:   '#8A6A8A18',
+  purpleBorder: '#8A6A8A55',
+
+  // ── Buddy on the route (gold) ────────────────────────────────────
+  // A host you've stayed with & rated OK — gold pin on the map.
+  buddy:       '#E0A23C',
+  buddySoft:   '#E0A23C1F',
+  buddyBorder: '#E0A23C66',
 
   // ── Base ────────────────────────────────────────────────────────
   white: '#ffffff',
   black: '#000000',
 } as const
+
+// ── Bike-safety scale ─────────────────────────────────────────────
+// The heart of the product. Every host's parking maps to one level;
+// the level's colour + rank is shown as the hero block on each host.
+export const SAFETY = {
+  locked_garage: { icon: '🔒', label: 'Locked garage',   sub: 'Safest — behind a locked door', color: C.success, rank: 'Safest' },
+  carport:       { icon: '🏠', label: 'Covered carport',  sub: 'Covered & off the street',      color: C.info,    rank: 'Good'   },
+  fenced_yard:   { icon: '🚧', label: 'Fenced yard',      sub: 'Behind a locked gate',          color: C.warning, rank: 'Okay'   },
+  street:        { icon: '🛣️', label: 'Street parking',    sub: 'Visible — keep an eye on it',   color: C.error,   rank: 'Basic'  },
+} as const
+
+// ── Shape & type constants ────────────────────────────────────────
+export const RADIUS = { pill: 100, card: 20, lg: 18, md: 14, sm: 12 } as const
+export const FONT = {
+  display: 'Rye',     // logo / hero only
+  head:    'Oswald',  // headings, labels, buttons (700–900, uppercase, tracked)
+  body:    'System',  // body, chat, inputs
+} as const
+
+// ── Terrain-aware ETA — distance shown as TIME, not km ────────────
+// Same distance is ~10 min on road, ~27 min on trail. Riders pick mode.
+export const SPEED = { road: 72, trail: 27 } as const // km/h
