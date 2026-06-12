@@ -1,29 +1,22 @@
 import { useEffect, useState } from 'react'
 import { Tabs } from 'expo-router'
-import { Platform, Text, View } from 'react-native'
+import { Platform, View } from 'react-native'
+import { Feather } from '@expo/vector-icons'
 import { C } from '../../lib/theme'
 import { unreadStore } from '../../lib/unreadStore'
 
-function Icon({ e, dot }: { e: string; dot?: boolean }) {
+function TabIcon({ name, color, dot }: { name: React.ComponentProps<typeof Feather>['name']; color: string; dot?: boolean }) {
   return (
-    <View style={{ width: 32, height: 28, alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
-      <Text style={{ fontSize: 22, lineHeight: 26 }}>{e}</Text>
+    <View style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
+      <Feather name={name} size={22} color={color} />
       {dot && (
         <View style={{
-          position: 'absolute', top: 0, right: 0,
-          width: 14, height: 14, borderRadius: 7,
+          position: 'absolute', top: 0, right: -2,
+          width: 9, height: 9, borderRadius: 5,
           backgroundColor: C.accent, borderWidth: 2, borderColor: C.bg,
         }} />
       )}
     </View>
-  )
-}
-
-function Label({ title, focused }: { title: string; focused: boolean }) {
-  return (
-    <Text style={{ fontSize: 12, fontWeight: '700', color: focused ? C.accent : C.text }}>
-      {title}
-    </Text>
   )
 }
 
@@ -37,39 +30,42 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: C.bg,
-          borderTopColor: C.surface,
+          backgroundColor: C.surface,
+          borderTopColor: C.border,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 82 : 68,
-          paddingBottom: Platform.OS === 'ios' ? 22 : 12,
-          paddingTop: 8,
+          height: Platform.OS === 'ios' ? 84 : 68,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+          paddingTop: 10,
         },
         tabBarActiveTintColor: C.accent,
-        tabBarInactiveTintColor: C.text,
+        tabBarInactiveTintColor: C.textDim,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '700',
+          letterSpacing: 0.5,
+          marginTop: 2,
+        },
       }}
     >
       <Tabs.Screen
         name="map"
         options={{
           title: 'Mapa',
-          tabBarIcon: ({ focused }) => <Icon e="🗺" />,
-          tabBarLabel: ({ focused }) => <Label title="Mapa" focused={focused} />,
+          tabBarIcon: ({ color }) => <TabIcon name="map-pin" color={color} />,
         }}
       />
       <Tabs.Screen
         name="requests"
         options={{
-          title: 'Žádosti',
-          tabBarIcon: ({ focused }) => <Icon e="📬" dot={hasUnread} />,
-          tabBarLabel: ({ focused }) => <Label title="Žádosti" focused={focused} />,
+          title: 'Zprávy',
+          tabBarIcon: ({ color }) => <TabIcon name="message-circle" color={color} dot={hasUnread} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profil',
-          tabBarIcon: ({ focused }) => <Icon e="👤" />,
-          tabBarLabel: ({ focused }) => <Label title="Profil" focused={focused} />,
+          tabBarIcon: ({ color }) => <TabIcon name="user" color={color} />,
         }}
       />
     </Tabs>

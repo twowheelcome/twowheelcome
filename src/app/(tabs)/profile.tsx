@@ -1,13 +1,10 @@
 import { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
+import { Feather } from '@expo/vector-icons'
 import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
 import { C } from '../../lib/theme'
-
-const VEHICLE_TYPES = [
-  { value: 'moto', icon: '🏍', label: 'Moto' },
-  { value: 'bicycle', icon: '🚴', label: 'Kolo' },
-]
 
 export default function ProfileScreen() {
   const [user, setUser] = useState<any>(null)
@@ -37,20 +34,11 @@ export default function ProfileScreen() {
   async function saveName() {
     if (!nameInput.trim()) return
     setSavingName(true)
-    const { error } = await supabase
-      .from('profiles')
-      .upsert({ id: user.id, full_name: nameInput.trim() })
+    const { error } = await supabase.from('profiles').upsert({ id: user.id, full_name: nameInput.trim() })
     setSavingName(false)
     if (error) { Alert.alert('Chyba', error.message); return }
     setProfile((p: any) => ({ ...p, full_name: nameInput.trim() }))
     setEditingName(false)
-  }
-
-  async function toggleVehicleType(value: string) {
-    const current: string[] = profile?.vehicle_types || []
-    const next = current.includes(value) ? current.filter((v: string) => v !== value) : [...current, value]
-    await supabase.from('profiles').upsert({ id: user.id, vehicle_types: next })
-    setProfile((p: any) => ({ ...p, vehicle_types: next }))
   }
 
   async function signOut() {
@@ -59,19 +47,29 @@ export default function ProfileScreen() {
   }
 
   if (loading) {
-    return <View style={[styles.container, styles.center]}><ActivityIndicator color={C.accent} size="large" /></View>
+    return <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}><ActivityIndicator color={C.accent} size="large" /></View>
   }
 
   const initials = profile?.full_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || '?'
+  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Jezdec'
+  const isHost = hostLocations.length > 0
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Avatar + jméno */}
-      <View style={styles.avatarSection}>
+      {/* Hero section */}
+      <View style={styles.hero}>
+        <LinearGradient
+          colors={['#1A2E1E', '#2A1C10', C.bg]}
+          locations={[0, 0.6, 1]}
+          style={styles.heroBg}
+        />
         <View style={styles.avatarCircle}>
           <Text style={styles.avatarText}>{initials}</Text>
         </View>
+      </View>
 
+      <View style={styles.body}>
+        {/* Name */}
         {editingName ? (
           <View style={styles.nameEdit}>
             <TextInput
@@ -92,123 +90,147 @@ export default function ProfileScreen() {
             </View>
           </View>
         ) : (
-          <TouchableOpacity onPress={() => setEditingName(true)}>
-            <Text style={styles.name}>{profile?.full_name || 'Klikni a nastav jméno ✏️'}</Text>
+          <TouchableOpacity onPress={() => setEditingName(true)} style={styles.nameRow}>
+            <Text style={styles.name}>{displayName}</Text>
+            <Feather name="edit-2" size={14} color={C.textDim} style={{ marginLeft: 8, marginTop: 2 }} />
           </TouchableOpacity>
         )}
-
         <Text style={styles.email}>{user?.email}</Text>
-      </View>
 
-      <View style={styles.divider} />
-
-      {/* Typ vozidla */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🛞 CO JEDEŠ?</Text>
-        <View style={styles.chipsWrap}>
-          {VEHICLE_TYPES.map(v => {
-            const active = (profile?.vehicle_types || []).includes(v.value)
-            return (
-              <TouchableOpacity
-                key={v.value}
-                style={[styles.chip, active && styles.chipActive]}
-                onPress={() => toggleVehicleType(v.value)}
-              >
-                <Text style={styles.chipIcon}>{v.icon}</Text>
-                <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{v.label}</Text>
-              </TouchableOpacity>
-            )
-          })}
+        {/* Stats */}
+        <View style={styles.statsCard}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNum}>{hostLocations.length}</Text>
+            <Text style={styles.statLabel}>místa</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNum}>—</Text>
+            <Text style={styles.statLabel}>nocí</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNum}>—</Text>
+            <Text style={styles.statLabel}>trips</Text>
+          </View>
         </View>
+
+        {/* Menu items */}
+        <View style={styles.menuGroup}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/become-host')}>
+            <View style={styles.menuTextWrap}>
+              <Text style={styles.menuTitle}>{isHost ? 'Moje nabídky' : 'Stát se hostitelem'}</Text>
+              <Text style={styles.menuSub}>{isHost ? `${hostLocations.length} aktivní ${hostLocations.length === 1 ? 'místo' : 'místa'}` : 'Přidat nabídku'}</Text>
+            </View>
+            <View style={styles.menuIcon}>
+              <Feather name="home" size={18} color={C.accent} />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem}>
+            <View style={styles.menuTextWrap}>
+              <Text style={styles.menuTitle}>Historie</Text>
+              <Text style={styles.menuSub}>Zobrazit historii</Text>
+            </View>
+            <View style={styles.menuIcon}>
+              <Feather name="clock" size={18} color={C.accent} />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem}>
+            <View style={styles.menuTextWrap}>
+              <Text style={styles.menuTitle}>Nastavení</Text>
+              <Text style={styles.menuSub}>Upravit profil</Text>
+            </View>
+            <View style={styles.menuIcon}>
+              <Feather name="settings" size={18} color={C.accent} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity style={styles.signOutBtn} onPress={signOut}>
+          <Text style={styles.signOutText}>Odhlásit se</Text>
+        </TouchableOpacity>
       </View>
-
-      <View style={styles.divider} />
-
-      {/* Hostitelský profil */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🏠 MŮJ PROFIL HOSTITELE</Text>
-
-        {hostLocations.length > 0 ? (
-          <View style={{ gap: 10 }}>
-            {hostLocations.map((loc, i) => (
-              <View key={loc.id} style={styles.hostCard}>
-                <View style={styles.hostCardRow}>
-                  <Text style={styles.hostCardCity}>📍 {loc.location_city}, {loc.location_country}</Text>
-                </View>
-                <Text style={styles.hostCardDetail}>
-                  👥 Max. {loc.max_guests} hostů  ·  {
-                    loc.pricing === 'free' ? '🤝 Zdarma' :
-                    loc.pricing === 'tip' ? '🙏 Tip welcome' : '💶 Placené'
-                  }
-                </Text>
-                {loc.notes ? (
-                  <Text style={styles.hostCardNotes} numberOfLines={2}>{loc.notes}</Text>
-                ) : null}
-              </View>
-            ))}
-            <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/become-host')}>
-              <Text style={styles.editBtnText}>UPRAVIT NABÍDKU</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.noHostCard}>
-            <Text style={styles.noHostText}>
-              Otevři dveře komunitě. Nastav svojí nabídku a začni přijímat jezdce.
-            </Text>
-            <TouchableOpacity style={styles.becomeHostBtn} onPress={() => router.push('/become-host')}>
-              <Text style={styles.becomeHostBtnText}>🏠 STÁT SE HOSTITELEM →</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.divider} />
-
-      {/* Sign out */}
-      <TouchableOpacity style={styles.signOutBtn} onPress={signOut}>
-        <Text style={styles.signOutText}>Odhlásit se</Text>
-      </TouchableOpacity>
     </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
-  center: { alignItems: 'center', justifyContent: 'center' },
-  content: { padding: 24, paddingTop: 56, paddingBottom: 40, gap: 24 },
-  avatarSection: { alignItems: 'center', gap: 10 },
-  avatarCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: C.white, fontSize: 32, fontWeight: '900' },
-  name: { color: C.text, fontSize: 22, fontWeight: '700', textAlign: 'center' },
-  email: { color: C.textFaint, fontSize: 13 },
-  nameEdit: { width: '100%', gap: 8 },
-  nameInput: { backgroundColor: C.elevated, borderRadius: 10, padding: 12, color: C.text, fontSize: 16, borderWidth: 1, borderColor: C.accent, textAlign: 'center' },
-  nameActions: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16 },
-  saveNameBtn: { backgroundColor: C.accent, borderRadius: 8, paddingHorizontal: 20, paddingVertical: 8 },
+  content: { paddingBottom: 40 },
+
+  hero: {
+    height: 180,
+    position: 'relative',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-end',
+  },
+  heroBg: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  avatarCircle: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: C.surface,
+    borderWidth: 3, borderColor: C.accent,
+    alignItems: 'center', justifyContent: 'center',
+    marginLeft: 24, marginBottom: -40,
+    zIndex: 10,
+  },
+  avatarText: { color: C.accent, fontSize: 32, fontWeight: '900' },
+
+  body: {
+    paddingTop: 52,
+    paddingHorizontal: 24,
+    gap: 20,
+  },
+  nameRow: { flexDirection: 'row', alignItems: 'center' },
+  name: { color: C.text, fontSize: 24, fontWeight: '800', letterSpacing: 0.3 },
+  email: { color: C.textDim, fontSize: 13, marginTop: -12 },
+
+  nameEdit: { gap: 10 },
+  nameInput: {
+    backgroundColor: C.elevated, borderRadius: 14, padding: 14,
+    color: C.text, fontSize: 16, borderWidth: 1, borderColor: C.accent,
+  },
+  nameActions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  saveNameBtn: { backgroundColor: C.accent, borderRadius: 100, paddingHorizontal: 22, paddingVertical: 10 },
   saveNameBtnText: { color: C.white, fontWeight: '700' },
-  cancelText: { color: C.textFaint, fontSize: 14 },
-  divider: { height: 1, backgroundColor: C.surface },
-  section: { gap: 12 },
-  sectionTitle: { color: C.textFaint, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' },
-  hostCard: { backgroundColor: C.elevated, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: C.border, gap: 8 },
-  hostCardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  hostCardCity: { color: C.text, fontSize: 16, fontWeight: '700' },
-  activeBadge: { backgroundColor: C.successSoft, borderRadius: 6, borderWidth: 1, borderColor: C.successBorder, paddingHorizontal: 8, paddingVertical: 3 },
-  activeBadgeText: { color: C.success, fontSize: 10, fontWeight: '700', letterSpacing: 1 },
-  hostCardDetail: { color: C.placeholder, fontSize: 13 },
-  hostCardNotes: { color: C.textDim, fontSize: 12, lineHeight: 18 },
-  editBtn: { borderWidth: 1, borderColor: C.accent, borderRadius: 8, padding: 10, alignItems: 'center', marginTop: 4 },
-  editBtnText: { color: C.accent, fontWeight: '700', fontSize: 12, letterSpacing: 1 },
-  noHostCard: { backgroundColor: C.elevated, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: C.border, gap: 14 },
-  noHostText: { color: C.textDim, fontSize: 14, lineHeight: 20 },
-  becomeHostBtn: { backgroundColor: C.accent, borderRadius: 10, padding: 14, alignItems: 'center' },
-  becomeHostBtnText: { color: C.white, fontWeight: '700', fontSize: 14, letterSpacing: 0.5 },
-  signOutBtn: { alignItems: 'center', padding: 12 },
-  signOutText: { color: C.borderMid, fontSize: 14, textDecorationLine: 'underline' },
-  chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.elevated, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1, borderColor: C.border },
-  chipActive: { borderColor: C.accent, backgroundColor: C.accentSoft },
-  chipIcon: { fontSize: 16 },
-  chipLabel: { color: C.textMuted, fontSize: 13, fontWeight: '600' },
-  chipLabelActive: { color: C.accent },
+  cancelText: { color: C.textDim, fontSize: 14 },
+
+  statsCard: {
+    backgroundColor: C.surface,
+    borderRadius: 18,
+    padding: 20,
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  statItem: { flex: 1, alignItems: 'center', gap: 4 },
+  statNum: { color: C.text, fontSize: 26, fontWeight: '900' },
+  statLabel: { color: C.textDim, fontSize: 12, letterSpacing: 0.5 },
+  statDivider: { width: 1, backgroundColor: C.border, marginVertical: 4 },
+
+  menuGroup: { gap: 10 },
+  menuItem: {
+    backgroundColor: C.surface,
+    borderRadius: 18,
+    padding: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  menuTextWrap: { gap: 3 },
+  menuTitle: { color: C.text, fontSize: 16, fontWeight: '700' },
+  menuSub: { color: C.textDim, fontSize: 13 },
+  menuIcon: {
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: C.elevated,
+    alignItems: 'center', justifyContent: 'center',
+  },
+
+  signOutBtn: { alignItems: 'center', paddingVertical: 8 },
+  signOutText: { color: C.textFaint, fontSize: 14, textDecorationLine: 'underline' },
 })

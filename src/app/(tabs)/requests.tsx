@@ -4,6 +4,7 @@ import {
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { useFocusEffect, useLocalSearchParams } from 'expo-router'
+import { Feather } from '@expo/vector-icons'
 import { supabase } from '../../lib/supabase'
 import { C } from '../../lib/theme'
 import { unreadStore } from '../../lib/unreadStore'
@@ -52,9 +53,9 @@ type MsgRow = {
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 const STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  PENDING:  { label: '⏳ Čeká na odpověď', color: C.warning,  bg: 'rgba(230,126,34,0.12)' },
-  ACCEPTED: { label: '✅ Přijato',          color: C.success,  bg: 'rgba(39,174,96,0.12)' },
-  REJECTED: { label: '❌ Odmítnuto',        color: C.error,    bg: 'rgba(231,76,60,0.12)' },
+  PENDING:  { label: 'Pending',    color: C.text,    bg: C.accent },
+  ACCEPTED: { label: 'Přijato',    color: C.white,   bg: C.success },
+  REJECTED: { label: 'Odmítnuto', color: C.white,   bg: C.error },
 }
 
 // For DATE strings (YYYY-MM-DD) — manual parse to avoid timezone shifts
@@ -147,29 +148,32 @@ function RequestCard({
 
 const rc = StyleSheet.create({
   card: {
-    backgroundColor: C.surface, borderRadius: 14,
+    backgroundColor: C.surface, borderRadius: 20,
     borderWidth: 1, borderColor: C.border,
-    padding: 14, gap: 10, maxWidth: '88%',
+    padding: 14, gap: 10, maxWidth: '90%',
   },
-  cardTitle: { color: C.textMuted, fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
-  statusBadge: { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-  statusText: { fontSize: 13, fontWeight: '700' },
-  details: { gap: 5 },
-  detailRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+  cardTitle: { color: C.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 2 },
+  statusBadge: {
+    alignSelf: 'flex-start', borderRadius: 100,
+    paddingHorizontal: 12, paddingVertical: 5,
+  },
+  statusText: { fontSize: 12, fontWeight: '700' },
+  details: { gap: 6 },
+  detailRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   detailIcon: { fontSize: 13, lineHeight: 20 },
   detailText: { color: C.text, fontSize: 13, lineHeight: 20, flex: 1 },
   msgBlock: {
-    backgroundColor: C.elevated, borderRadius: 8,
-    paddingHorizontal: 10, paddingVertical: 8,
+    backgroundColor: C.elevated, borderRadius: 12,
+    paddingHorizontal: 12, paddingVertical: 10,
     borderLeftWidth: 3, borderLeftColor: C.accent,
   },
-  msgText: { color: C.textMuted, fontSize: 13, lineHeight: 19, fontStyle: 'italic' },
-  photo: { width: '100%', height: 200, borderRadius: 10 },
+  msgText: { color: C.textMuted, fontSize: 13, lineHeight: 20, fontStyle: 'italic' },
+  photo: { width: '100%', height: 200, borderRadius: 14 },
   actions: { flexDirection: 'row', gap: 8, paddingTop: 4 },
-  acceptBtn: { flex: 1, backgroundColor: C.success, borderRadius: 8, padding: 11, alignItems: 'center' },
-  acceptTxt: { color: C.white, fontWeight: '700', fontSize: 12, letterSpacing: 0.5 },
-  rejectBtn: { flex: 1, borderRadius: 8, padding: 11, alignItems: 'center', borderWidth: 1, borderColor: C.error },
-  rejectTxt: { color: C.error, fontWeight: '700', fontSize: 12, letterSpacing: 0.5 },
+  acceptBtn: { flex: 1, backgroundColor: C.success, borderRadius: 100, padding: 13, alignItems: 'center' },
+  acceptTxt: { color: C.white, fontWeight: '700', fontSize: 13 },
+  rejectBtn: { flex: 1, borderRadius: 100, padding: 13, alignItems: 'center', borderWidth: 1, borderColor: C.error },
+  rejectTxt: { color: C.error, fontWeight: '700', fontSize: 13 },
 })
 
 // ── Main Screen ───────────────────────────────────────────────────────────
@@ -486,8 +490,10 @@ export default function RequestsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>ZPRÁVY</Text>
-        <UserChip />
+        <Text style={styles.title}>TWOWHEELCOME</Text>
+        <TouchableOpacity style={styles.headerSearchBtn}>
+          <Feather name="search" size={18} color={C.textMuted} />
+        </TouchableOpacity>
       </View>
 
       {loading ? (
@@ -501,14 +507,14 @@ export default function RequestsScreen() {
           <Text style={styles.emptyText}>Pošli žádost hostiteli z mapy — chat se otevře automaticky.</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingVertical: 8 }}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 16, gap: 0 }}>
           {convs.map(conv => {
             const name = conv.other.full_name || 'Jezdec'
             const isUnread = !!conv.lastMsgSenderId
               && conv.lastMsgSenderId !== currentUser?.id
               && !seenConvIds.has(conv.id)
             const preview = conv.lastMsgIsRequest
-              ? '🤞 Žádost o ubytování'
+              ? 'Žádost o ubytování'
               : (conv.lastMsgBody ?? '')
             return (
               <TouchableOpacity
@@ -516,22 +522,29 @@ export default function RequestsScreen() {
                 style={styles.convRow}
                 onPress={() => openConv(conv)}
               >
-                <View style={styles.convAvatarWrap}>
-                  <View style={styles.convAvatar}>
-                    <Text style={styles.convAvatarText}>{name.charAt(0).toUpperCase()}</Text>
+                <View style={styles.convCard}>
+                  <View style={styles.convAvatarWrap}>
+                    <View style={styles.convAvatar}>
+                      <Text style={styles.convAvatarText}>{name.charAt(0).toUpperCase()}</Text>
+                    </View>
+                    {isUnread && <View style={styles.unreadDot} />}
                   </View>
-                  {isUnread && <View style={styles.unreadDot} />}
-                </View>
-                <View style={styles.convInfo}>
-                  <View style={styles.convTopRow}>
-                    <Text style={[styles.convName, isUnread && styles.convNameUnread]}>{name}</Text>
-                    <Text style={styles.convTime}>{fmtDate(conv.last_message_at)}</Text>
+                  <View style={styles.convInfo}>
+                    <View style={styles.convTopRow}>
+                      <Text style={[styles.convName, isUnread && styles.convNameUnread]}>{name}</Text>
+                      <Text style={styles.convTime}>{fmtDate(conv.last_message_at)}</Text>
+                    </View>
+                    {preview ? (
+                      <Text style={[styles.convPreview, isUnread && styles.convPreviewUnread]} numberOfLines={1}>
+                        {preview}
+                      </Text>
+                    ) : null}
                   </View>
-                  {preview ? (
-                    <Text style={[styles.convPreview, isUnread && styles.convPreviewUnread]} numberOfLines={1}>
-                      {preview}
-                    </Text>
-                  ) : null}
+                  {conv.lastMsgIsRequest && (
+                    <View style={styles.convStatusBadge}>
+                      <Text style={styles.convStatusText}>Pending</Text>
+                    </View>
+                  )}
                 </View>
               </TouchableOpacity>
             )
@@ -547,17 +560,22 @@ export default function RequestsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   header: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    padding: 20, paddingTop: 52,
-    borderBottomWidth: 1, borderBottomColor: C.surface,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16,
   },
-  title: { color: C.text, fontSize: 22, fontWeight: '900', letterSpacing: 2 },
+  title: { color: C.text, fontSize: 24, fontWeight: '900', letterSpacing: 1, flex: 1 },
+  headerSearchBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: C.surface, borderWidth: 1, borderColor: C.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
   back: { color: C.accent, fontSize: 24, fontWeight: '700', paddingRight: 4 },
   chatAvatar: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center',
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: C.elevated, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: C.border,
   },
-  chatAvatarText: { color: C.white, fontWeight: '700', fontSize: 15 },
+  chatAvatarText: { color: C.accent, fontWeight: '800', fontSize: 15 },
   chatName: { color: C.text, fontSize: 16, fontWeight: '700', flex: 1 },
 
   // Messages
@@ -566,31 +584,31 @@ const styles = StyleSheet.create({
   msgRowLeft: { justifyContent: 'flex-start' },
   msgRowRight: { justifyContent: 'flex-end' },
   bubble: {
-    maxWidth: '78%', borderRadius: 16, padding: 10,
-    backgroundColor: C.elevated, gap: 4,
+    maxWidth: '78%', borderRadius: 20, padding: 12,
+    backgroundColor: C.surface, gap: 4,
   },
   bubbleMine: { backgroundColor: C.accent },
-  bubbleOther: { backgroundColor: C.elevated },
-  bubbleText: { color: C.text, fontSize: 14, lineHeight: 20 },
+  bubbleOther: { backgroundColor: C.surface },
+  bubbleText: { color: C.text, fontSize: 14, lineHeight: 21 },
   bubbleTextMine: { color: C.white },
-  bubblePhoto: { width: 220, height: 160, borderRadius: 10 },
+  bubblePhoto: { width: 220, height: 160, borderRadius: 14 },
   bubbleTime: { color: C.textDim, fontSize: 10, alignSelf: 'flex-end' },
-  bubbleTimeMine: { color: 'rgba(255,255,255,0.6)' },
+  bubbleTimeMine: { color: 'rgba(255,255,255,0.55)' },
 
   // Input
   inputRow: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 10,
-    padding: 12, borderTopWidth: 1, borderTopColor: C.border,
-    backgroundColor: C.bg,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    padding: 12, paddingHorizontal: 16,
+    backgroundColor: C.surface,
+    borderTopWidth: 1, borderTopColor: C.border,
   },
   input: {
-    flex: 1, backgroundColor: C.elevated, borderRadius: 20,
-    paddingHorizontal: 16, paddingVertical: 10,
+    flex: 1, backgroundColor: C.elevated, borderRadius: 100,
+    paddingHorizontal: 18, paddingVertical: 12,
     color: C.text, fontSize: 14, maxHeight: 120,
-    borderWidth: 1, borderColor: C.border,
   },
   sendBtn: {
-    width: 44, height: 44, borderRadius: 22,
+    width: 46, height: 46, borderRadius: 23,
     backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center',
   },
   sendBtnDisabled: { backgroundColor: C.border },
@@ -598,25 +616,29 @@ const styles = StyleSheet.create({
 
   // Conversation list
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  emptyEmoji: { fontSize: 56, marginBottom: 16 },
-  emptyTitle: { color: C.text, fontSize: 18, fontWeight: '700', marginBottom: 8, textAlign: 'center' },
-  emptyText: { color: C.textFaint, fontSize: 13, textAlign: 'center', lineHeight: 20 },
+  emptyEmoji: { fontSize: 52, marginBottom: 16 },
+  emptyTitle: { color: C.text, fontSize: 18, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
+  emptyText: { color: C.textDim, fontSize: 13, textAlign: 'center', lineHeight: 21 },
   convRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    paddingHorizontal: 20, paddingVertical: 13,
-    borderBottomWidth: 1, borderBottomColor: C.surface,
+    paddingHorizontal: 16, paddingVertical: 10,
+  },
+  convCard: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: C.surface, borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 13,
+    borderWidth: 1, borderColor: C.border,
   },
   convAvatarWrap: { position: 'relative' },
   convAvatar: {
     width: 48, height: 48, borderRadius: 24,
-    backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: C.elevated, alignItems: 'center', justifyContent: 'center',
   },
-  convAvatarText: { color: C.white, fontWeight: '700', fontSize: 18 },
+  convAvatarText: { color: C.accent, fontWeight: '800', fontSize: 17 },
   unreadDot: {
     position: 'absolute', top: 0, right: 0,
-    width: 13, height: 13, borderRadius: 7,
-    backgroundColor: C.accent,
-    borderWidth: 2, borderColor: C.bg,
+    width: 12, height: 12, borderRadius: 6,
+    backgroundColor: C.accent, borderWidth: 2, borderColor: C.bg,
   },
   convInfo: { flex: 1, gap: 3 },
   convTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -625,4 +647,9 @@ const styles = StyleSheet.create({
   convTime: { color: C.textDim, fontSize: 12 },
   convPreview: { color: C.textDim, fontSize: 13, lineHeight: 18 },
   convPreviewUnread: { color: C.textMuted, fontWeight: '600' },
+  convStatusBadge: {
+    borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4,
+    backgroundColor: C.accent,
+  },
+  convStatusText: { color: C.white, fontSize: 11, fontWeight: '700' },
 })

@@ -1,54 +1,59 @@
-// TWO WHEELCOME – design system colors
-// Dark mode as default, outdoor/adventure character
+// TWO WHEELCOME – design system
+// Warm earth tones — chocolate, terracotta, cream
 
 export const C = {
-  // ── Backgrounds (darkest → lightest) ──────────────────────────
-  bg:        '#1A2229',  // main page background — night sky
-  surface:   '#202D38',  // cards, panels
-  elevated:  '#263444',  // inputs, chips, counter buttons
-  border:    '#2E3E4E',  // standard borders
-  borderMid: '#3A4E5E',  // lighter borders / dividers
-  hover:     '#2A3A4A',  // hover / pressed states
+  // ── Backgrounds ────────────────────────────────────────────────
+  bg:        '#100C08',  // near-black warm brown
+  surface:   '#1E1510',  // cards, panels
+  elevated:  '#2A1C12',  // inputs, chips
+  border:    '#3D2A18',
+  borderMid: '#4E3822',
+  hover:     '#261A0E',
 
-  // ── Text hierarchy ─────────────────────────────────────────────
-  text:        '#F4F1EA',  // primary text — warm sand
-  textMuted:   '#B8B2A9',  // secondary labels
-  textDim:     '#637080',  // tertiary / metadata
-  textFaint:   '#4A5A68',  // disabled / placeholder hints
-  placeholder: '#8C8880',  // input placeholders
+  // ── Text ───────────────────────────────────────────────────────
+  text:        '#EDE5D5',  // warm cream
+  textMuted:   '#A89070',
+  textDim:     '#6A5040',
+  textFaint:   '#4A3828',
+  placeholder: '#7A6050',
 
-  // ── Accent / CTA ───────────────────────────────────────────────
-  accent:       '#E67E22',   // adventure orange — buttons, active states
-  accentSoft:   '#E67E2218', // tinted backgrounds
-  accentBorder: '#E67E2255', // tinted borders
+  // ── Accent — terracotta rust ────────────────────────────────────
+  accent:       '#C47050',
+  accentSoft:   '#C4705018',
+  accentBorder: '#C4705055',
 
-  // ── Khaki — online status, outdoor subtle accents ──────────────
-  khaki:       '#3B4D3C',
-  khakiSoft:   '#3B4D3C20',
-  khakiBorder: '#3B4D3C60',
+  // ── Primary — forest dark ───────────────────────────────────────
+  primary:       '#1A2E1E',
+  primarySoft:   '#1A2E1E30',
+  primaryBorder: '#1A2E1E80',
 
-  // ── Semantic (success / error / warning / info) ────────────────
-  success:       '#22c55e',
-  successSoft:   '#22c55e18',
-  successBorder: '#22c55e55',
+  // ── Earth ───────────────────────────────────────────────────────
+  secondary:       '#7A5C40',
+  secondarySoft:   '#7A5C4018',
+  secondaryBorder: '#7A5C4055',
 
-  error:       '#ef4444',
-  errorSoft:   '#ef444418',
-  errorBorder: '#ef444455',
+  // ── Semantic ────────────────────────────────────────────────────
+  success:       '#5A9C6E',
+  successSoft:   '#5A9C6E18',
+  successBorder: '#5A9C6E55',
 
-  warning:     '#f59e0b',
-  warningSoft: '#f59e0b15',
-  warningBorder: '#f59e0b55',
+  error:       '#C04030',
+  errorSoft:   '#C0403018',
+  errorBorder: '#C0403055',
 
-  info:      '#3b82f6',
-  infoSoft:  '#3b82f615',
-  infoBorder: '#3b82f655',
+  warning:       '#C87040',
+  warningSoft:   '#C8704015',
+  warningBorder: '#C8704055',
 
-  purple:      '#a855f7',
-  purpleSoft:  '#a855f715',
-  purpleBorder: '#a855f755',
+  info:       '#4A7C9C',
+  infoSoft:   '#4A7C9C15',
+  infoBorder: '#4A7C9C55',
 
-  // ── Base ───────────────────────────────────────────────────────
+  purple:       '#7C5C7C',
+  purpleSoft:   '#7C5C7C15',
+  purpleBorder: '#7C5C7C55',
+
+  // ── Base ────────────────────────────────────────────────────────
   white: '#ffffff',
   black: '#000000',
 } as const
