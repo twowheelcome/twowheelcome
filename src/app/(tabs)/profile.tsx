@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert, Image, Platform } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Feather } from '@expo/vector-icons'
@@ -16,7 +16,6 @@ export default function ProfileScreen() {
   const [nameInput, setNameInput] = useState('')
   const [savingName, setSavingName] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const avatarInputRef = useRef<any>(null)
 
   useEffect(() => { loadAll() }, [])
 
@@ -45,10 +44,6 @@ export default function ProfileScreen() {
   }
 
   async function pickAvatar() {
-    if (Platform.OS === 'web') {
-      avatarInputRef.current?.click()
-      return
-    }
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (status !== 'granted') {
       Alert.alert('Permission needed', 'Please grant photo library access to upload an avatar.')
@@ -100,20 +95,6 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Hidden file input for web avatar upload */}
-      {Platform.OS === 'web' && (
-        <input
-          ref={avatarInputRef}
-          type="file"
-          accept="image/*"
-          style={{ display: 'none' }}
-          onChange={(e: any) => {
-            const file = e.target.files?.[0]
-            if (file) uploadAvatar(file)
-          }}
-        />
-      )}
-
       {/* Hero section */}
       <View style={styles.hero}>
         <LinearGradient
@@ -121,27 +102,52 @@ export default function ProfileScreen() {
           locations={[0, 0.6, 1]}
           style={styles.heroBg}
         />
-        <TouchableOpacity
-          style={styles.avatarWrap}
-          onPress={pickAvatar}
-          activeOpacity={0.8}
-        >
-          <View style={styles.avatarCircle}>
-            {profile?.avatar_url ? (
-              <Image source={{ uri: profile.avatar_url }} style={styles.avatarPhoto} />
-            ) : (
-              <Text style={styles.avatarText}>{initials}</Text>
-            )}
-            {uploadingAvatar && (
-              <View style={styles.avatarOverlay}>
-                <ActivityIndicator color={C.white} size="small" />
-              </View>
-            )}
+        {Platform.OS === 'web' ? (
+          <View style={styles.avatarWrap}>
+            <View style={styles.avatarCircle}>
+              {profile?.avatar_url ? (
+                <Image source={{ uri: profile.avatar_url }} style={styles.avatarPhoto} />
+              ) : (
+                <Text style={styles.avatarText}>{initials}</Text>
+              )}
+              {uploadingAvatar && (
+                <View style={styles.avatarOverlay}>
+                  <ActivityIndicator color={C.white} size="small" />
+                </View>
+              )}
+            </View>
+            <View style={styles.avatarEditBadge}>
+              <Feather name="camera" size={10} color={C.white} />
+            </View>
+            <input
+              type="file"
+              accept="image/*"
+              style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' } as any}
+              onChange={(e: any) => {
+                const file = e.target.files?.[0]
+                if (file) uploadAvatar(file)
+              }}
+            />
           </View>
-          <View style={styles.avatarEditBadge}>
-            <Feather name="camera" size={10} color={C.white} />
-          </View>
-        </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.avatarWrap} onPress={pickAvatar} activeOpacity={0.8}>
+            <View style={styles.avatarCircle}>
+              {profile?.avatar_url ? (
+                <Image source={{ uri: profile.avatar_url }} style={styles.avatarPhoto} />
+              ) : (
+                <Text style={styles.avatarText}>{initials}</Text>
+              )}
+              {uploadingAvatar && (
+                <View style={styles.avatarOverlay}>
+                  <ActivityIndicator color={C.white} size="small" />
+                </View>
+              )}
+            </View>
+            <View style={styles.avatarEditBadge}>
+              <Feather name="camera" size={10} color={C.white} />
+            </View>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.body}>
