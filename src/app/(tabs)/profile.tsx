@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert, Image, Platform } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Feather } from '@expo/vector-icons'
+import * as ImagePicker from 'expo-image-picker'
 import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
 import { C } from '../../lib/theme'
@@ -43,11 +44,35 @@ export default function ProfileScreen() {
     setEditingName(false)
   }
 
-  async function uploadAvatar(file: File) {
+  async function pickAvatar() {
+    if (Platform.OS === 'web') {
+      avatarInputRef.current?.click()
+      return
+    }
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please grant photo library access to upload an avatar.')
+      return
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    })
+    if (result.canceled) return
+    const asset = result.assets[0]
+    const ext = asset.uri.split('.').pop()?.toLowerCase() || 'jpg'
+    const response = await fetch(asset.uri)
+    const blob = await response.blob()
+    await uploadAvatar(blob, ext)
+  }
+
+  async function uploadAvatar(file: File | Blob, extHint?: string) {
     if (!user) return
     setUploadingAvatar(true)
     try {
-      const ext = file.name.split('.').pop() || 'jpg'
+      const ext = extHint ?? ((file as File).name?.split('.').pop() || 'jpg')
       const path = `${user.id}/avatar.${ext}`
       const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
       if (upErr) { Alert.alert('Upload error', upErr.message); return }
@@ -98,7 +123,7 @@ export default function ProfileScreen() {
         />
         <TouchableOpacity
           style={styles.avatarWrap}
-          onPress={() => Platform.OS === 'web' && avatarInputRef.current?.click()}
+          onPress={pickAvatar}
           activeOpacity={0.8}
         >
           <View style={styles.avatarCircle}>
