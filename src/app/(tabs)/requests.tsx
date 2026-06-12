@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  FlatList, Image, KeyboardAvoidingView, Platform,
+  FlatList, Image, KeyboardAvoidingView, Linking, Platform,
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { useFocusEffect, useLocalSearchParams } from 'expo-router'
@@ -9,6 +9,8 @@ import { supabase } from '../../lib/supabase'
 import { C } from '../../lib/theme'
 import { unreadStore } from '../../lib/unreadStore'
 import { UserChip } from '../../components/UserChip'
+
+type HostLoc = { city: string; country: string }
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -78,25 +80,57 @@ function fmtTime(iso: string) {
 // ── RequestCard ───────────────────────────────────────────────────────────
 
 function RequestCard({
-  req, body, isHost, onRespond,
+  req, body, isHost, hostLoc, onRespond,
 }: {
   req: RequestData
   body: string | null
   isHost: boolean
+  hostLoc?: HostLoc | null
   onRespond: (id: string, status: 'ACCEPTED' | 'REJECTED') => void
 }) {
   const s = STATUS[req.status] || STATUS.PENDING
-  const vehicle = req.guest_vehicle === 'moto' ? '🏍 Moto' : req.guest_vehicle === 'bicycle' ? '🚴 Kolo' : null
+  const vehicle = req.guest_vehicle === 'moto' ? '🏍 Moto' : null
   const guestsLabel = req.guests_count === 1 ? '1 rider' : `${req.guests_count} riders`
+  const isGuest = !isHost
+
+  function openNav() {
+    if (!hostLoc) return
+    const q = encodeURIComponent(`${hostLoc.city}, ${hostLoc.country}`)
+    Linking.openURL(`https://maps.google.com/?q=${q}`)
+  }
 
   return (
     <View style={rc.card}>
-      <Text style={rc.cardTitle}>🤞 STAY REQUEST</Text>
+      <Text style={rc.cardTitle}>{isGuest ? '🔒 YOUR KNOCK' : '🤞 STAY REQUEST'}</Text>
 
-      {/* Status */}
+      {/* Status badge */}
       <View style={[rc.statusBadge, { backgroundColor: s.bg }]}>
         <Text style={[rc.statusText, { color: s.color }]}>{s.label}</Text>
       </View>
+
+      {/* Privacy block — guest side only */}
+      {isGuest && req.status === 'PENDING' && (
+        <View style={[rc.privacyBlock, { backgroundColor: C.accentSoft, borderColor: C.accentBorder }]}>
+          <Text style={rc.privacyIcon}>🔒</Text>
+          <Text style={[rc.privacyText, { color: C.textMuted }]}>
+            Approx. area for now — exact spot unlocks the moment they accept.
+          </Text>
+        </View>
+      )}
+      {isGuest && req.status === 'ACCEPTED' && (
+        <View style={[rc.privacyBlock, { backgroundColor: C.successSoft, borderColor: C.successBorder }]}>
+          <Text style={rc.privacyIcon}>🔓</Text>
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={[rc.privacyText, { color: C.success, fontWeight: '700' }]}>ADDRESS UNLOCKED</Text>
+            {hostLoc && (
+              <Text style={[rc.privacyText, { color: C.textMuted }]}>{hostLoc.city}, {hostLoc.country}</Text>
+            )}
+            <TouchableOpacity style={rc.navBtn} onPress={openNav}>
+              <Text style={rc.navBtnText}>🧭 Navigate</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Details */}
       <View style={rc.details}>
@@ -132,7 +166,7 @@ function RequestCard({
         <Image source={{ uri: req.photo_url }} style={rc.photo} resizeMode="cover" />
       ) : null}
 
-      {/* Actions */}
+      {/* Host actions */}
       {isHost && req.status === 'PENDING' && (
         <View style={rc.actions}>
           <TouchableOpacity style={rc.acceptBtn} onPress={() => onRespond(req.id, 'ACCEPTED')}>
@@ -170,6 +204,11 @@ const rc = StyleSheet.create({
   },
   msgText: { color: C.textMuted, fontSize: 13, lineHeight: 20, fontStyle: 'italic' },
   photo: { width: '100%', height: 200, borderRadius: 14 },
+  privacyBlock: { flexDirection: 'row', gap: 8, borderRadius: 12, borderWidth: 1, padding: 10, alignItems: 'flex-start' },
+  privacyIcon:  { fontSize: 18, marginTop: 1 },
+  privacyText:  { fontSize: 13, lineHeight: 19, flex: 1 },
+  navBtn:       { alignSelf: 'flex-start', marginTop: 6, backgroundColor: C.success, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 7 },
+  navBtnText:   { color: C.white, fontWeight: '700', fontSize: 13 },
   actions: { flexDirection: 'row', gap: 8, paddingTop: 4 },
   acceptBtn: { flex: 1, backgroundColor: C.success, borderRadius: 100, padding: 13, alignItems: 'center' },
   acceptTxt: { color: C.white, fontWeight: '700', fontSize: 13 },
@@ -189,6 +228,7 @@ export default function RequestsScreen() {
   const [loading, setLoading] = useState(true)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [seenConvIds, setSeenConvIds] = useState<Set<string>>(new Set())
+  const [hostLocMap, setHostLocMap] = useState<Record<string, HostLoc>>({})
   const flatRef = useRef<FlatList<MsgRow>>(null)
   const channelRef = useRef<any>(null)
   const autoOpenedRef = useRef<string | null>(null)
@@ -308,7 +348,27 @@ export default function RequestsScreen() {
     const senderMap: Record<string, string | null> = {}
     senderProfiles?.forEach((p: any) => { senderMap[p.id] = p.full_name })
 
-    setMessages(msgData.map((m: any) => normalizeMsg({ ...m, sender: { full_name: senderMap[m.sender_id] ?? null } })))
+    const normalized = msgData.map((m: any) => normalizeMsg({ ...m, sender: { full_name: senderMap[m.sender_id] ?? null } }))
+    setMessages(normalized)
+
+    // Fetch host locations for ACCEPTED requests (to unlock the address)
+    const acceptedHostIds = [...new Set(
+      normalized
+        .filter(m => m.request?.status === 'ACCEPTED' && m.request.host_id)
+        .map(m => m.request!.host_id)
+    )]
+    if (acceptedHostIds.length > 0) {
+      const { data: locs } = await supabase
+        .from('host_locations')
+        .select('user_id, location_city, location_country')
+        .in('user_id', acceptedHostIds)
+      if (locs) {
+        const map: Record<string, HostLoc> = {}
+        locs.forEach((l: any) => { map[l.user_id] = { city: l.location_city, country: l.location_country } })
+        setHostLocMap(prev => ({ ...prev, ...map }))
+      }
+    }
+
     subscribeToConv(conv.id)
     setTimeout(() => flatRef.current?.scrollToEnd({ animated: false }), 100)
   }
@@ -448,6 +508,7 @@ export default function RequestsScreen() {
                     req={m.request}
                     body={m.body}
                     isHost={isHost}
+                    hostLoc={hostLocMap[m.request.host_id] ?? null}
                     onRespond={respondToRequest}
                   />
                 </View>

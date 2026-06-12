@@ -1,46 +1,65 @@
 import { useEffect, useRef, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, Platform } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Platform } from 'react-native'
 import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
-import { C } from '../../lib/theme'
+import { C, SAFETY } from '../../lib/theme'
 import { UserChip } from '../../components/UserChip'
 
-const parkingMeta: Record<string, { icon: string; label: string; color: string }> = {
-  garage_locked: { icon: '🔒', label: 'Locked Garage', color: C.success },
-  carport: { icon: '🔐', label: 'Covered Carport', color: C.info },
-  yard: { icon: '🛡', label: 'Fenced Yard', color: C.accent },
-  street: { icon: '🛣', label: 'Street Parking', color: '#94a3b8' },
+// DB parking key → SAFETY key (handles legacy keys too)
+function getSafetyKey(parking: string): keyof typeof SAFETY {
+  const map: Record<string, keyof typeof SAFETY> = {
+    garage_locked: 'locked_garage',
+    locked_garage: 'locked_garage',
+    carport:       'carport',
+    yard:          'fenced_yard',
+    fenced_yard:   'fenced_yard',
+    street:        'street',
+  }
+  return map[parking] ?? 'street'
 }
+
+// Best (safest) SAFETY key for a list of parking values
+function bestSafety(parkings: string[]): keyof typeof SAFETY {
+  const order: (keyof typeof SAFETY)[] = ['locked_garage', 'carport', 'fenced_yard', 'street']
+  const keys = parkings.map(getSafetyKey)
+  return order.find(k => keys.includes(k)) ?? 'street'
+}
+
+function SafetyBlock({ parkings }: { parkings: string[] }) {
+  const s = SAFETY[bestSafety(parkings)]
+  return (
+    <View style={[sbStyles.block, { backgroundColor: s.color + '1F', borderColor: s.color + '70' }]}>
+      <Text style={sbStyles.icon}>{s.icon}</Text>
+      <View style={sbStyles.info}>
+        <View style={sbStyles.labelRow}>
+          <Text style={[sbStyles.label, { color: s.color }]}>{s.label.toUpperCase()}</Text>
+          <View style={[sbStyles.rankPill, { borderColor: s.color + '70' }]}>
+            <Text style={[sbStyles.rankText, { color: s.color }]}>{s.rank}</Text>
+          </View>
+        </View>
+        <Text style={sbStyles.sub}>{s.sub}</Text>
+        <Text style={sbStyles.parking}>🏍 parking</Text>
+      </View>
+    </View>
+  )
+}
+
+const sbStyles = StyleSheet.create({
+  block:    { borderRadius: 14, borderWidth: 1, padding: 12, flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginTop: 8 },
+  icon:     { fontSize: 22, marginTop: 2 },
+  info:     { flex: 1, gap: 2 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  label:    { fontSize: 13, fontWeight: '700', letterSpacing: 0.5, fontFamily: 'Oswald_700Bold' },
+  rankPill: { borderRadius: 100, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 2 },
+  rankText: { fontSize: 11, fontWeight: '600' },
+  sub:      { color: C.textDim, fontSize: 12, marginTop: 1 },
+  parking:  { color: C.textFaint, fontSize: 11, marginTop: 2 },
+})
 
 const pricingMeta: Record<string, { icon: string; label: string; color: string }> = {
-  free: { icon: '🤝', label: 'Free', color: '#22c55e' },
-  tip: { icon: '🙏', label: 'Tip Welcome', color: '#f59e0b' },
-  fixed: { icon: '💶', label: 'Paid', color: '#3b82f6' },
-}
-
-const FILTER_VEHICLES = [
-  { value: 'moto', icon: '🏍', label: 'Moto' },
-  { value: 'bicycle', icon: '🚴', label: 'Bicycle' },
-]
-const FILTER_PARKING = [
-  { value: 'garage_locked', icon: '🔒', label: 'Garage' },
-  { value: 'carport', icon: '🔐', label: 'Carport' },
-  { value: 'yard', icon: '🛡', label: 'Yard' },
-  { value: 'street', icon: '🛣', label: 'Street' },
-]
-const FILTER_SLEEP = [
-  { value: 'tent', icon: '⛺', label: 'Tent' },
-  { value: 'roof', icon: '🏠', label: 'Roof' },
-  { value: 'room', icon: '🛏', label: 'Room' },
-]
-const FILTER_PRICING = [
-  { value: 'free', icon: '🤝', label: 'Free' },
-  { value: 'tip', icon: '🙏', label: 'Tip' },
-  { value: 'fixed', icon: '💶', label: 'Paid' },
-]
-
-function toggleFilter(arr: string[], val: string): string[] {
-  return arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val]
+  free:  { icon: '🤝', label: 'Free',        color: '#22c55e' },
+  tip:   { icon: '🙏', label: 'Tip Welcome', color: '#f59e0b' },
+  fixed: { icon: '💶', label: 'Paid',        color: '#3b82f6' },
 }
 
 // Deterministic ~500m offset from host ID so markers don't jump on refresh
@@ -51,13 +70,6 @@ function fuzzCoords(id: string, lat: number, lng: number): { lat: number; lng: n
   const lngOff = (((h >> 12) & 0xfff) - 0x7ff) / 150000
   return { lat: lat + latOff, lng: lng + lngOff }
 }
-
-const FILTER_GROUPS = [
-  { key: 'vehicles', items: FILTER_VEHICLES },
-  { key: 'parking',  items: FILTER_PARKING },
-  { key: 'sleep',    items: FILTER_SLEEP },
-  { key: 'pricing',  items: FILTER_PRICING },
-]
 
 function defaultArrivalTime() {
   const d = new Date(Date.now() + 3600000)
@@ -82,27 +94,33 @@ export default function MapScreen() {
   const [departureDate, setDepartureDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0])
   const [arrivalTime, setArrivalTime] = useState(() => defaultArrivalTime())
   const [currentUser, setCurrentUser] = useState<any>(null)
-  const [showMap, setShowMap] = useState(Platform.OS === 'web')
+  const [showMap, setShowMap] = useState(true)
   const [HostMap, setHostMap] = useState<any>(null)
-  const [filterVehicles, setFilterVehicles] = useState<string[]>([])
-  const [filterParking, setFilterParking] = useState<string[]>([])
-  const [filterSleep, setFilterSleep] = useState<string[]>([])
-  const [filterPricing, setFilterPricing] = useState<string[]>([])
+  const [mode, setMode] = useState<'road' | 'trail'>('road')
+  const [filterGarage, setFilterGarage] = useState(false)
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [filterFree, setFilterFree] = useState(false)
 
-  const activeCount = filterVehicles.length + filterParking.length + filterSleep.length + filterPricing.length
+  const activeCount = (filterGarage ? 1 : 0) + (filterOpen ? 1 : 0) + (filterFree ? 1 : 0)
+
   const filteredHosts = hosts.filter(h => {
-    if (filterVehicles.length > 0 && !filterVehicles.some(v => (h.vehicle_types || []).includes(v))) return false
-    if (filterParking.length > 0) {
+    if (filterGarage) {
       const hp: string[] = h.parkings?.length ? h.parkings : (h.parking ? [h.parking] : [])
-      if (!filterParking.some(p => hp.includes(p))) return false
+      if (!hp.map(getSafetyKey).includes('locked_garage')) return false
     }
-    if (filterSleep.length > 0 && !(h.sleep_types || []).some((s: string) => filterSleep.includes(s))) return false
-    if (filterPricing.length > 0) {
-      const hp: string[] = h.pricings?.length ? h.pricings : (h.pricing ? [h.pricing] : [])
-      if (!filterPricing.some(p => hp.includes(p))) return false
+    if (filterOpen && !h.is_open) return false
+    if (filterFree) {
+      const hp: string[] = h.pricings?.length ? h.pricings : (h.pricing ? [h.pricing] : ['free'])
+      if (!hp.includes('free')) return false
     }
     return true
   })
+
+  // Count hosts with secure (non-street) parking for the subtitle
+  const secureCount = hosts.filter(h => {
+    const hp: string[] = h.parkings?.length ? h.parkings : (h.parking ? [h.parking] : [])
+    return hp.map(getSafetyKey).some(k => k !== 'street')
+  }).length
 
   useEffect(() => {
     fetchHosts()
@@ -153,7 +171,6 @@ export default function MapScreen() {
     setSendError('')
     setSending(true)
     try {
-      // 1. Upload photo
       let uploadedPhotoUrl: string | null = null
       if (photoFile) {
         const ext = photoFile.name.split('.').pop() || 'jpg'
@@ -164,7 +181,6 @@ export default function MapScreen() {
         }
       }
 
-      // 2. Find or create conversation (user_a = lexicographically smaller ID)
       const [ua, ub] = [currentUser.id, selected.user_id].sort()
       let convId: string
       const { data: existing } = await supabase
@@ -187,7 +203,6 @@ export default function MapScreen() {
         convId = newConv.id
       }
 
-      // 3. Insert stay_request
       const { data: reqData, error: reqErr } = await supabase
         .from('stay_requests')
         .insert({
@@ -207,7 +222,6 @@ export default function MapScreen() {
         .single()
       if (reqErr || !reqData) { setSendError(reqErr?.message || 'Request error'); setSending(false); return }
 
-      // 4. Insert message linked to request
       await supabase.from('messages').insert({
         conversation_id: convId,
         sender_id: currentUser.id,
@@ -234,7 +248,7 @@ export default function MapScreen() {
     }
   }
 
-  // --- Request form ---
+  // --- Request form (Knock on the door) ---
   if (requesting && selected) {
     const selectedParkings: string[] = selected.parkings?.length ? selected.parkings : (selected.parking ? [selected.parking] : [])
     const selectedPricings: string[] = selected.pricings?.length ? selected.pricings : (selected.pricing ? [selected.pricing] : ['free'])
@@ -257,24 +271,7 @@ export default function MapScreen() {
                 <Text style={styles.cardLocation}>📍 {selected.location_city}, {selected.location_country}</Text>
               </View>
             </View>
-            <View style={styles.tags}>
-              {selectedParkings.map(pv => {
-                const pm = parkingMeta[pv] || parkingMeta.street
-                return (
-                  <View key={pv} style={[styles.tag, { borderColor: pm.color + '50', backgroundColor: pm.color + '15' }]}>
-                    <Text style={[styles.tagText, { color: pm.color }]}>{pm.label}</Text>
-                  </View>
-                )
-              })}
-              {selectedPricings.map(pv => {
-                const pr = pricingMeta[pv] || pricingMeta.free
-                return (
-                  <View key={pv} style={[styles.tag, { borderColor: pr.color + '50', backgroundColor: pr.color + '15' }]}>
-                    <Text style={[styles.tagText, { color: pr.color }]}>{pr.label}</Text>
-                  </View>
-                )
-              })}
-            </View>
+            <SafetyBlock parkings={selectedParkings} />
           </View>
 
           <View style={styles.card}>
@@ -294,7 +291,7 @@ export default function MapScreen() {
           <View style={styles.card}>
             <Text style={styles.sectionLabel}>YOUR VEHICLE</Text>
             <View style={{ flexDirection: 'row', gap: 10 }}>
-              {[{ value: 'moto', icon: '🏍', label: 'Moto' }, { value: 'bicycle', icon: '🚴', label: 'Kolo' }].map(v => (
+              {[{ value: 'moto', icon: '🏍', label: 'Moto' }].map(v => (
                 <TouchableOpacity
                   key={v.value}
                   style={[{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: C.bg },
@@ -310,29 +307,29 @@ export default function MapScreen() {
 
           <View style={styles.card}>
             <Text style={styles.sectionLabel}>WHEN ARE YOU ARRIVING?</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ flex: 1, gap: 6 }}>
-                <Text style={styles.dateFieldLabel}>ARRIVAL</Text>
-                {Platform.OS === 'web' ? (
-                  <input type="date" value={arrivalDate}
-                    onChange={(e: any) => setArrivalDate(e.target.value)}
-                    style={{ background: C.bg, border: `1px solid ${C.borderMid}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontSize: 13, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any} />
-                ) : (
-                  <TextInput style={styles.dateInput} value={arrivalDate} onChangeText={setArrivalDate} placeholderTextColor={C.textDim} />
-                )}
-              </View>
-              <View style={{ flex: 1, gap: 6 }}>
-                <Text style={styles.dateFieldLabel}>DEPARTURE</Text>
-                {Platform.OS === 'web' ? (
-                  <input type="date" value={departureDate}
-                    onChange={(e: any) => setDepartureDate(e.target.value)}
-                    style={{ background: C.bg, border: `1px solid ${C.borderMid}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontSize: 13, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any} />
-                ) : (
-                  <TextInput style={styles.dateInput} value={departureDate} onChangeText={setDepartureDate} placeholderTextColor={C.textDim} />
-                )}
-              </View>
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+              {[
+                { label: '🌙 Tonight', offset: 0 },
+                { label: '☀️ Tomorrow', offset: 1 },
+              ].map(({ label, offset }) => {
+                const d = new Date(Date.now() + offset * 86400000).toISOString().split('T')[0]
+                const active = arrivalDate === d
+                return (
+                  <TouchableOpacity
+                    key={label}
+                    style={[{ flex: 1, padding: 14, borderRadius: 100, borderWidth: 1, borderColor: C.border, backgroundColor: C.bg, alignItems: 'center' },
+                      active && { borderColor: C.accent, backgroundColor: C.accentSoft }]}
+                    onPress={() => {
+                      setArrivalDate(d)
+                      setDepartureDate(new Date(Date.now() + (offset + 1) * 86400000).toISOString().split('T')[0])
+                    }}
+                  >
+                    <Text style={[{ color: C.textMuted, fontWeight: '700', fontSize: 15 }, active && { color: C.accent }]}>{label}</Text>
+                  </TouchableOpacity>
+                )
+              })}
             </View>
-            <View style={{ gap: 6, marginTop: 4 }}>
+            <View style={{ gap: 6 }}>
               <Text style={styles.dateFieldLabel}>EST. ARRIVAL TIME</Text>
               {Platform.OS === 'web' ? (
                 <input type="time" value={arrivalTime}
@@ -347,7 +344,6 @@ export default function MapScreen() {
           {Platform.OS === 'web' && (
             <View style={styles.card}>
               <Text style={styles.sectionLabel}>PHOTO OF YOUR BIKE (optional)</Text>
-              {/* hidden file input */}
               {(Platform.OS as string) === 'web' && (
                 <input
                   ref={fileInputRef}
@@ -363,16 +359,19 @@ export default function MapScreen() {
                 />
               )}
               <TouchableOpacity
-                style={[styles.photoBtn, photoPreview ? styles.photoBtnFilled : null]}
+                style={[styles.photoBtn, photoFile ? styles.photoBtnFilled : null]}
                 onPress={() => fileInputRef.current?.click()}
               >
-                {photoPreview ? (
-                  <View style={{ alignItems: 'center', gap: 8 }}>
-                    <img src={photoPreview} style={{ width: 200, height: 140, objectFit: 'cover', borderRadius: 10 } as any} alt="preview" />
-                    <Text style={{ color: C.accent, fontSize: 12, fontWeight: '600' }}>Change photo</Text>
+                {photoFile ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Text style={{ fontSize: 20 }}>✅</Text>
+                    <Text style={{ color: C.success, fontWeight: '700', fontSize: 14 }}>Bike photo added</Text>
+                    <TouchableOpacity onPress={() => { setPhotoFile(null); setPhotoPreview(null) }}>
+                      <Text style={{ color: C.textDim, fontSize: 12 }}>Remove</Text>
+                    </TouchableOpacity>
                   </View>
                 ) : (
-                  <Text style={styles.photoBtnText}>📷 Add bike / bicycle photo</Text>
+                  <Text style={styles.photoBtnText}>📷 Add bike photo</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -420,49 +419,33 @@ export default function MapScreen() {
     )
   }
 
-  function isChipActive(key: string, value: string): boolean {
-    if (key === 'vehicles') return filterVehicles.includes(value)
-    if (key === 'parking') return filterParking.includes(value)
-    if (key === 'sleep') return filterSleep.includes(value)
-    return filterPricing.includes(value)
-  }
-
-  function toggleChip(key: string, value: string) {
-    if (key === 'vehicles') setFilterVehicles(toggleFilter(filterVehicles, value))
-    else if (key === 'parking') setFilterParking(toggleFilter(filterParking, value))
-    else if (key === 'sleep') setFilterSleep(toggleFilter(filterSleep, value))
-    else setFilterPricing(toggleFilter(filterPricing, value))
-  }
-
-  function clearAllFilters() {
-    setFilterVehicles([]); setFilterParking([]); setFilterSleep([]); setFilterPricing([])
-  }
-
   function FilterChips({ floating = false }: { floating?: boolean }) {
-    const wrapStyle = floating ? styles.floatingFilterWrap : styles.filterWrap
+    const chips = [
+      { key: 'garage', label: '🔒 Locked garage', active: filterGarage, onPress: () => setFilterGarage(v => !v) },
+      { key: 'open',   label: '🟢 Open now',       active: filterOpen,   onPress: () => setFilterOpen(v => !v) },
+      { key: 'free',   label: '🤝 Free',            active: filterFree,   onPress: () => setFilterFree(v => !v) },
+    ]
     return (
-      <View style={wrapStyle}>
+      <View style={floating ? styles.floatingFilterWrap : styles.filterWrap}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterScrollContent}
         >
-          {FILTER_GROUPS.map(group =>
-            group.items.map(item => {
-              const on = isChipActive(group.key, item.value)
-              return (
-                <TouchableOpacity
-                  key={`${group.key}-${item.value}`}
-                  style={[styles.fChip, on && styles.fChipOn, floating && styles.fChipFloating]}
-                  onPress={() => toggleChip(group.key, item.value)}
-                >
-                  <Text style={[styles.fChipLabel, on && styles.fChipLabelOn]}>{item.label}</Text>
-                </TouchableOpacity>
-              )
-            })
-          )}
+          {chips.map(chip => (
+            <TouchableOpacity
+              key={chip.key}
+              style={[styles.fChip, chip.active && styles.fChipOn, floating && styles.fChipFloating]}
+              onPress={chip.onPress}
+            >
+              <Text style={[styles.fChipLabel, chip.active && styles.fChipLabelOn]}>{chip.label}</Text>
+            </TouchableOpacity>
+          ))}
           {activeCount > 0 && (
-            <TouchableOpacity style={[styles.fChip, styles.fChipClear]} onPress={clearAllFilters}>
+            <TouchableOpacity
+              style={[styles.fChip, styles.fChipClear]}
+              onPress={() => { setFilterGarage(false); setFilterOpen(false); setFilterFree(false) }}
+            >
               <Text style={styles.fChipClearText}>✕ Reset</Text>
             </TouchableOpacity>
           )}
@@ -477,24 +460,18 @@ export default function MapScreen() {
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.hostsTitle}>Hosts</Text>
+            <Text style={styles.hostsTitle}>Find a host</Text>
             <Text style={styles.sub}>
-              {loading ? 'Loading...' : `${filteredHosts.length} hosts on the road`}
+              {loading ? 'Loading...' : `${secureCount} garages & yards near you`}
             </Text>
           </View>
           <View style={styles.headerRight}>
             <View style={styles.tabPills}>
+              <TouchableOpacity style={[styles.tabPill, showMap && styles.tabPillActive]} onPress={() => setShowMap(true)}>
+                <Text style={[styles.tabPillText, showMap && styles.tabPillTextActive]}>Map</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={[styles.tabPill, !showMap && styles.tabPillActive]} onPress={() => setShowMap(false)}>
                 <Text style={[styles.tabPillText, !showMap && styles.tabPillTextActive]}>List</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.tabPill, showMap && styles.tabPillActive]}
-                onPress={() => setShowMap(true)}
-                disabled={Platform.OS !== 'web'}
-              >
-                <Text style={[styles.tabPillText, showMap && styles.tabPillTextActive]}>
-                  Map{Platform.OS !== 'web' ? ' (web)' : ''}
-                </Text>
               </TouchableOpacity>
             </View>
             <UserChip />
@@ -509,164 +486,178 @@ export default function MapScreen() {
           <HostMap
             hosts={filteredHosts}
             onHostSelect={(host: any) => { setSelected(host); setRequesting(true) }}
+            mode={mode}
+            buddyIds={[]}
           />
+          {/* Filter chips overlay — top */}
           <View style={styles.mapFilterOverlay} pointerEvents="box-none">
             <FilterChips floating />
           </View>
+          {/* Road / Trail toggle — bottom-left */}
+          <View style={styles.modeToggleWrap} pointerEvents="box-none">
+            <View style={styles.modeToggle}>
+              <TouchableOpacity
+                style={[styles.modeBtn, mode === 'road' && styles.modeBtnActive]}
+                onPress={() => setMode('road')}
+              >
+                <Text style={[styles.modeBtnText, mode === 'road' && styles.modeBtnTextActive]}>🛣 Road</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modeBtn, mode === 'trail' && styles.modeBtnActive]}
+                onPress={() => setMode('trail')}
+              >
+                <Text style={[styles.modeBtnText, mode === 'trail' && styles.modeBtnTextActive]}>⛰ Trail</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
+      ) : showMap && !HostMap ? (
+        // Map not available on this platform — fall through to list
+        <ScrollView style={styles.list} contentContainerStyle={{ padding: 16, gap: 12 }}>
+          <View style={[styles.infoBox, { borderColor: C.border, backgroundColor: C.surface }]}>
+            <Text style={[styles.infoText, { color: C.textDim }]}>🗺 Map view is available on web. Showing list instead.</Text>
+          </View>
+          {renderList()}
+        </ScrollView>
       ) : (
         <ScrollView style={styles.list} contentContainerStyle={{ padding: 16, gap: 12 }}>
-          {filteredHosts.length === 0 && !loading ? (
-            <View style={styles.empty}>
-              <Text style={styles.emptyEmoji}>🏍</Text>
-              <Text style={styles.emptyTitle}>{activeCount > 0 ? 'Nothing found' : 'No hosts yet'}</Text>
-              <Text style={styles.emptyText}>{activeCount > 0 ? 'Try changing or clearing filters.' : 'Be the first! Go to the Profile tab and open your doors to the community.'}</Text>
-            </View>
-          ) : (
-            filteredHosts.map((host) => {
-              const hostParkings: string[] = host.parkings?.length ? host.parkings : (host.parking ? [host.parking] : [])
-              const hostPricings: string[] = host.pricings?.length ? host.pricings : (host.pricing ? [host.pricing] : ['free'])
-              const isOwn = host.user_id === currentUser?.id
-              return (
-                <TouchableOpacity
-                  key={host.id}
-                  style={[styles.card, selected?.id === host.id && styles.cardSelected]}
-                  onPress={() => setSelected(selected?.id === host.id ? null : host)}
-                >
-                  <View style={styles.cardRow}>
-                    <View style={styles.avatar}>
-                      <Text style={styles.avatarText}>{host.profiles?.full_name?.charAt(0) || '?'}</Text>
-                    </View>
-                    <View style={styles.cardInfo}>
-                      <Text style={styles.cardName}>
-                        {host.profiles?.full_name || 'Anonymous Rider'}
-                        {isOwn && <Text style={styles.ownBadge}> (you)</Text>}
-                      </Text>
-                      <Text style={styles.cardLocation}>📍 {host.location_city}, {host.location_country}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.tags}>
-                    {hostParkings.map(pv => {
-                      const pm = parkingMeta[pv] || parkingMeta.street
-                      return (
-                        <View key={pv} style={[styles.tag, { borderColor: pm.color + '50', backgroundColor: pm.color + '15' }]}>
-                          <Text style={[styles.tagText, { color: pm.color }]}>{pm.label}</Text>
-                        </View>
-                      )
-                    })}
-                    {hostPricings.map(pv => {
-                      const pr = pricingMeta[pv] || pricingMeta.free
-                      return (
-                        <View key={pv} style={[styles.tag, { borderColor: pr.color + '50', backgroundColor: pr.color + '15' }]}>
-                          <Text style={[styles.tagText, { color: pr.color }]}>{pr.label}</Text>
-                        </View>
-                      )
-                    })}
-                  </View>
-                  {selected?.id === host.id && (
-                    <View style={styles.detail}>
-                      {host.notes ? <Text style={styles.detailBio}>{host.notes}</Text> : null}
-                      <Text style={styles.detailInfo}>👥 Max. {host.max_guests} riders</Text>
-                      {host.vehicle_types?.length > 0 && (
-                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                          {(host.vehicle_types as string[]).map(v => {
-                            const meta = FILTER_VEHICLES.find(f => f.value === v)
-                            if (!meta) return null
-                            return (
-                              <View key={v} style={[styles.tag, { borderColor: C.accentBorder, backgroundColor: C.accentSoft }]}>
-                                <Text style={[styles.tagText, { color: C.accent }]}>{meta.icon} {meta.label}</Text>
-                              </View>
-                            )
-                          })}
-                        </View>
-                      )}
-                      {!isOwn ? (
-                        <TouchableOpacity style={styles.requestButton} onPress={() => setRequesting(true)}>
-                          <Text style={styles.requestButtonText}>KNOCK ON THE DOOR →</Text>
-                        </TouchableOpacity>
-                      ) : (
-                        <TouchableOpacity style={styles.editButton} onPress={() => router.push('/become-host')}>
-                          <Text style={styles.editButtonText}>EDIT LISTING</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  )}
-                </TouchableOpacity>
-              )
-            })
-          )}
+          {renderList()}
         </ScrollView>
       )}
     </View>
   )
+
+  function renderList() {
+    if (filteredHosts.length === 0 && !loading) {
+      return (
+        <View style={styles.empty}>
+          <Text style={styles.emptyEmoji}>🏍</Text>
+          <Text style={styles.emptyTitle}>{activeCount > 0 ? 'Nothing found' : 'No hosts yet'}</Text>
+          <Text style={styles.emptyText}>{activeCount > 0 ? 'Try changing or clearing filters.' : 'Be the first! Go to the Profile tab and open your doors to the community.'}</Text>
+        </View>
+      )
+    }
+    return (
+      <>
+        {filteredHosts.map((host) => {
+          const hostParkings: string[] = host.parkings?.length ? host.parkings : (host.parking ? [host.parking] : [])
+          const hostPricings: string[] = host.pricings?.length ? host.pricings : (host.pricing ? [host.pricing] : ['free'])
+          const isOwn = host.user_id === currentUser?.id
+          return (
+            <TouchableOpacity
+              key={host.id}
+              style={[styles.card, selected?.id === host.id && styles.cardSelected]}
+              onPress={() => setSelected(selected?.id === host.id ? null : host)}
+            >
+              <View style={styles.cardRow}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{host.profiles?.full_name?.charAt(0) || '?'}</Text>
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardName}>
+                    {host.profiles?.full_name || 'Anonymous Rider'}
+                    {isOwn && <Text style={styles.ownBadge}> (you)</Text>}
+                  </Text>
+                  <Text style={styles.cardLocation}>📍 {host.location_city}, {host.location_country}</Text>
+                </View>
+                {hostPricings.includes('free') && (
+                  <View style={[styles.pricePill, { borderColor: C.successBorder, backgroundColor: C.successSoft }]}>
+                    <Text style={[styles.pricePillText, { color: C.success }]}>Free</Text>
+                  </View>
+                )}
+              </View>
+              <SafetyBlock parkings={hostParkings} />
+              {selected?.id === host.id && (
+                <View style={styles.detail}>
+                  {host.notes ? <Text style={styles.detailBio}>{host.notes}</Text> : null}
+                  <Text style={styles.detailInfo}>👥 Max. {host.max_guests} riders</Text>
+                  {!isOwn ? (
+                    <TouchableOpacity style={styles.requestButton} onPress={() => setRequesting(true)}>
+                      <Text style={styles.requestButtonText}>KNOCK ON THE DOOR →</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity style={styles.editButton} onPress={() => router.push('/become-host')}>
+                      <Text style={styles.editButtonText}>EDIT LISTING</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </TouchableOpacity>
+          )
+        })}
+      </>
+    )
+  }
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg },
-  header: { paddingHorizontal: 20, paddingTop: 52, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  hostsTitle: { color: C.text, fontSize: 26, fontWeight: '900', letterSpacing: 0.5 },
-  sub: { color: C.textDim, fontSize: 11, marginTop: 2 },
-  tabPills: { flexDirection: 'row', backgroundColor: C.elevated, borderRadius: 100, padding: 3, borderWidth: 1, borderColor: C.border },
-  tabPill: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 100 },
-  tabPillActive: { backgroundColor: C.accent },
-  tabPillText: { color: C.textDim, fontSize: 12, fontWeight: '600' },
-  tabPillTextActive: { color: C.white, fontWeight: '700' },
-  filterWrap: { height: 50, backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border },
+  container:        { flex: 1, backgroundColor: C.bg },
+  header:           { paddingHorizontal: 20, paddingTop: 52, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface },
+  headerRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerRight:      { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  hostsTitle:       { color: C.text, fontSize: 26, fontWeight: '900', letterSpacing: 0.5, fontFamily: 'Oswald_700Bold' },
+  sub:              { color: C.textDim, fontSize: 11, marginTop: 2 },
+  tabPills:         { flexDirection: 'row', backgroundColor: C.elevated, borderRadius: 100, padding: 3, borderWidth: 1, borderColor: C.border },
+  tabPill:          { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 100 },
+  tabPillActive:    { backgroundColor: C.accent },
+  tabPillText:      { color: C.textDim, fontSize: 12, fontWeight: '600' },
+  tabPillTextActive:{ color: C.white, fontWeight: '700' },
+  filterWrap:         { height: 50, backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border },
   floatingFilterWrap: { position: 'absolute', top: 12, left: 0, right: 0, zIndex: 10, height: 50 },
-  filterScrollContent: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, alignItems: 'center', height: 50 },
-  fChip: { alignItems: 'center', justifyContent: 'center', backgroundColor: C.elevated, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 6, borderWidth: 1, borderColor: C.border },
-  fChipFloating: { backgroundColor: C.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 6 },
-  fChipOn: { backgroundColor: C.accent, borderColor: C.accent },
-  fChipLabel: { color: C.textDim, fontSize: 13, fontWeight: '600' },
-  fChipLabelOn: { color: C.white },
-  fChipClear: { backgroundColor: 'transparent', borderColor: C.textDim },
-  fChipClearText: { color: C.textDim, fontSize: 13, fontWeight: '600' },
+  filterScrollContent:{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, alignItems: 'center', height: 50 },
+  fChip:            { alignItems: 'center', justifyContent: 'center', backgroundColor: C.elevated, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 6, borderWidth: 1, borderColor: C.border },
+  fChipFloating:    { backgroundColor: C.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 6 },
+  fChipOn:          { backgroundColor: C.accent, borderColor: C.accent },
+  fChipLabel:       { color: C.textDim, fontSize: 13, fontWeight: '600' },
+  fChipLabelOn:     { color: C.white },
+  fChipClear:       { backgroundColor: 'transparent', borderColor: C.textDim },
+  fChipClearText:   { color: C.textDim, fontSize: 13, fontWeight: '600' },
   mapFilterOverlay: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
-  back: { color: C.accent, fontSize: 16, marginBottom: 8 },
-  headerTitle: { color: C.text, fontSize: 18, fontWeight: '800', letterSpacing: 1 },
-  list: { flex: 1 },
-  empty: { alignItems: 'center', justifyContent: 'center', padding: 48 },
-  emptyEmoji: { fontSize: 64, marginBottom: 16 },
-  emptyTitle: { color: C.text, fontSize: 20, fontWeight: '800', marginBottom: 8, letterSpacing: 0.5 },
-  emptyText: { color: C.textDim, fontSize: 14, textAlign: 'center', lineHeight: 22 },
-  card: { backgroundColor: C.surface, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: C.border, marginBottom: 12 },
-  cardSelected: { borderColor: C.accent },
-  cardRow: { flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 10 },
-  avatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.secondaryBorder },
-  avatarText: { color: C.white, fontWeight: '800', fontSize: 18 },
-  cardInfo: { flex: 1 },
-  cardName: { color: C.text, fontWeight: '700', fontSize: 15 },
-  ownBadge: { color: C.accent, fontSize: 13 },
-  cardLocation: { color: C.textDim, fontSize: 12, marginTop: 3 },
-  tags: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  tag: { borderRadius: 100, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4 },
-  tagText: { fontSize: 11, fontWeight: '600' },
-  detail: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.border, gap: 10 },
-  detailBio: { color: C.textMuted, fontSize: 13, lineHeight: 20 },
-  detailInfo: { color: C.textDim, fontSize: 12 },
-  requestButton: { backgroundColor: C.accent, borderRadius: 100, padding: 14, alignItems: 'center' },
-  requestButtonText: { color: C.white, fontWeight: '800', fontSize: 13, letterSpacing: 1 },
-  editButton: { borderWidth: 1, borderColor: C.accent, borderRadius: 100, padding: 14, alignItems: 'center' },
-  editButtonText: { color: C.accent, fontWeight: '700', fontSize: 13, letterSpacing: 1 },
-  button: { backgroundColor: C.accent, borderRadius: 100, padding: 16, alignItems: 'center' },
-  buttonText: { color: C.white, fontWeight: '800', fontSize: 14, letterSpacing: 1 },
-  sectionLabel: { color: C.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10, fontWeight: '700' },
-  dateFieldLabel: { color: C.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
-  dateInput: { backgroundColor: C.elevated, borderRadius: 10, padding: 12, color: C.text, fontSize: 13, borderWidth: 1, borderColor: C.border },
-  counter: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  counterBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: C.elevated, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
-  counterBtnText: { color: C.text, fontSize: 20, fontWeight: '700' },
-  counterValue: { color: C.text, fontSize: 22, fontWeight: '800', minWidth: 24, textAlign: 'center' },
-  counterMax: { color: C.textDim, fontSize: 12 },
-  textarea: { backgroundColor: C.elevated, borderRadius: 12, padding: 14, color: C.text, fontSize: 14, minHeight: 100, borderWidth: 1, borderColor: C.border, textAlignVertical: 'top', lineHeight: 22 },
-  infoBox: { borderRadius: 12, borderWidth: 1, padding: 14 },
-  infoText: { fontSize: 13, lineHeight: 19 },
-  photoBtn: {
-    borderWidth: 1, borderColor: C.border, borderRadius: 12,
-    borderStyle: 'dashed', padding: 24, alignItems: 'center', justifyContent: 'center',
-  },
-  photoBtnFilled: { borderStyle: 'solid', borderColor: C.accent },
-  photoBtnText: { color: C.textMuted, fontSize: 13, fontWeight: '600' },
+  modeToggleWrap:   { position: 'absolute', bottom: 24, left: 16, zIndex: 10 },
+  modeToggle:       { flexDirection: 'row', backgroundColor: C.surface, borderRadius: 100, padding: 3, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 6, elevation: 8 },
+  modeBtn:          { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 100 },
+  modeBtnActive:    { backgroundColor: C.accent },
+  modeBtnText:      { color: C.textDim, fontSize: 13, fontWeight: '600' },
+  modeBtnTextActive:{ color: C.white, fontWeight: '700' },
+  back:             { color: C.accent, fontSize: 16, marginBottom: 8 },
+  headerTitle:      { color: C.text, fontSize: 18, fontWeight: '800', letterSpacing: 1, fontFamily: 'Oswald_700Bold' },
+  list:             { flex: 1 },
+  empty:            { alignItems: 'center', justifyContent: 'center', padding: 48 },
+  emptyEmoji:       { fontSize: 64, marginBottom: 16 },
+  emptyTitle:       { color: C.text, fontSize: 20, fontWeight: '800', marginBottom: 8, letterSpacing: 0.5 },
+  emptyText:        { color: C.textDim, fontSize: 14, textAlign: 'center', lineHeight: 22 },
+  card:             { backgroundColor: C.surface, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: C.border, marginBottom: 12 },
+  cardSelected:     { borderColor: C.accent },
+  cardRow:          { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  avatar:           { width: 46, height: 46, borderRadius: 23, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.secondaryBorder },
+  avatarText:       { color: C.white, fontWeight: '800', fontSize: 18 },
+  cardInfo:         { flex: 1 },
+  cardName:         { color: C.text, fontWeight: '700', fontSize: 15 },
+  ownBadge:         { color: C.accent, fontSize: 13 },
+  cardLocation:     { color: C.textDim, fontSize: 12, marginTop: 3 },
+  pricePill:        { borderRadius: 100, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4 },
+  pricePillText:    { fontSize: 11, fontWeight: '600' },
+  detail:           { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.border, gap: 10 },
+  detailBio:        { color: C.textMuted, fontSize: 13, lineHeight: 20 },
+  detailInfo:       { color: C.textDim, fontSize: 12 },
+  requestButton:    { backgroundColor: C.accent, borderRadius: 100, padding: 14, alignItems: 'center' },
+  requestButtonText:{ color: C.white, fontWeight: '800', fontSize: 13, letterSpacing: 1 },
+  editButton:       { borderWidth: 1, borderColor: C.accent, borderRadius: 100, padding: 14, alignItems: 'center' },
+  editButtonText:   { color: C.accent, fontWeight: '700', fontSize: 13, letterSpacing: 1 },
+  button:           { backgroundColor: C.accent, borderRadius: 100, padding: 16, alignItems: 'center' },
+  buttonText:       { color: C.white, fontWeight: '800', fontSize: 14, letterSpacing: 1 },
+  sectionLabel:     { color: C.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10, fontWeight: '700' },
+  dateFieldLabel:   { color: C.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
+  dateInput:        { backgroundColor: C.elevated, borderRadius: 10, padding: 12, color: C.text, fontSize: 13, borderWidth: 1, borderColor: C.border },
+  counter:          { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  counterBtn:       { width: 36, height: 36, borderRadius: 18, backgroundColor: C.elevated, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
+  counterBtnText:   { color: C.text, fontSize: 20, fontWeight: '700' },
+  counterValue:     { color: C.text, fontSize: 22, fontWeight: '800', minWidth: 24, textAlign: 'center' },
+  counterMax:       { color: C.textDim, fontSize: 12 },
+  textarea:         { backgroundColor: C.elevated, borderRadius: 12, padding: 14, color: C.text, fontSize: 14, minHeight: 100, borderWidth: 1, borderColor: C.border, textAlignVertical: 'top', lineHeight: 22 },
+  infoBox:          { borderRadius: 12, borderWidth: 1, padding: 14 },
+  infoText:         { fontSize: 13, lineHeight: 19 },
+  photoBtn:         { borderWidth: 1, borderColor: C.border, borderRadius: 12, borderStyle: 'dashed', padding: 24, alignItems: 'center', justifyContent: 'center' },
+  photoBtnFilled:   { borderStyle: 'solid', borderColor: C.accent },
+  photoBtnText:     { color: C.textMuted, fontSize: 13, fontWeight: '600' },
 })
