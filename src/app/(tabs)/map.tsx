@@ -262,7 +262,7 @@ export default function MapScreen() {
                 const pm = parkingMeta[pv] || parkingMeta.street
                 return (
                   <View key={pv} style={[styles.tag, { borderColor: pm.color + '50', backgroundColor: pm.color + '15' }]}>
-                    <Text style={[styles.tagText, { color: pm.color }]}>{pm.icon} {pm.label}</Text>
+                    <Text style={[styles.tagText, { color: pm.color }]}>{pm.label}</Text>
                   </View>
                 )
               })}
@@ -270,7 +270,7 @@ export default function MapScreen() {
                 const pr = pricingMeta[pv] || pricingMeta.free
                 return (
                   <View key={pv} style={[styles.tag, { borderColor: pr.color + '50', backgroundColor: pr.color + '15' }]}>
-                    <Text style={[styles.tagText, { color: pr.color }]}>{pr.icon} {pr.label}</Text>
+                    <Text style={[styles.tagText, { color: pr.color }]}>{pr.label}</Text>
                   </View>
                 )
               })}
@@ -439,34 +439,35 @@ export default function MapScreen() {
   }
 
   function FilterChips({ floating = false }: { floating?: boolean }) {
+    const wrapStyle = floating ? styles.floatingFilterWrap : styles.filterWrap
     return (
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={floating ? styles.floatingFilterScroll : styles.filterScroll}
-        contentContainerStyle={styles.filterScrollContent}
-      >
-        {FILTER_GROUPS.map(group =>
-          group.items.map(item => {
-            const on = isChipActive(group.key, item.value)
-            return (
-              <TouchableOpacity
-                key={`${group.key}-${item.value}`}
-                style={[styles.fChip, on && styles.fChipOn, floating && styles.fChipFloating]}
-                onPress={() => toggleChip(group.key, item.value)}
-              >
-                <Text style={styles.fChipIcon}>{item.icon}</Text>
-                <Text style={[styles.fChipLabel, on && styles.fChipLabelOn]}>{item.label}</Text>
-              </TouchableOpacity>
-            )
-          })
-        )}
-        {activeCount > 0 && (
-          <TouchableOpacity style={[styles.fChip, styles.fChipClear]} onPress={clearAllFilters}>
-            <Text style={styles.fChipClearText}>✕ Reset</Text>
-          </TouchableOpacity>
-        )}
-      </ScrollView>
+      <View style={wrapStyle}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterScrollContent}
+        >
+          {FILTER_GROUPS.map(group =>
+            group.items.map(item => {
+              const on = isChipActive(group.key, item.value)
+              return (
+                <TouchableOpacity
+                  key={`${group.key}-${item.value}`}
+                  style={[styles.fChip, on && styles.fChipOn, floating && styles.fChipFloating]}
+                  onPress={() => toggleChip(group.key, item.value)}
+                >
+                  <Text style={[styles.fChipLabel, on && styles.fChipLabelOn]}>{item.label}</Text>
+                </TouchableOpacity>
+              )
+            })
+          )}
+          {activeCount > 0 && (
+            <TouchableOpacity style={[styles.fChip, styles.fChipClear]} onPress={clearAllFilters}>
+              <Text style={styles.fChipClearText}>✕ Reset</Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+      </View>
     )
   }
 
@@ -549,7 +550,7 @@ export default function MapScreen() {
                       const pm = parkingMeta[pv] || parkingMeta.street
                       return (
                         <View key={pv} style={[styles.tag, { borderColor: pm.color + '50', backgroundColor: pm.color + '15' }]}>
-                          <Text style={[styles.tagText, { color: pm.color }]}>{pm.icon} {pm.label}</Text>
+                          <Text style={[styles.tagText, { color: pm.color }]}>{pm.label}</Text>
                         </View>
                       )
                     })}
@@ -557,7 +558,7 @@ export default function MapScreen() {
                       const pr = pricingMeta[pv] || pricingMeta.free
                       return (
                         <View key={pv} style={[styles.tag, { borderColor: pr.color + '50', backgroundColor: pr.color + '15' }]}>
-                          <Text style={[styles.tagText, { color: pr.color }]}>{pr.icon} {pr.label}</Text>
+                          <Text style={[styles.tagText, { color: pr.color }]}>{pr.label}</Text>
                         </View>
                       )
                     })}
@@ -612,17 +613,16 @@ const styles = StyleSheet.create({
   tabPillActive: { backgroundColor: C.accent },
   tabPillText: { color: C.textDim, fontSize: 12, fontWeight: '600' },
   tabPillTextActive: { color: C.white, fontWeight: '700' },
-  filterScroll: { backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border },
-  floatingFilterScroll: { position: 'absolute' as any, top: 16, left: 0, right: 0 },
-  filterScrollContent: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
-  fChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.elevated, borderRadius: 100, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: C.border },
+  filterWrap: { height: 50, backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border },
+  floatingFilterWrap: { position: 'absolute', top: 12, left: 0, right: 0, zIndex: 10, height: 50 },
+  filterScrollContent: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, alignItems: 'center', height: 50 },
+  fChip: { alignItems: 'center', justifyContent: 'center', backgroundColor: C.elevated, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 6, borderWidth: 1, borderColor: C.border },
   fChipFloating: { backgroundColor: C.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 6 },
   fChipOn: { backgroundColor: C.accent, borderColor: C.accent },
-  fChipIcon: { fontSize: 13 },
-  fChipLabel: { color: C.textDim, fontSize: 12, fontWeight: '600' },
+  fChipLabel: { color: C.textDim, fontSize: 13, fontWeight: '600' },
   fChipLabelOn: { color: C.white },
   fChipClear: { backgroundColor: 'transparent', borderColor: C.textDim },
-  fChipClearText: { color: C.textDim, fontSize: 12, fontWeight: '600' },
+  fChipClearText: { color: C.textDim, fontSize: 13, fontWeight: '600' },
   mapFilterOverlay: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
   back: { color: C.accent, fontSize: 16, marginBottom: 8 },
   headerTitle: { color: C.text, fontSize: 18, fontWeight: '800', letterSpacing: 1 },
