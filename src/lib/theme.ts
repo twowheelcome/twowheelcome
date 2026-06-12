@@ -22,12 +22,17 @@ export const C = {
   accentSoft:   '#C4705018',
   accentBorder: '#C4705055',
 
-  // ── Primary — forest dark ───────────────────────────────────────
-  primary:       '#1A2E1E',
-  primarySoft:   '#1A2E1E30',
-  primaryBorder: '#1A2E1E80',
+  // ── Forest green ────────────────────────────────────────────────
+  forest:       '#2D4A2D',
+  forestSoft:   '#2D4A2D18',
+  forestBorder: '#2D4A2D55',
 
-  // ── Earth ───────────────────────────────────────────────────────
+  // ── Leather brown ────────────────────────────────────────────────
+  leather:       '#3D2314',
+  leatherSoft:   '#3D231418',
+  leatherBorder: '#3D231455',
+
+  // ── Earth (saddle) ──────────────────────────────────────────────
   secondary:       '#7A5C40',
   secondarySoft:   '#7A5C4018',
   secondaryBorder: '#7A5C4055',
