@@ -103,7 +103,7 @@ export default function ProfileScreen() {
           style={styles.heroBg}
         />
         {Platform.OS === 'web' ? (
-          <View style={styles.avatarWrap}>
+          <label style={{ width: 84, height: 84, marginLeft: 24, marginBottom: -42, zIndex: 10, position: 'relative', cursor: 'pointer', display: 'block', flexShrink: 0 } as any}>
             <View style={styles.avatarCircle}>
               {profile?.avatar_url ? (
                 <Image source={{ uri: profile.avatar_url }} style={styles.avatarPhoto} />
@@ -122,13 +122,13 @@ export default function ProfileScreen() {
             <input
               type="file"
               accept="image/*"
-              style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', height: '100%' } as any}
+              style={{ display: 'none' }}
               onChange={(e: any) => {
                 const file = e.target.files?.[0]
                 if (file) uploadAvatar(file)
               }}
             />
-          </View>
+          </label>
         ) : (
           <TouchableOpacity style={styles.avatarWrap} onPress={pickAvatar} activeOpacity={0.8}>
             <View style={styles.avatarCircle}>
