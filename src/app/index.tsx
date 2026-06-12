@@ -1,7 +1,7 @@
 import { Session } from '@supabase/supabase-js'
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Feather } from '@expo/vector-icons'
 import { supabase } from '../lib/supabase'
@@ -13,6 +13,8 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [session, setSession] = useState<Session | null>(null)
+  const [authError, setAuthError] = useState('')
+  const [authSuccess, setAuthSuccess] = useState('')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
@@ -24,17 +26,23 @@ export default function AuthScreen() {
   }, [session])
 
   async function handleLogin() {
+    setAuthError('')
+    setAuthSuccess('')
     setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) Alert.alert('Chyba', error.message)
+    if (error) setAuthError(error.message)
     setLoading(false)
   }
 
   async function handleRegister() {
+    setAuthError('')
+    setAuthSuccess('')
+    if (!email.trim()) { setAuthError('Zadej email.'); return }
+    if (password.length < 6) { setAuthError('Heslo musí mít aspoň 6 znaků.'); return }
     setLoading(true)
     const { error } = await supabase.auth.signUp({ email, password })
-    if (error) Alert.alert('Chyba', error.message)
-    else Alert.alert('Hotovo!', 'Zkontroluj email a potvrď registraci. 🤘')
+    if (error) setAuthError(error.message)
+    else setAuthSuccess('Hotovo! Zkontroluj email a potvrď registraci. 🤘')
     setLoading(false)
   }
 
@@ -117,6 +125,18 @@ export default function AuthScreen() {
           </Text>
         </TouchableOpacity>
 
+        {authError ? (
+          <View style={styles.msgError}>
+            <Text style={styles.msgErrorText}>⚠️ {authError}</Text>
+          </View>
+        ) : null}
+
+        {authSuccess ? (
+          <View style={styles.msgSuccess}>
+            <Text style={styles.msgSuccessText}>{authSuccess}</Text>
+          </View>
+        ) : null}
+
         {mode === 'login' && (
           <TouchableOpacity style={styles.forgotWrap}>
             <Text style={styles.forgotText}>Zapomněl(a) jste heslo?</Text>
@@ -171,13 +191,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   logo: {
-    fontSize: 26,
-    fontWeight: '900',
+    fontSize: 34,
+    fontFamily: 'Oswald_700Bold',
     color: C.text,
-    letterSpacing: 1.5,
-    textShadowColor: 'rgba(0,0,0,0.8)',
-    textShadowOffset: { width: 1, height: 2 },
-    textShadowRadius: 4,
+    letterSpacing: 2,
+    textShadowColor: 'rgba(0,0,0,0.9)',
+    textShadowOffset: { width: 1, height: 3 },
+    textShadowRadius: 6,
   },
   tireTrack: {
     flexDirection: 'row',
@@ -254,5 +274,29 @@ const styles = StyleSheet.create({
   forgotText: {
     color: C.textDim,
     fontSize: 14,
+  },
+  msgError: {
+    backgroundColor: C.errorSoft,
+    borderWidth: 1,
+    borderColor: C.errorBorder,
+    borderRadius: 14,
+    padding: 14,
+  },
+  msgErrorText: {
+    color: C.error,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  msgSuccess: {
+    backgroundColor: C.successSoft,
+    borderWidth: 1,
+    borderColor: C.successBorder,
+    borderRadius: 14,
+    padding: 14,
+  },
+  msgSuccessText: {
+    color: C.success,
+    fontSize: 13,
+    lineHeight: 19,
   },
 })

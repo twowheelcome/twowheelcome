@@ -12,7 +12,7 @@ import { UserChip } from '../../components/UserChip'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type OtherUser = { id: string; full_name: string | null }
+type OtherUser = { id: string; full_name: string | null; avatar_url?: string | null }
 
 type ConvRow = {
   id: string
@@ -23,6 +23,7 @@ type ConvRow = {
   lastMsgBody: string | null
   lastMsgSenderId: string | null
   lastMsgIsRequest: boolean
+  hasRequest: boolean
 }
 
 type RequestData = {
@@ -180,6 +181,7 @@ const rc = StyleSheet.create({
 
 export default function RequestsScreen() {
   const [convs, setConvs] = useState<ConvRow[]>([])
+  const [activeTab, setActiveTab] = useState<'requests' | 'chats'>('chats')
   const [selected, setSelected] = useState<ConvRow | null>(null)
   const [messages, setMessages] = useState<MsgRow[]>([])
   const [text, setText] = useState('')
@@ -244,36 +246,39 @@ export default function RequestsScreen() {
     const otherIds = convData.map((c: any) => c.user_a === userId ? c.user_b : c.user_a)
 
     const [{ data: profiles }, { data: lastMsgs }] = await Promise.all([
-      supabase.from('profiles').select('id, full_name').in('id', otherIds),
+      supabase.from('profiles').select('id, full_name, avatar_url').in('id', otherIds),
       supabase.from('messages')
         .select('conversation_id, body, sender_id, request_id, created_at')
         .in('conversation_id', convIds)
         .order('created_at', { ascending: false }),
     ])
 
-    const profileMap: Record<string, string | null> = {}
-    profiles?.forEach((p: any) => { profileMap[p.id] = p.full_name })
+    const profileMap: Record<string, { full_name: string | null; avatar_url: string | null }> = {}
+    profiles?.forEach((p: any) => { profileMap[p.id] = { full_name: p.full_name, avatar_url: p.avatar_url } })
 
-    // Take the most recent message per conversation
     const lastMsgMap: Record<string, { body: string | null; sender_id: string; request_id: string | null }> = {}
+    const hasRequestMap: Record<string, boolean> = {}
     lastMsgs?.forEach((m: any) => {
       if (!lastMsgMap[m.conversation_id]) {
         lastMsgMap[m.conversation_id] = { body: m.body, sender_id: m.sender_id, request_id: m.request_id }
       }
+      if (m.request_id) hasRequestMap[m.conversation_id] = true
     })
 
     setConvs(convData.map((c: any) => {
       const otherId = c.user_a === userId ? c.user_b : c.user_a
       const last = lastMsgMap[c.id]
+      const prof = profileMap[otherId]
       return {
         id: c.id,
         user_a: c.user_a,
         user_b: c.user_b,
         last_message_at: c.last_message_at,
-        other: { id: otherId, full_name: profileMap[otherId] ?? null },
+        other: { id: otherId, full_name: prof?.full_name ?? null, avatar_url: prof?.avatar_url ?? null } as OtherUser,
         lastMsgBody: last?.body ?? null,
         lastMsgSenderId: last?.sender_id ?? null,
         lastMsgIsRequest: !!last?.request_id,
+        hasRequest: !!hasRequestMap[c.id],
       }
     }))
     setLoading(false)
@@ -490,9 +495,25 @@ export default function RequestsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>TWOWHEELCOME</Text>
-        <TouchableOpacity style={styles.headerSearchBtn}>
-          <Feather name="search" size={18} color={C.textMuted} />
+        <Text style={styles.title}>
+          <Text style={styles.titleAccent}>TWO</Text>WHEEL<Text style={styles.titleAccent}>COME</Text>
+        </Text>
+        <UserChip />
+      </View>
+
+      {/* Tab switcher */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tabBarBtn, activeTab === 'requests' && styles.tabBarBtnActive]}
+          onPress={() => setActiveTab('requests')}
+        >
+          <Text style={[styles.tabBarBtnText, activeTab === 'requests' && styles.tabBarBtnTextActive]}>Moje žádosti</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabBarBtn, activeTab === 'chats' && styles.tabBarBtnActive]}
+          onPress={() => setActiveTab('chats')}
+        >
+          <Text style={[styles.tabBarBtnText, activeTab === 'chats' && styles.tabBarBtnTextActive]}>Chaty</Text>
         </TouchableOpacity>
       </View>
 
@@ -507,48 +528,54 @@ export default function RequestsScreen() {
           <Text style={styles.emptyText}>Pošli žádost hostiteli z mapy — chat se otevře automaticky.</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingBottom: 16, gap: 0 }}>
-          {convs.map(conv => {
-            const name = conv.other.full_name || 'Jezdec'
-            const isUnread = !!conv.lastMsgSenderId
-              && conv.lastMsgSenderId !== currentUser?.id
-              && !seenConvIds.has(conv.id)
-            const preview = conv.lastMsgIsRequest
-              ? 'Žádost o ubytování'
-              : (conv.lastMsgBody ?? '')
-            return (
-              <TouchableOpacity
-                key={conv.id}
-                style={styles.convRow}
-                onPress={() => openConv(conv)}
-              >
-                <View style={styles.convCard}>
-                  <View style={styles.convAvatarWrap}>
-                    <View style={styles.convAvatar}>
-                      <Text style={styles.convAvatarText}>{name.charAt(0).toUpperCase()}</Text>
+        <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
+          {convs
+            .filter(c => activeTab === 'requests' ? c.hasRequest : true)
+            .map(conv => {
+              const name = conv.other.full_name || 'Jezdec'
+              const isUnread = !!conv.lastMsgSenderId
+                && conv.lastMsgSenderId !== currentUser?.id
+                && !seenConvIds.has(conv.id)
+              const preview = conv.lastMsgIsRequest
+                ? '🤞 Žádost o ubytování'
+                : (conv.lastMsgBody ?? '')
+              return (
+                <TouchableOpacity
+                  key={conv.id}
+                  style={styles.convRow}
+                  onPress={() => openConv(conv)}
+                >
+                  <View style={styles.convCard}>
+                    <View style={styles.convAvatarWrap}>
+                      {conv.other.avatar_url ? (
+                        <Image source={{ uri: conv.other.avatar_url }} style={styles.convAvatarImg} />
+                      ) : (
+                        <View style={styles.convAvatar}>
+                          <Text style={styles.convAvatarText}>{name.charAt(0).toUpperCase()}</Text>
+                        </View>
+                      )}
+                      {isUnread && <View style={styles.unreadDot} />}
                     </View>
-                    {isUnread && <View style={styles.unreadDot} />}
+                    <View style={styles.convInfo}>
+                      <View style={styles.convTopRow}>
+                        <Text style={[styles.convName, isUnread && styles.convNameUnread]}>{name}</Text>
+                        <Text style={styles.convTime}>{fmtDate(conv.last_message_at)}</Text>
+                      </View>
+                      {preview ? (
+                        <Text style={[styles.convPreview, isUnread && styles.convPreviewUnread]} numberOfLines={1}>
+                          {preview}
+                        </Text>
+                      ) : null}
+                    </View>
+                    {conv.hasRequest && (
+                      <View style={styles.convStatusBadge}>
+                        <Text style={styles.convStatusText}>Pending</Text>
+                      </View>
+                    )}
                   </View>
-                  <View style={styles.convInfo}>
-                    <View style={styles.convTopRow}>
-                      <Text style={[styles.convName, isUnread && styles.convNameUnread]}>{name}</Text>
-                      <Text style={styles.convTime}>{fmtDate(conv.last_message_at)}</Text>
-                    </View>
-                    {preview ? (
-                      <Text style={[styles.convPreview, isUnread && styles.convPreviewUnread]} numberOfLines={1}>
-                        {preview}
-                      </Text>
-                    ) : null}
-                  </View>
-                  {conv.lastMsgIsRequest && (
-                    <View style={styles.convStatusBadge}>
-                      <Text style={styles.convStatusText}>Pending</Text>
-                    </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            )
-          })}
+                </TouchableOpacity>
+              )
+            })}
         </ScrollView>
       )}
     </View>
@@ -564,11 +591,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16,
   },
   title: { color: C.text, fontSize: 24, fontWeight: '900', letterSpacing: 1, flex: 1 },
-  headerSearchBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: C.surface, borderWidth: 1, borderColor: C.border,
-    alignItems: 'center', justifyContent: 'center',
+  titleAccent: { color: C.accent },
+  tabBar: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    gap: 8,
+    backgroundColor: C.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: C.border,
   },
+  tabBarBtn: {
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 100,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  tabBarBtnActive: { backgroundColor: C.accent, borderColor: C.accent },
+  tabBarBtnText: { color: C.textDim, fontSize: 13, fontWeight: '600' },
+  tabBarBtnTextActive: { color: C.white, fontWeight: '700' },
   back: { color: C.accent, fontSize: 24, fontWeight: '700', paddingRight: 4 },
   chatAvatar: {
     width: 38, height: 38, borderRadius: 19,
@@ -633,6 +675,9 @@ const styles = StyleSheet.create({
   convAvatar: {
     width: 48, height: 48, borderRadius: 24,
     backgroundColor: C.elevated, alignItems: 'center', justifyContent: 'center',
+  },
+  convAvatarImg: {
+    width: 48, height: 48, borderRadius: 24,
   },
   convAvatarText: { color: C.accent, fontWeight: '800', fontSize: 17 },
   unreadDot: {

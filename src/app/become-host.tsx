@@ -351,9 +351,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   content: { padding: 20, paddingBottom: 60, gap: 16 },
 
-  locationCard: { backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 18, gap: 16 },
+  locationCard: { backgroundColor: C.surface, borderRadius: 20, borderWidth: 1, borderColor: C.border, padding: 18, gap: 16 },
   locationHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  locationBadge: { backgroundColor: C.accent, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },
+  locationBadge: { backgroundColor: C.accent, borderRadius: 100, paddingHorizontal: 12, paddingVertical: 5 },
   locationBadgeText: { color: C.white, fontSize: 11, fontWeight: '800', letterSpacing: 1.5 },
   removeLocation: { color: C.textDim, fontSize: 13 },
 
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
   checkSleep: { fontSize: 18, fontWeight: '900', color: C.secondary },
 
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.elevated, borderRadius: 22, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1, borderColor: C.border },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.elevated, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1, borderColor: C.border },
   chipActive: { borderColor: C.accent, backgroundColor: C.accentSoft },
   chipIcon: { fontSize: 15 },
   chipLabel: { color: C.textMuted, fontSize: 13, fontWeight: '600' },
@@ -396,10 +396,10 @@ const styles = StyleSheet.create({
 
   textarea: { backgroundColor: C.elevated, borderRadius: 12, padding: 14, color: C.text, fontSize: 14, borderWidth: 1, borderColor: C.border, minHeight: 110, textAlignVertical: 'top', lineHeight: 22 },
 
-  addBtn: { borderWidth: 1, borderColor: C.accent, borderRadius: 14, padding: 14, alignItems: 'center', borderStyle: 'dashed' },
+  addBtn: { borderWidth: 1, borderColor: C.accent, borderRadius: 100, padding: 14, alignItems: 'center', borderStyle: 'dashed' },
   addBtnText: { color: C.accent, fontWeight: '700', fontSize: 14, letterSpacing: 1 },
 
-  saveBtn: { backgroundColor: C.accent, borderRadius: 14, padding: 17, alignItems: 'center', minHeight: 54, justifyContent: 'center' },
+  saveBtn: { backgroundColor: C.accent, borderRadius: 100, padding: 17, alignItems: 'center', minHeight: 54, justifyContent: 'center' },
   saveBtnText: { color: C.white, fontWeight: '800', fontSize: 15, letterSpacing: 0.5 },
   hint: { color: C.textDim, fontSize: 12, textAlign: 'center', lineHeight: 19 },
 
@@ -407,6 +407,6 @@ const styles = StyleSheet.create({
   errorText: { color: C.error, fontSize: 13, lineHeight: 18 },
   successBox: { backgroundColor: C.successSoft, borderWidth: 1, borderColor: C.successBorder, borderRadius: 12, padding: 16, gap: 12 },
   successText: { color: C.success, fontSize: 14, lineHeight: 21 },
-  backBtn: { backgroundColor: C.success, borderRadius: 10, padding: 12, alignItems: 'center' },
+  backBtn: { backgroundColor: C.success, borderRadius: 100, padding: 12, alignItems: 'center' },
   backBtnText: { color: C.white, fontWeight: '700', fontSize: 13 },
 })

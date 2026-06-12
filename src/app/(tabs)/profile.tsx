@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert, Image, Platform } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Feather } from '@expo/vector-icons'
 import { supabase } from '../../lib/supabase'
@@ -14,6 +14,8 @@ export default function ProfileScreen() {
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
   const [savingName, setSavingName] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const avatarInputRef = useRef<any>(null)
 
   useEffect(() => { loadAll() }, [])
 
@@ -41,6 +43,23 @@ export default function ProfileScreen() {
     setEditingName(false)
   }
 
+  async function uploadAvatar(file: File) {
+    if (!user) return
+    setUploadingAvatar(true)
+    try {
+      const ext = file.name.split('.').pop() || 'jpg'
+      const path = `${user.id}/avatar.${ext}`
+      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+      if (upErr) { Alert.alert('Chyba uploadu', upErr.message); return }
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+      const url = `${publicUrl}?t=${Date.now()}`
+      await supabase.from('profiles').upsert({ id: user.id, avatar_url: url })
+      setProfile((p: any) => ({ ...p, avatar_url: url }))
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
   async function signOut() {
     await supabase.auth.signOut()
     router.replace('/')
@@ -56,6 +75,20 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Hidden file input for web avatar upload */}
+      {Platform.OS === 'web' && (
+        <input
+          ref={avatarInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={(e: any) => {
+            const file = e.target.files?.[0]
+            if (file) uploadAvatar(file)
+          }}
+        />
+      )}
+
       {/* Hero section */}
       <View style={styles.hero}>
         <LinearGradient
@@ -63,9 +96,27 @@ export default function ProfileScreen() {
           locations={[0, 0.6, 1]}
           style={styles.heroBg}
         />
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>{initials}</Text>
-        </View>
+        <TouchableOpacity
+          style={styles.avatarWrap}
+          onPress={() => Platform.OS === 'web' && avatarInputRef.current?.click()}
+          activeOpacity={0.8}
+        >
+          <View style={styles.avatarCircle}>
+            {profile?.avatar_url ? (
+              <Image source={{ uri: profile.avatar_url }} style={styles.avatarPhoto} />
+            ) : (
+              <Text style={styles.avatarText}>{initials}</Text>
+            )}
+            {uploadingAvatar && (
+              <View style={styles.avatarOverlay}>
+                <ActivityIndicator color={C.white} size="small" />
+              </View>
+            )}
+          </View>
+          <View style={styles.avatarEditBadge}>
+            <Feather name="camera" size={10} color={C.white} />
+          </View>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.body}>
@@ -167,17 +218,34 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   heroBg: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
+  },
+  avatarWrap: {
+    width: 84, height: 84,
+    marginLeft: 24, marginBottom: -42,
+    zIndex: 10,
   },
   avatarCircle: {
-    width: 80, height: 80, borderRadius: 40,
+    width: 84, height: 84, borderRadius: 42,
     backgroundColor: C.surface,
     borderWidth: 3, borderColor: C.accent,
     alignItems: 'center', justifyContent: 'center',
-    marginLeft: 24, marginBottom: -40,
-    zIndex: 10,
+    overflow: 'hidden',
   },
+  avatarPhoto: { width: 84, height: 84, borderRadius: 42 },
   avatarText: { color: C.accent, fontSize: 32, fontWeight: '900' },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarEditBadge: {
+    position: 'absolute', bottom: 0, right: 0,
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: C.accent,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: C.bg,
+  },
 
   body: {
     paddingTop: 52,

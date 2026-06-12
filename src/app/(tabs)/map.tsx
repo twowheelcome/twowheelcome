@@ -52,44 +52,12 @@ function fuzzCoords(id: string, lat: number, lng: number): { lat: number; lng: n
   return { lat: lat + latOff, lng: lng + lngOff }
 }
 
-function FilterRow({ label, items, active, onToggle }: {
-  label: string
-  items: { value: string; icon: string; label: string }[]
-  active: string[]
-  onToggle: (v: string) => void
-}) {
-  return (
-    <View style={filterStyles.row}>
-      <Text style={filterStyles.rowLabel}>{label}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={filterStyles.chips}>
-        {items.map(item => {
-          const on = active.includes(item.value)
-          return (
-            <TouchableOpacity
-              key={item.value}
-              style={[filterStyles.chip, on && filterStyles.chipOn]}
-              onPress={() => onToggle(item.value)}
-            >
-              <Text style={filterStyles.chipIcon}>{item.icon}</Text>
-              <Text style={[filterStyles.chipLabel, on && filterStyles.chipLabelOn]}>{item.label}</Text>
-            </TouchableOpacity>
-          )
-        })}
-      </ScrollView>
-    </View>
-  )
-}
-
-const filterStyles = StyleSheet.create({
-  row: { gap: 6 },
-  rowLabel: { color: C.textDim, fontSize: 10, fontWeight: '700', letterSpacing: 1.5 },
-  chips: { flexDirection: 'row', gap: 6 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.elevated, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: C.border },
-  chipOn: { borderColor: C.accent, backgroundColor: C.accentSoft },
-  chipIcon: { fontSize: 13 },
-  chipLabel: { color: C.textDim, fontSize: 12, fontWeight: '600' },
-  chipLabelOn: { color: C.accent },
-})
+const FILTER_GROUPS = [
+  { key: 'vehicles', items: FILTER_VEHICLES },
+  { key: 'parking',  items: FILTER_PARKING },
+  { key: 'sleep',    items: FILTER_SLEEP },
+  { key: 'pricing',  items: FILTER_PRICING },
+]
 
 function defaultArrivalTime() {
   const d = new Date(Date.now() + 3600000)
@@ -116,7 +84,6 @@ export default function MapScreen() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [showMap, setShowMap] = useState(Platform.OS === 'web')
   const [HostMap, setHostMap] = useState<any>(null)
-  const [filtersOpen, setFiltersOpen] = useState(false)
   const [filterVehicles, setFilterVehicles] = useState<string[]>([])
   const [filterParking, setFilterParking] = useState<string[]>([])
   const [filterSleep, setFilterSleep] = useState<string[]>([])
@@ -453,63 +420,98 @@ export default function MapScreen() {
     )
   }
 
+  function isChipActive(key: string, value: string): boolean {
+    if (key === 'vehicles') return filterVehicles.includes(value)
+    if (key === 'parking') return filterParking.includes(value)
+    if (key === 'sleep') return filterSleep.includes(value)
+    return filterPricing.includes(value)
+  }
+
+  function toggleChip(key: string, value: string) {
+    if (key === 'vehicles') setFilterVehicles(toggleFilter(filterVehicles, value))
+    else if (key === 'parking') setFilterParking(toggleFilter(filterParking, value))
+    else if (key === 'sleep') setFilterSleep(toggleFilter(filterSleep, value))
+    else setFilterPricing(toggleFilter(filterPricing, value))
+  }
+
+  function clearAllFilters() {
+    setFilterVehicles([]); setFilterParking([]); setFilterSleep([]); setFilterPricing([])
+  }
+
+  function FilterChips({ floating = false }: { floating?: boolean }) {
+    return (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={floating ? styles.floatingFilterScroll : styles.filterScroll}
+        contentContainerStyle={styles.filterScrollContent}
+      >
+        {FILTER_GROUPS.map(group =>
+          group.items.map(item => {
+            const on = isChipActive(group.key, item.value)
+            return (
+              <TouchableOpacity
+                key={`${group.key}-${item.value}`}
+                style={[styles.fChip, on && styles.fChipOn, floating && styles.fChipFloating]}
+                onPress={() => toggleChip(group.key, item.value)}
+              >
+                <Text style={styles.fChipIcon}>{item.icon}</Text>
+                <Text style={[styles.fChipLabel, on && styles.fChipLabelOn]}>{item.label}</Text>
+              </TouchableOpacity>
+            )
+          })
+        )}
+        {activeCount > 0 && (
+          <TouchableOpacity style={[styles.fChip, styles.fChipClear]} onPress={clearAllFilters}>
+            <Text style={styles.fChipClearText}>✕ Reset</Text>
+          </TouchableOpacity>
+        )}
+      </ScrollView>
+    )
+  }
+
   // --- Hlavní obrazovka ---
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.logoRow}>
-          <Text style={styles.logo}><Text style={styles.accent}>TWO</Text>WHEEL<Text style={styles.accent}>COME</Text></Text>
-          <UserChip />
-        </View>
-        <Text style={styles.sub}>
-          {loading ? 'Hledám parťáky... 🔍' : `${hosts.length} ${hosts.length === 1 ? 'hostitel' : 'hostitelé'} na trase`}
-        </Text>
-        <View style={styles.tabsRow}>
-          <View style={styles.tabs}>
-            <TouchableOpacity style={[styles.tab, !showMap && styles.tabActive]} onPress={() => setShowMap(false)}>
-              <Text style={[styles.tabText, !showMap && styles.tabTextActive]}>☰ Seznam</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tab, showMap && styles.tabActive]}
-              onPress={() => setShowMap(true)}
-              disabled={Platform.OS !== 'web'}
-            >
-              <Text style={[styles.tabText, showMap && styles.tabTextActive]}>
-                🗺 Mapa{Platform.OS !== 'web' ? ' (web)' : ''}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity
-            style={[styles.filterToggle, activeCount > 0 && styles.filterToggleActive]}
-            onPress={() => setFiltersOpen(v => !v)}
-          >
-            <Text style={[styles.filterToggleText, activeCount > 0 && styles.filterToggleTextActive]}>
-              ⚙ FILTROVAT{activeCount > 0 ? ` (${activeCount})` : ''}
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.hostsTitle}>Hosts</Text>
+            <Text style={styles.sub}>
+              {loading ? 'Načítám...' : `${filteredHosts.length} hostitelů na trase`}
             </Text>
-          </TouchableOpacity>
-        </View>
-
-        {filtersOpen && (
-          <View style={styles.filterPanel}>
-            <FilterRow label="TYP VOZIDLA" items={FILTER_VEHICLES} active={filterVehicles} onToggle={v => setFilterVehicles(toggleFilter(filterVehicles, v))} />
-            <FilterRow label="PARKOVÁNÍ" items={FILTER_PARKING} active={filterParking} onToggle={v => setFilterParking(toggleFilter(filterParking, v))} />
-            <FilterRow label="SPANÍ" items={FILTER_SLEEP} active={filterSleep} onToggle={v => setFilterSleep(toggleFilter(filterSleep, v))} />
-            <FilterRow label="CENA" items={FILTER_PRICING} active={filterPricing} onToggle={v => setFilterPricing(toggleFilter(filterPricing, v))} />
-            {activeCount > 0 && (
-              <TouchableOpacity onPress={() => { setFilterVehicles([]); setFilterParking([]); setFilterSleep([]); setFilterPricing([]) }}>
-                <Text style={styles.clearFilters}>✕ Zrušit filtry</Text>
-              </TouchableOpacity>
-            )}
           </View>
-        )}
+          <View style={styles.headerRight}>
+            <View style={styles.tabPills}>
+              <TouchableOpacity style={[styles.tabPill, !showMap && styles.tabPillActive]} onPress={() => setShowMap(false)}>
+                <Text style={[styles.tabPillText, !showMap && styles.tabPillTextActive]}>Seznam</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tabPill, showMap && styles.tabPillActive]}
+                onPress={() => setShowMap(true)}
+                disabled={Platform.OS !== 'web'}
+              >
+                <Text style={[styles.tabPillText, showMap && styles.tabPillTextActive]}>
+                  Mapa{Platform.OS !== 'web' ? ' (web)' : ''}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <UserChip />
+          </View>
+        </View>
       </View>
 
+      {!showMap && <FilterChips />}
+
       {showMap && HostMap ? (
-        <View style={{ flex: 1, position: 'relative' }}>
+        <View style={{ flex: 1 }}>
           <HostMap
             hosts={filteredHosts}
             onHostSelect={(host: any) => { setSelected(host); setRequesting(true) }}
           />
+          <View style={styles.mapFilterOverlay} pointerEvents="box-none">
+            <FilterChips floating />
+          </View>
         </View>
       ) : (
         <ScrollView style={styles.list} contentContainerStyle={{ padding: 16, gap: 12 }}>
@@ -600,31 +602,36 @@ export default function MapScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
-  header: { padding: 20, paddingTop: 52, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface },
-  logoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  logo: { fontSize: 20, fontWeight: '900', color: C.text, letterSpacing: 2.5 },
-  accent: { color: C.accent },
-  sub: { color: C.textDim, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 4 },
+  header: { paddingHorizontal: 20, paddingTop: 52, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  hostsTitle: { color: C.text, fontSize: 26, fontWeight: '900', letterSpacing: 0.5 },
+  sub: { color: C.textDim, fontSize: 11, marginTop: 2 },
+  tabPills: { flexDirection: 'row', backgroundColor: C.elevated, borderRadius: 100, padding: 3, borderWidth: 1, borderColor: C.border },
+  tabPill: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 100 },
+  tabPillActive: { backgroundColor: C.accent },
+  tabPillText: { color: C.textDim, fontSize: 12, fontWeight: '600' },
+  tabPillTextActive: { color: C.white, fontWeight: '700' },
+  filterScroll: { backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border },
+  floatingFilterScroll: { position: 'absolute' as any, top: 16, left: 0, right: 0 },
+  filterScrollContent: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
+  fChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.elevated, borderRadius: 100, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: C.border },
+  fChipFloating: { backgroundColor: C.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 6 },
+  fChipOn: { backgroundColor: C.accent, borderColor: C.accent },
+  fChipIcon: { fontSize: 13 },
+  fChipLabel: { color: C.textDim, fontSize: 12, fontWeight: '600' },
+  fChipLabelOn: { color: C.white },
+  fChipClear: { backgroundColor: 'transparent', borderColor: C.textDim },
+  fChipClearText: { color: C.textDim, fontSize: 12, fontWeight: '600' },
+  mapFilterOverlay: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
   back: { color: C.accent, fontSize: 16, marginBottom: 8 },
   headerTitle: { color: C.text, fontSize: 18, fontWeight: '800', letterSpacing: 1 },
-  tabsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 },
-  tabs: { flexDirection: 'row', gap: 8 },
-  filterToggle: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: C.border },
-  filterToggleActive: { borderColor: C.accent, backgroundColor: C.accentSoft },
-  filterToggleText: { color: C.textDim, fontSize: 11, fontWeight: '700', letterSpacing: 1 },
-  filterToggleTextActive: { color: C.accent },
-  filterPanel: { marginTop: 14, gap: 12, paddingTop: 14, borderTopWidth: 1, borderTopColor: C.border },
-  clearFilters: { color: C.textDim, fontSize: 12, textAlign: 'right', marginTop: 2 },
-  tab: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: C.border },
-  tabActive: { backgroundColor: C.accent, borderColor: C.accent },
-  tabText: { color: C.textDim, fontSize: 13 },
-  tabTextActive: { color: C.white, fontWeight: '700' },
   list: { flex: 1 },
   empty: { alignItems: 'center', justifyContent: 'center', padding: 48 },
   emptyEmoji: { fontSize: 64, marginBottom: 16 },
   emptyTitle: { color: C.text, fontSize: 20, fontWeight: '800', marginBottom: 8, letterSpacing: 0.5 },
   emptyText: { color: C.textDim, fontSize: 14, textAlign: 'center', lineHeight: 22 },
-  card: { backgroundColor: C.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: C.border, marginBottom: 12 },
+  card: { backgroundColor: C.surface, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: C.border, marginBottom: 12 },
   cardSelected: { borderColor: C.accent },
   cardRow: { flexDirection: 'row', gap: 12, alignItems: 'center', marginBottom: 10 },
   avatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.secondaryBorder },
@@ -634,16 +641,16 @@ const styles = StyleSheet.create({
   ownBadge: { color: C.accent, fontSize: 13 },
   cardLocation: { color: C.textDim, fontSize: 12, marginTop: 3 },
   tags: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  tag: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4 },
+  tag: { borderRadius: 100, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4 },
   tagText: { fontSize: 11, fontWeight: '600' },
   detail: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.border, gap: 10 },
   detailBio: { color: C.textMuted, fontSize: 13, lineHeight: 20 },
   detailInfo: { color: C.textDim, fontSize: 12 },
-  requestButton: { backgroundColor: C.accent, borderRadius: 12, padding: 14, alignItems: 'center' },
+  requestButton: { backgroundColor: C.accent, borderRadius: 100, padding: 14, alignItems: 'center' },
   requestButtonText: { color: C.white, fontWeight: '800', fontSize: 13, letterSpacing: 1 },
-  editButton: { borderWidth: 1, borderColor: C.accent, borderRadius: 12, padding: 14, alignItems: 'center' },
+  editButton: { borderWidth: 1, borderColor: C.accent, borderRadius: 100, padding: 14, alignItems: 'center' },
   editButtonText: { color: C.accent, fontWeight: '700', fontSize: 13, letterSpacing: 1 },
-  button: { backgroundColor: C.accent, borderRadius: 12, padding: 16, alignItems: 'center' },
+  button: { backgroundColor: C.accent, borderRadius: 100, padding: 16, alignItems: 'center' },
   buttonText: { color: C.white, fontWeight: '800', fontSize: 14, letterSpacing: 1 },
   sectionLabel: { color: C.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10, fontWeight: '700' },
   dateFieldLabel: { color: C.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
