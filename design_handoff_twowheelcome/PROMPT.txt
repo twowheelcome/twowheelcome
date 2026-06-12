@@ -1,0 +1,54 @@
+────────────────────────────────────────────────────────────────────
+ HOW TO USE THIS  (you are not coding — you're giving instructions)
+────────────────────────────────────────────────────────────────────
+
+1. Put the whole folder  "design_handoff_twowheelcome"  into your app's
+   project folder (drag it in, or unzip it there).
+
+2. Open your terminal AI (the one you build the app with).
+
+3. Copy EVERYTHING between the lines below and paste it in. Press enter.
+
+4. Let it work. It will ask you questions — answer in plain words.
+   It should NOT delete anything without asking.
+
+────────────────────────────────────────────────────────────────────
+ PASTE THIS INTO THE TERMINAL  ↓↓↓
+────────────────────────────────────────────────────────────────────
+
+Read the folder `design_handoff_twowheelcome/` — especially `README.md` and
+`theme.ts`. It is the new visual direction and feature set for our TWOWHEELCOME
+app, agreed with me. Open `TWOWHEELCOME-app-demo.html` in a browser to see
+exactly how it should look and behave.
+
+Please implement it in our existing Expo / React Native app, in this order, and
+check in with me after each step:
+
+1. Replace the colours in `src/lib/theme.ts` with the new "Living Green" palette
+   from the handoff `theme.ts` (keep our `C` object shape; add the new `SAFETY`,
+   `RADIUS`, `FONT`, `SPEED`, and `buddy` exports). Show me the app with just the
+   new colours first.
+
+2. Make the app English-first (keep Czech names/cities as content).
+
+3. Rebuild the **Find a host** screen as MAP-FIRST: host pins coloured by
+   bike-safety, a Road/Trail toggle that shows distance as TIME, and the privacy
+   rule — a host's pin is only an approximate area until they accept, then the
+   exact address unlocks. Mark hosts I've stayed with as gold ⭐ "buddy" pins.
+
+4. Update the **Knock** request (date + photo of the bike + message), the **Chat**
+   (address unlocks on accept, with a Navigate button), and the **Profile**
+   ("Your place" with its safety level + my bike).
+
+5. Wire up **push notifications** (knock sent / accepted / "how was your stay?").
+
+Important: the HTML files are a DESIGN REFERENCE, not code to copy — recreate the
+look in React Native using our existing patterns. Don't delete anything without
+asking me first. If something in the design is unclear, ask me before guessing.
+
+────────────────────────────────────────────────────────────────────
+ ↑↑↑  END OF WHAT YOU PASTE
+────────────────────────────────────────────────────────────────────
+
+Tip: do it ONE step at a time. After step 1 (just colours), open the app on your
+phone and check it looks right before moving on. Small steps = fewer surprises.

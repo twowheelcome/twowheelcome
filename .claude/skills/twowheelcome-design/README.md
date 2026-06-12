@@ -19,15 +19,15 @@ The product is **Czech-language**, informal and warm, built for a tight communit
 
 ## CONTENT FUNDAMENTALS
 
-- **Language:** Czech, always.
-- **Person & tone:** Informal second person — "ty". Never formal vy, never corporate.
-- **Voice:** Warm, plain-spoken, a little cheeky. "Buď první! Otevři dveře komunitě."
+- **Language:** English, always. All UI text, labels, buttons, and copy are in English.
+- **Person & tone:** Informal second person — "you". Never corporate. Reads like a fellow rider talking to you.
+- **Voice:** Warm, plain-spoken, a little cheeky. "Be the first! Open your doors to the community."
 - **Casing:** UPPERCASE labels with wide tracking; Oswald buttons uppercase; body sentence case.
 - **Emoji:** Used as glyphs and punctuation: 🏍 🚴 🔒 ⛺ 🛏 🚿 🍺 🤞 🤘 🎉
-- **Signature phrases:** "Klepu na dveře", "hostitel", "jezdec / jezdci", "na trase", "Stát se hostitelem"
-- **Punctuation:** Arrows on forward actions ("→"), questions as labels ("Koho vítám?"), em-dashes for asides.
+- **Signature phrases:** "Knock on the door", "host", "rider/riders", "on the route", "Become a host"
+- **Punctuation:** Arrows on forward actions ("→"), questions as labels ("Who do you welcome?"), em-dashes for asides.
 
-**Do:** "Ahoj, jedu přes tvoje město — máš místo?" **Don't:** "Please complete your host onboarding flow."
+**Do:** "Hey, I'm riding through your town — got a spot?" **Don't:** "Please complete your host onboarding flow."
 
 ---
 
