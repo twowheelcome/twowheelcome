@@ -19,7 +19,6 @@ interface Host {
   location_country: string
   parking: string
   parkings?: string[]
-  vehicle_types?: string[]
   pricing: string
   profiles: { full_name: string; avatar_url?: string | null } | null
   avg_rating: number | null
@@ -76,12 +75,6 @@ export default function HostMap({
   satelliteRef.current = satellite
   const [locating, setLocating] = useState(false)
 
-  function getVehicleEmoji(host: Host): string {
-    const vt = host.vehicle_types || []
-    if (vt.includes('bicycle') && !vt.includes('moto')) return '🚲'
-    return '🏍'
-  }
-
   function getSafetyKey(host: Host): keyof typeof SAFETY {
     const primary = host.parkings?.[0] || host.parking
     return DB_TO_SAFETY[primary] || 'street'
@@ -101,7 +94,6 @@ export default function HostMap({
       const isBuddy = buddyRef.current.includes(host.id)
       const pinColor = isBuddy ? C.buddy : C.accent
       const size = isBuddy ? 44 : 36
-      const pinEmoji = getVehicleEmoji(host)
 
       // Fuzz circle for non-buddy hosts
       if (!isBuddy) {

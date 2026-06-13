@@ -47,24 +47,27 @@ export default function MapScreen() {
   const [showMap, setShowMap] = useState(true)
   const [HostMap, setHostMap] = useState<any>(null)
   const [mode, setMode] = useState<'road' | 'trail'>('road')
-  const [filterMoto, setFilterMoto] = useState(false)
-  const [filterBike, setFilterBike] = useState(false)
-  const [filterOpen, setFilterOpen] = useState(false)
+  const [filterSecure, setFilterSecure] = useState(false)
+  const [filterIndoor, setFilterIndoor] = useState(false)
+  const [filterShower, setFilterShower] = useState(false)
   const [filterFree, setFilterFree] = useState(false)
   const [satelliteMap, setSatelliteMap] = useState(false)
 
-  const activeCount = (filterMoto ? 1 : 0) + (filterBike ? 1 : 0) + (filterOpen ? 1 : 0) + (filterFree ? 1 : 0)
+  const activeCount = (filterSecure ? 1 : 0) + (filterIndoor ? 1 : 0) + (filterShower ? 1 : 0) + (filterFree ? 1 : 0)
 
   const filteredHosts = hosts.filter(h => {
-    if (filterMoto) {
-      const vt: string[] = h.vehicle_types?.length ? h.vehicle_types : ['moto']
-      if (!vt.includes('moto')) return false
+    if (filterSecure) {
+      const hp: string[] = h.parkings?.length ? h.parkings : (h.parking ? [h.parking] : [])
+      if (!hp.some((p: string) => ['garage_locked', 'carport', 'yard'].includes(p))) return false
     }
-    if (filterBike) {
-      const vt: string[] = h.vehicle_types?.length ? h.vehicle_types : []
-      if (!vt.includes('bicycle')) return false
+    if (filterIndoor) {
+      const st: string[] = h.sleep_types || []
+      if (!st.some((s: string) => ['roof', 'room'].includes(s))) return false
     }
-    if (filterOpen && !h.is_open) return false
+    if (filterShower) {
+      const am: string[] = h.amenities || []
+      if (!am.includes('shower')) return false
+    }
     if (filterFree) {
       const hp: string[] = h.pricings?.length ? h.pricings : (h.pricing ? [h.pricing] : ['free'])
       if (!hp.includes('free')) return false
@@ -350,13 +353,13 @@ export default function MapScreen() {
                 {photoFile ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                     <Text style={{ fontSize: 20 }}>✅</Text>
-                    <Text style={{ color: C.success, fontWeight: '700', fontSize: 14 }}>Bike photo added</Text>
+                    <Text style={{ color: C.success, fontWeight: '700', fontSize: 14 }}>Photo added</Text>
                     <TouchableOpacity onPress={() => { setPhotoFile(null); setPhotoPreview(null) }}>
                       <Text style={{ color: C.textDim, fontSize: 12 }}>Remove</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <Text style={styles.photoBtnText}>📷 Add bike photo</Text>
+                  <Text style={styles.photoBtnText}>📷 Add photo</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -440,10 +443,10 @@ export default function MapScreen() {
       <View style={styles.filterWrap}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScrollContent}>
           {([
-            { key: 'moto', emoji: '🏍', label: 'Moto',    active: filterMoto, onPress: () => setFilterMoto(v => !v) },
-            { key: 'bike', emoji: '🚲', label: 'Bicycle',  active: filterBike, onPress: () => setFilterBike(v => !v) },
-            { key: 'open', emoji: '🟢', label: 'Open',     active: filterOpen, onPress: () => setFilterOpen(v => !v) },
-            { key: 'free', emoji: '🤝', label: 'Free',     active: filterFree, onPress: () => setFilterFree(v => !v) },
+            { key: 'secure', emoji: '🔒', label: 'Secure parking', active: filterSecure, onPress: () => setFilterSecure(v => !v) },
+            { key: 'indoor', emoji: '🛏',  label: 'Indoor sleep',   active: filterIndoor, onPress: () => setFilterIndoor(v => !v) },
+            { key: 'shower', emoji: '🚿', label: 'Shower',          active: filterShower, onPress: () => setFilterShower(v => !v) },
+            { key: 'free',   emoji: '🤝', label: 'Free',            active: filterFree,   onPress: () => setFilterFree(v => !v) },
           ] as const).map(chip => (
             <TouchableOpacity
               key={chip.key}
@@ -457,7 +460,7 @@ export default function MapScreen() {
           {activeCount > 0 && (
             <TouchableOpacity
               style={[styles.fChip, styles.fChipClear]}
-              onPress={() => { setFilterMoto(false); setFilterBike(false); setFilterOpen(false); setFilterFree(false) }}
+              onPress={() => { setFilterSecure(false); setFilterIndoor(false); setFilterShower(false); setFilterFree(false) }}
             >
               <Text style={styles.fChipClearText}>✕ Reset</Text>
             </TouchableOpacity>
@@ -563,6 +566,19 @@ export default function MapScreen() {
                 <View style={styles.detail}>
                   {host.notes ? <Text style={styles.detailBio}>{host.notes}</Text> : null}
                   <Text style={styles.detailInfo}>👥 Max. {host.max_guests} riders</Text>
+                  {host.sleep_types?.length > 0 && (
+                    <Text style={styles.detailInfo}>
+                      🛏 {host.sleep_types.map((s: string) => ({ tent: 'Tent', roof: 'Roof over head', room: 'Private room' }[s] || s)).join(' · ')}
+                    </Text>
+                  )}
+                  {host.amenities?.length > 0 && (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                      {host.amenities.map((a: string) => {
+                        const icons: Record<string, string> = { shower: '🚿', toilet: '🚽', kitchen: '🍳', laundry: '👕', electricity: '⚡', wifi: '📶', pub_nearby: '🍺', breakfast: '☕', dinner: '🍽', local_routes: '🗺', group_ride: '🏍' }
+                        return <Text key={a} style={styles.amenityTag}>{icons[a] || '•'} {a.replace(/_/g, ' ')}</Text>
+                      })}
+                    </View>
+                  )}
                   {!isOwn ? (
                     <TouchableOpacity style={styles.requestButton} onPress={() => setRequesting(true)}>
                       <Text style={styles.requestButtonText}>KNOCK ON THE DOOR →</Text>
@@ -629,6 +645,7 @@ const styles = StyleSheet.create({
   cardName:         { color: C.text, fontWeight: '700', fontSize: 15 },
   cardRating:       { color: C.buddy, fontWeight: '700', fontSize: 13 },
   cardRatingCount:  { color: C.textDim, fontWeight: '400', fontSize: 12 },
+  amenityTag:       { color: C.textDim, fontSize: 11, backgroundColor: C.elevated, borderRadius: 100, paddingHorizontal: 8, paddingVertical: 3 },
   ownBadge:         { color: C.accent, fontSize: 13 },
   cardLocation:     { color: C.textDim, fontSize: 12, marginTop: 3 },
   pricePill:        { borderRadius: 100, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4 },

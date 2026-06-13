@@ -5,11 +5,6 @@ import { router } from 'expo-router'
 import type { Pin } from '../components/LocationPicker'
 import { C } from '../lib/theme'
 
-const VEHICLE_TYPES = [
-  { value: 'moto', icon: '🏍', label: 'Moto' },
-  { value: 'bicycle', icon: '🚴', label: 'Bicycle' },
-]
-
 const PARKING = [
   { value: 'garage_locked', icon: '🔒', label: 'Locked Garage', desc: 'Fort Knox — best protection', color: C.success },
   { value: 'carport', icon: '🔐', label: 'Covered Carport', desc: 'Covered and gated', color: C.info },
@@ -45,7 +40,6 @@ const PRICING = [
 
 interface Location {
   pin: Pin | null
-  vehicleTypes: string[]
   parkings: string[]
   sleepTypes: string[]
   amenities: string[]
@@ -55,7 +49,7 @@ interface Location {
 }
 
 function emptyLocation(): Location {
-  return { pin: null, vehicleTypes: [], parkings: [], sleepTypes: [], amenities: [], maxGuests: 2, pricings: ['free'], notes: '' }
+  return { pin: null, parkings: [], sleepTypes: [], amenities: [], maxGuests: 2, pricings: ['free'], notes: '' }
 }
 
 function toggle(arr: string[], value: string): string[] {
@@ -87,7 +81,6 @@ export default function BecomeHostScreen() {
     if (data && data.length > 0) {
       setLocations(data.map(d => ({
         pin: { lat: d.location_lat, lng: d.location_lng, city: d.location_city, country: d.location_country },
-        vehicleTypes: d.vehicle_types || [],
         parkings: d.parkings?.length ? d.parkings : (d.parking ? [d.parking] : []),
         sleepTypes: d.sleep_types || [],
         amenities: d.amenities || [],
@@ -141,7 +134,6 @@ export default function BecomeHostScreen() {
           location_country: l.pin!.country || '',
           parkings: l.parkings,
           parking: l.parkings[0] || 'yard',
-          vehicle_types: l.vehicleTypes,
           sleep_types: l.sleepTypes,
           amenities: l.amenities,
           max_guests: l.maxGuests,
@@ -191,24 +183,6 @@ export default function BecomeHostScreen() {
               ? <LocationPicker pin={loc.pin} onChange={(pin: Pin) => updateLocation(index, { pin })} />
               : <View style={styles.mapLoading}><ActivityIndicator color={C.accent} /></View>
             }
-          </View>
-
-          {/* Typ vozidla */}
-          <Text style={styles.label}>🛞 WHO DO I WELCOME?</Text>
-          <View style={styles.chipsWrap}>
-            {VEHICLE_TYPES.map(v => {
-              const active = loc.vehicleTypes.includes(v.value)
-              return (
-                <TouchableOpacity
-                  key={v.value}
-                  style={[styles.chip, active && styles.chipActive]}
-                  onPress={() => updateLocation(index, { vehicleTypes: toggle(loc.vehicleTypes, v.value) })}
-                >
-                  <Text style={styles.chipIcon}>{v.icon}</Text>
-                  <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{v.label}</Text>
-                </TouchableOpacity>
-              )
-            })}
           </View>
 
           {/* Parking */}
