@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Platform } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Platform, Modal } from 'react-native'
 import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
 import { C } from '../../lib/theme'
@@ -47,30 +47,42 @@ export default function MapScreen() {
   const [showMap, setShowMap] = useState(true)
   const [HostMap, setHostMap] = useState<any>(null)
   const [mode, setMode] = useState<'road' | 'trail'>('road')
-  const [filterSecure, setFilterSecure] = useState(false)
-  const [filterIndoor, setFilterIndoor] = useState(false)
-  const [filterShower, setFilterShower] = useState(false)
-  const [filterFree, setFilterFree] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const [filterParkings, setFilterParkings] = useState<string[]>([])
+  const [filterSleep, setFilterSleep] = useState<string[]>([])
+  const [filterAmenities, setFilterAmenities] = useState<string[]>([])
+  const [filterMinGuests, setFilterMinGuests] = useState(0)
+  const [filterPricings, setFilterPricings] = useState<string[]>([])
   const [satelliteMap, setSatelliteMap] = useState(false)
 
-  const activeCount = (filterSecure ? 1 : 0) + (filterIndoor ? 1 : 0) + (filterShower ? 1 : 0) + (filterFree ? 1 : 0)
+  const activeCount = filterParkings.length + filterSleep.length + filterAmenities.length + (filterMinGuests > 0 ? 1 : 0) + filterPricings.length
+
+  function toggleFilter<T>(arr: T[], val: T): T[] {
+    return arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val]
+  }
+
+  function resetFilters() {
+    setFilterParkings([]); setFilterSleep([]); setFilterAmenities([])
+    setFilterMinGuests(0); setFilterPricings([])
+  }
 
   const filteredHosts = hosts.filter(h => {
-    if (filterSecure) {
+    if (filterParkings.length) {
       const hp: string[] = h.parkings?.length ? h.parkings : (h.parking ? [h.parking] : [])
-      if (!hp.some((p: string) => ['garage_locked', 'carport', 'yard'].includes(p))) return false
+      if (!filterParkings.some(p => hp.includes(p))) return false
     }
-    if (filterIndoor) {
+    if (filterSleep.length) {
       const st: string[] = h.sleep_types || []
-      if (!st.some((s: string) => ['roof', 'room'].includes(s))) return false
+      if (!filterSleep.some(s => st.includes(s))) return false
     }
-    if (filterShower) {
+    if (filterAmenities.length) {
       const am: string[] = h.amenities || []
-      if (!am.includes('shower')) return false
+      if (!filterAmenities.every(a => am.includes(a))) return false
     }
-    if (filterFree) {
+    if (filterMinGuests > 0 && (h.max_guests || 0) < filterMinGuests) return false
+    if (filterPricings.length) {
       const hp: string[] = h.pricings?.length ? h.pricings : (h.pricing ? [h.pricing] : ['free'])
-      if (!hp.includes('free')) return false
+      if (!filterPricings.some(p => hp.includes(p))) return false
     }
     return true
   })
@@ -452,33 +464,127 @@ export default function MapScreen() {
         </View>
       </View>
 
-      <View style={styles.filterWrap}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScrollContent}>
-          {([
-            { key: 'secure', emoji: '🔒', label: 'Secure parking', active: filterSecure, onPress: () => setFilterSecure(v => !v) },
-            { key: 'indoor', emoji: '🛏',  label: 'Indoor sleep',   active: filterIndoor, onPress: () => setFilterIndoor(v => !v) },
-            { key: 'shower', emoji: '🚿', label: 'Shower',          active: filterShower, onPress: () => setFilterShower(v => !v) },
-            { key: 'free',   emoji: '🤝', label: 'Free',            active: filterFree,   onPress: () => setFilterFree(v => !v) },
-          ] as const).map(chip => (
-            <TouchableOpacity
-              key={chip.key}
-              style={[styles.fChip, chip.active && styles.fChipOn]}
-              onPress={chip.onPress}
-            >
-              <Text style={{ fontSize: 18, lineHeight: 22 }}>{chip.emoji}</Text>
-              <Text style={[styles.fChipLabel, chip.active && styles.fChipLabelOn]}>{chip.label}</Text>
-            </TouchableOpacity>
-          ))}
-          {activeCount > 0 && (
-            <TouchableOpacity
-              style={[styles.fChip, styles.fChipClear]}
-              onPress={() => { setFilterSecure(false); setFilterIndoor(false); setFilterShower(false); setFilterFree(false) }}
-            >
-              <Text style={styles.fChipClearText}>✕ Reset</Text>
-            </TouchableOpacity>
-          )}
-        </ScrollView>
+      <View style={styles.filterBar}>
+        <TouchableOpacity style={[styles.filterBtn, activeCount > 0 && styles.filterBtnActive]} onPress={() => setShowFilters(true)}>
+          <Text style={[styles.filterBtnText, activeCount > 0 && styles.filterBtnTextActive]}>
+            🔽 Filters{activeCount > 0 ? ` (${activeCount})` : ''}
+          </Text>
+        </TouchableOpacity>
+        {activeCount > 0 && (
+          <TouchableOpacity style={styles.resetBtn} onPress={resetFilters}>
+            <Text style={styles.resetBtnText}>✕ Reset</Text>
+          </TouchableOpacity>
+        )}
       </View>
+
+      <Modal visible={showFilters} animationType="slide" transparent onRequestClose={() => setShowFilters(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Filters</Text>
+              <TouchableOpacity onPress={resetFilters}><Text style={styles.modalReset}>Reset all</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.modalClose} onPress={() => setShowFilters(false)}>
+                <Text style={styles.modalCloseText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.modalBody}>
+
+              {/* PARKING */}
+              <Text style={styles.filterSection}>🅿️ PARKING</Text>
+              {([
+                { value: 'garage_locked', icon: '🔒', label: 'Locked Garage', desc: 'Fort Knox — best protection' },
+                { value: 'carport',       icon: '🔐', label: 'Covered Carport', desc: 'Covered and gated' },
+                { value: 'yard',          icon: '🛡',  label: 'Fenced Yard', desc: 'Secure yard' },
+                { value: 'street',        icon: '🛣',  label: 'Street Parking', desc: 'At your own risk' },
+              ] as const).map(o => {
+                const on = filterParkings.includes(o.value)
+                return (
+                  <TouchableOpacity key={o.value} style={[styles.optRow, on && styles.optRowOn]} onPress={() => setFilterParkings(p => toggleFilter(p, o.value))}>
+                    <Text style={styles.optRowIcon}>{o.icon}</Text>
+                    <View style={{ flex: 1 }}><Text style={[styles.optRowLabel, on && styles.optRowLabelOn]}>{o.label}</Text><Text style={styles.optRowDesc}>{o.desc}</Text></View>
+                    {on && <Text style={styles.optRowCheck}>✓</Text>}
+                  </TouchableOpacity>
+                )
+              })}
+
+              {/* SLEEP */}
+              <Text style={styles.filterSection}>🛏 WHERE WILL THEY SLEEP?</Text>
+              {([
+                { value: 'tent', icon: '⛺', label: 'Tent', desc: 'Bring your own — space available' },
+                { value: 'roof', icon: '🏠', label: 'Roof Over Head', desc: 'Couch, mat, anything dry' },
+                { value: 'room', icon: '🛏', label: 'Private Room', desc: 'Bed, privacy, proper sleep' },
+              ] as const).map(o => {
+                const on = filterSleep.includes(o.value)
+                return (
+                  <TouchableOpacity key={o.value} style={[styles.optRow, on && styles.optRowOn]} onPress={() => setFilterSleep(p => toggleFilter(p, o.value))}>
+                    <Text style={styles.optRowIcon}>{o.icon}</Text>
+                    <View style={{ flex: 1 }}><Text style={[styles.optRowLabel, on && styles.optRowLabelOn]}>{o.label}</Text><Text style={styles.optRowDesc}>{o.desc}</Text></View>
+                    {on && <Text style={styles.optRowCheck}>✓</Text>}
+                  </TouchableOpacity>
+                )
+              })}
+
+              {/* AMENITIES */}
+              <Text style={styles.filterSection}>🔧 WHAT DO THEY OFFER?</Text>
+              <View style={styles.chipsWrap}>
+                {([
+                  { value: 'shower', icon: '🚿', label: 'Shower' },
+                  { value: 'toilet', icon: '🚽', label: 'Toilet' },
+                  { value: 'kitchen', icon: '🍳', label: 'Kitchen' },
+                  { value: 'laundry', icon: '👕', label: 'Laundry' },
+                  { value: 'electricity', icon: '⚡', label: 'Electricity' },
+                  { value: 'wifi', icon: '📶', label: 'WiFi' },
+                  { value: 'pub_nearby', icon: '🍺', label: 'Pub nearby' },
+                  { value: 'breakfast', icon: '☕', label: 'Breakfast' },
+                  { value: 'dinner', icon: '🍽', label: 'Dinner' },
+                  { value: 'local_routes', icon: '🗺', label: 'Local routes' },
+                  { value: 'group_ride', icon: '🏍', label: 'Group ride' },
+                ] as const).map(o => {
+                  const on = filterAmenities.includes(o.value)
+                  return (
+                    <TouchableOpacity key={o.value} style={[styles.fChip, on && styles.fChipOn]} onPress={() => setFilterAmenities(p => toggleFilter(p, o.value))}>
+                      <Text style={{ fontSize: 16 }}>{o.icon}</Text>
+                      <Text style={[styles.fChipLabel, on && styles.fChipLabelOn]}>{o.label}</Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+
+              {/* GUESTS */}
+              <Text style={styles.filterSection}>👥 MIN. NUMBER OF RIDERS</Text>
+              <View style={styles.guestsRow}>
+                <TouchableOpacity style={styles.guestBtn} onPress={() => setFilterMinGuests(v => Math.max(0, v - 1))}>
+                  <Text style={styles.guestBtnText}>−</Text>
+                </TouchableOpacity>
+                <Text style={styles.guestVal}>{filterMinGuests === 0 ? 'Any' : `${filterMinGuests}+`}</Text>
+                <TouchableOpacity style={styles.guestBtn} onPress={() => setFilterMinGuests(v => Math.min(10, v + 1))}>
+                  <Text style={styles.guestBtnText}>+</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* PRICING */}
+              <Text style={styles.filterSection}>💰 WHAT DO THEY WANT IN RETURN?</Text>
+              <View style={styles.pricingRow}>
+                {([
+                  { value: 'free', icon: '🤝', label: 'Free', desc: 'Pure hospitality' },
+                  { value: 'tip',  icon: '🙏', label: 'Tip Welcome', desc: 'Give what you feel' },
+                  { value: 'fixed', icon: '💶', label: 'Paid', desc: 'Agreed upfront' },
+                ] as const).map(o => {
+                  const on = filterPricings.includes(o.value)
+                  return (
+                    <TouchableOpacity key={o.value} style={[styles.pCard, on && styles.pCardOn]} onPress={() => setFilterPricings(p => toggleFilter(p, o.value))}>
+                      <Text style={{ fontSize: 22 }}>{o.icon}</Text>
+                      <Text style={[styles.pCardLabel, on && styles.pCardLabelOn]}>{o.label}</Text>
+                      <Text style={styles.pCardDesc}>{o.desc}</Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {showMap && HostMap ? (
         <View style={{ flex: 1 }}>
@@ -630,14 +736,44 @@ const styles = StyleSheet.create({
   tabPillActive:    { backgroundColor: C.accent },
   tabPillText:      { color: C.textDim, fontSize: 12, fontWeight: '600' },
   tabPillTextActive:{ color: C.white, fontWeight: '700' },
-  filterWrap:         { height: 66, backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border },
-  filterScrollContent:{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, alignItems: 'center', height: 66 },
-  fChip:            { alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 2, backgroundColor: C.elevated, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: C.border },
+  filterBar:        { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border },
+  filterBtn:        { flexDirection: 'row', alignItems: 'center', backgroundColor: C.elevated, borderRadius: 100, paddingHorizontal: 16, paddingVertical: 8, borderWidth: 1, borderColor: C.border },
+  filterBtnActive:  { backgroundColor: C.accent, borderColor: C.accent },
+  filterBtnText:    { color: C.textDim, fontSize: 13, fontWeight: '700' },
+  filterBtnTextActive: { color: C.white },
+  resetBtn:         { paddingHorizontal: 12, paddingVertical: 8 },
+  resetBtnText:     { color: C.textDim, fontSize: 13 },
+  modalOverlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalSheet:       { backgroundColor: C.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '90%' },
+  modalHeader:      { flexDirection: 'row', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: C.border },
+  modalTitle:       { flex: 1, color: C.text, fontSize: 17, fontWeight: '800' },
+  modalReset:       { color: C.textDim, fontSize: 13, marginRight: 16 },
+  modalClose:       { backgroundColor: C.accent, borderRadius: 100, paddingHorizontal: 16, paddingVertical: 7 },
+  modalCloseText:   { color: C.white, fontWeight: '700', fontSize: 13 },
+  modalBody:        { padding: 18, gap: 8, paddingBottom: 40 },
+  filterSection:    { color: C.textDim, fontSize: 11, fontWeight: '700', letterSpacing: 2, marginTop: 12, marginBottom: 6 },
+  optRow:           { flexDirection: 'row', alignItems: 'center', backgroundColor: C.elevated, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.border, gap: 10 },
+  optRowOn:         { borderColor: C.accent, backgroundColor: C.accentSoft },
+  optRowIcon:       { fontSize: 20, width: 28, textAlign: 'center' },
+  optRowLabel:      { color: C.text, fontWeight: '700', fontSize: 13 },
+  optRowLabelOn:    { color: C.accent },
+  optRowDesc:       { color: C.textDim, fontSize: 11, marginTop: 1 },
+  optRowCheck:      { color: C.accent, fontSize: 16, fontWeight: '900' },
+  chipsWrap:        { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  fChip:            { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.elevated, borderRadius: 100, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: C.border },
   fChipOn:          { backgroundColor: C.accent, borderColor: C.accent },
-  fChipLabel:       { color: C.textDim, fontSize: 13, fontWeight: '600' },
+  fChipLabel:       { color: C.textDim, fontSize: 12, fontWeight: '600' },
   fChipLabelOn:     { color: C.white },
-  fChipClear:       { backgroundColor: 'transparent', borderColor: C.textDim },
-  fChipClearText:   { color: C.textDim, fontSize: 13, fontWeight: '600' },
+  guestsRow:        { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  guestBtn:         { width: 40, height: 40, borderRadius: 20, backgroundColor: C.elevated, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
+  guestBtnText:     { color: C.text, fontSize: 20, fontWeight: '700' },
+  guestVal:         { color: C.text, fontSize: 26, fontWeight: '900', minWidth: 50, textAlign: 'center' },
+  pricingRow:       { flexDirection: 'row', gap: 8 },
+  pCard:            { flex: 1, backgroundColor: C.elevated, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.border, alignItems: 'center', gap: 4 },
+  pCardOn:          { borderColor: C.accent, backgroundColor: C.accentSoft },
+  pCardLabel:       { color: C.textDim, fontSize: 12, fontWeight: '700' },
+  pCardLabelOn:     { color: C.accent },
+  pCardDesc:        { color: C.textDim, fontSize: 10, textAlign: 'center' },
   satelliteBtn:       { backgroundColor: C.elevated, borderWidth: 1, borderColor: C.border, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 6 },
   satelliteBtnActive: { backgroundColor: C.accent, borderColor: C.accent },
   fabWrap:          { position: 'absolute', bottom: 24, left: 0, right: 0, alignItems: 'center', zIndex: 10 },
