@@ -20,8 +20,6 @@ export default function ProfileScreen() {
   const [bikeModel, setBikeModel] = useState('')
   const [editingBike, setEditingBike] = useState(false)
   const [savingBike, setSavingBike] = useState(false)
-  const [coverUrl, setCoverUrl] = useState<string | null>(null)
-  const [uploadingCover, setUploadingCover] = useState(false)
   const [avatarError, setAvatarError] = useState<string | null>(null)
   const [reviews, setReviews] = useState<{ rating: number; body: string | null; reviewer_name: string | null; created_at: string }[]>([])
 
@@ -40,7 +38,6 @@ export default function ProfileScreen() {
     setHostLocations(h.data || [])
     setNameInput(p.data?.full_name || '')
     setBikeModel(p.data?.bike_model || '')
-    setCoverUrl(p.data?.cover_url || null)
     setReviews((r.data || []).map((rev: any) => ({
       rating: rev.rating,
       body: rev.body,
@@ -101,24 +98,6 @@ export default function ProfileScreen() {
     }
   }
 
-  async function uploadCover(file: File | Blob, extHint?: string) {
-    if (!user) return
-    setUploadingCover(true)
-    try {
-      const ext = extHint ?? ((file as File).name?.split('.').pop() || 'jpg')
-      const path = `${user.id}/cover.${ext}`
-      const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
-      if (error) return
-      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
-      const url = `${publicUrl}?t=${Date.now()}`
-      await supabase.from('profiles').upsert({ id: user.id, cover_url: url })
-      setCoverUrl(url)
-      setProfile((p: any) => ({ ...p, cover_url: url }))
-    } finally {
-      setUploadingCover(false)
-    }
-  }
-
   async function saveBike() {
     setSavingBike(true)
     await supabase.from('profiles').upsert({ id: user.id, bike_model: bikeModel.trim() })
@@ -147,33 +126,15 @@ export default function ProfileScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Hero section */}
       <View style={styles.hero}>
-        {coverUrl ? (
-          <Image source={{ uri: coverUrl }} style={styles.heroBg} resizeMode="cover" />
-        ) : (
-          <LinearGradient
-            colors={['#1A2E1E', '#2A1C10', C.bg]}
-            locations={[0, 0.6, 1]}
-            style={styles.heroBg}
-          />
-        )}
-        {coverUrl && <View style={[styles.heroBg, { backgroundColor: 'rgba(0,0,0,0.25)' }]} />}
+        <LinearGradient
+          colors={['#1A2E1E', '#2A1C10', C.bg]}
+          locations={[0, 0.6, 1]}
+          style={styles.heroBg}
+        />
         {Platform.OS === 'web' && (
           <div style={{ position: 'absolute', top: 14, right: 16, display: 'flex', gap: 8, zIndex: 20 } as any}>
             <button style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 100, padding: '6px 14px', color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Share</button>
             <button style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 100, padding: '6px 14px', color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>⚙ Settings</button>
-          </div>
-        )}
-        {Platform.OS === 'web' && (
-          <div style={{ position: 'absolute', bottom: 52, right: 14, zIndex: 20, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 } as any}>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', textAlign: 'right', maxWidth: 160 } as any}>Upload a photo of yourself with your bike</div>
-            <div style={{ position: 'relative', display: 'inline-block' }}>
-              <button style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 100, padding: '5px 12px', color: 'white', fontSize: 11, cursor: 'pointer', opacity: uploadingCover ? 0.5 : 1 }}>
-                {uploadingCover ? '...' : '📷 Cover'}
-              </button>
-              <input type="file" accept="image/*"
-                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' } as any}
-                onChange={(e: any) => { const f = e.target.files?.[0]; if (f) uploadCover(f) }} />
-            </div>
           </div>
         )}
         {Platform.OS === 'web' ? (
