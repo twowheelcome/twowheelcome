@@ -122,31 +122,33 @@ export default function HostMap({
       }
 
       const buddyStar = isBuddy ? `<div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:14px;line-height:1;">⭐</div>` : ''
+      const avatarInner = host.profiles?.avatar_url
+        ? `<img src="${host.profiles.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:${isBuddy ? 16 : 13}px;font-weight:700;color:${C.white};">${(host.profiles?.full_name || 'R')[0].toUpperCase()}</div>`
 
       const markerHtml = `
-        <div style="position:relative;width:${size}px;height:${size}px;">
+        <div style="position:relative;width:${size}px;height:${size + 8}px;">
           ${buddyStar}
           <div style="
-            position:absolute;inset:0;
+            position:absolute;left:0;top:0;width:${size}px;height:${size}px;
             background:${pinColor};
-            border-radius:50% 50% 50% 0;
-            transform:rotate(-45deg);
+            border-radius:50%;
             border:2.5px solid ${isBuddy ? C.buddy : C.white};
             box-shadow:0 2px 10px rgba(0,0,0,0.6);
+            overflow:hidden;
             cursor:pointer;
           ">
-            <div style="transform:rotate(45deg);display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:${isBuddy ? 18 : 15}px;">
-              ${pinEmoji}
-            </div>
+            ${avatarInner}
           </div>
+          <div style="position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid ${pinColor};"></div>
         </div>
       `
 
       const markerIcon = L.divIcon({
         html: markerHtml,
         className: '',
-        iconSize: [size, size],
-        iconAnchor: [size / 2, size],
+        iconSize: [size, size + 8],
+        iconAnchor: [size / 2, size + 8],
       });
 
       (window as any).__twwHandlers[host.id] = () => onHostSelect(host)
