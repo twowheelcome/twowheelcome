@@ -70,7 +70,7 @@ export default function HostMap({
   const userPosRef = useRef<{ lat: number; lng: number } | null>(null)
   const satelliteRef = useRef(satellite)
   const tileLayerRef = useRef<any>(null)
-  const overlayLayerRef = useRef<any>(null)
+  const overlayLayersRef = useRef<any[]>([])
   satelliteRef.current = satellite
   const [locating, setLocating] = useState(false)
 
@@ -202,14 +202,8 @@ export default function HostMap({
       const L = mod.default
       const map = L.map(mapRef.current, { zoomControl: false }).setView([49.5, 15.5], 7)
 
-      // Tile layer (dark or satellite)
-      const initTileUrl = satelliteRef.current
-        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-        : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      const initAttrib = satelliteRef.current
-        ? 'Tiles &copy; Esri'
-        : '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-      tileLayerRef.current = L.tileLayer(initTileUrl, { attribution: initAttrib, maxZoom: 19 }).addTo(map)
+      // Tile layers
+      setupTileLayers(L, map, satelliteRef.current)
 
       L.control.zoom({ position: 'bottomright' }).addTo(map)
       mapInstanceRef.current = map
@@ -230,7 +224,7 @@ export default function HostMap({
 
     return () => {
       if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null }
-      markersRef.current = []; circlesRef.current = []
+      markersRef.current = []; circlesRef.current = []; overlayLayersRef.current = []
     }
   }, [])
 
@@ -239,28 +233,43 @@ export default function HostMap({
     import('leaflet').then(mod => addMarkers(mod.default, hosts))
   }, [hosts, mode, buddyIds])
 
+  function setupTileLayers(L: any, map: any, isSatellite: boolean) {
+    if (tileLayerRef.current) tileLayerRef.current.remove()
+    overlayLayersRef.current.forEach(l => l.remove())
+    overlayLayersRef.current = []
+
+    if (isSatellite) {
+      tileLayerRef.current = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        { attribution: 'Tiles &copy; Esri', maxZoom: 19 }
+      ).addTo(map)
+      overlayLayersRef.current = [
+        L.tileLayer(
+          'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
+          { maxZoom: 19, opacity: 0.9 }
+        ).addTo(map),
+        L.tileLayer(
+          'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+          { maxZoom: 19 }
+        ).addTo(map),
+      ]
+    } else {
+      tileLayerRef.current = L.tileLayer(
+        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>', maxZoom: 19 }
+      ).addTo(map)
+      overlayLayersRef.current = [
+        L.tileLayer(
+          'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
+          { maxZoom: 19, opacity: 0.45 }
+        ).addTo(map),
+      ]
+    }
+  }
+
   useEffect(() => {
     if (!mapInstanceRef.current) return
-    import('leaflet').then(mod => {
-      const L = mod.default
-      if (tileLayerRef.current) tileLayerRef.current.remove()
-      if (overlayLayerRef.current) { overlayLayerRef.current.remove(); overlayLayerRef.current = null }
-      if (satellite) {
-        tileLayerRef.current = L.tileLayer(
-          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          { attribution: 'Tiles &copy; Esri', maxZoom: 19 }
-        ).addTo(mapInstanceRef.current)
-        overlayLayerRef.current = L.tileLayer(
-          'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
-          { attribution: '', maxZoom: 19, opacity: 0.85 }
-        ).addTo(mapInstanceRef.current)
-      } else {
-        tileLayerRef.current = L.tileLayer(
-          'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-          { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>', maxZoom: 19 }
-        ).addTo(mapInstanceRef.current)
-      }
-    })
+    import('leaflet').then(mod => setupTileLayers(mod.default, mapInstanceRef.current, satellite))
   }, [satellite])
 
   return (
