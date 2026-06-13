@@ -531,7 +531,7 @@ export default function RequestsScreen() {
           keyExtractor={m => m.id}
           contentContainerStyle={styles.msgList}
           onLayout={() => flatRef.current?.scrollToEnd({ animated: false })}
-          ListFooterComponent={() => {
+          ListFooterComponent={(() => {
             const acceptedReq = messages.find(m => m.request?.status === 'ACCEPTED')?.request
             if (!acceptedReq) return null
             if (myReview) return (
@@ -568,7 +568,7 @@ export default function RequestsScreen() {
                 </TouchableOpacity>
               </View>
             )
-          }}
+          })()}
           renderItem={({ item: m }) => {
             const isMine = m.sender_id === currentUser?.id
             const isHost = m.request ? currentUser?.id === m.request.host_id : false
