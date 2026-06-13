@@ -70,6 +70,7 @@ export default function HostMap({
   const userPosRef = useRef<{ lat: number; lng: number } | null>(null)
   const satelliteRef = useRef(satellite)
   const tileLayerRef = useRef<any>(null)
+  const overlayLayerRef = useRef<any>(null)
   satelliteRef.current = satellite
   const [locating, setLocating] = useState(false)
 
@@ -243,13 +244,22 @@ export default function HostMap({
     import('leaflet').then(mod => {
       const L = mod.default
       if (tileLayerRef.current) tileLayerRef.current.remove()
-      const tileUrl = satellite
-        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-        : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      const attrib = satellite
-        ? 'Tiles &copy; Esri'
-        : '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-      tileLayerRef.current = L.tileLayer(tileUrl, { attribution: attrib, maxZoom: 19 }).addTo(mapInstanceRef.current)
+      if (overlayLayerRef.current) { overlayLayerRef.current.remove(); overlayLayerRef.current = null }
+      if (satellite) {
+        tileLayerRef.current = L.tileLayer(
+          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+          { attribution: 'Tiles &copy; Esri', maxZoom: 19 }
+        ).addTo(mapInstanceRef.current)
+        overlayLayerRef.current = L.tileLayer(
+          'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
+          { attribution: '', maxZoom: 19, opacity: 0.85 }
+        ).addTo(mapInstanceRef.current)
+      } else {
+        tileLayerRef.current = L.tileLayer(
+          'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+          { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>', maxZoom: 19 }
+        ).addTo(mapInstanceRef.current)
+      }
     })
   }, [satellite])
 

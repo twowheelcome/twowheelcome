@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert, Image, Platform } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Image, Platform } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Feather } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
@@ -22,6 +22,7 @@ export default function ProfileScreen() {
   const [savingBike, setSavingBike] = useState(false)
   const [coverUrl, setCoverUrl] = useState<string | null>(null)
   const [uploadingCover, setUploadingCover] = useState(false)
+  const [avatarError, setAvatarError] = useState<string | null>(null)
   const [reviews, setReviews] = useState<{ rating: number; body: string | null; reviewer_name: string | null; created_at: string }[]>([])
 
   useEffect(() => { loadAll() }, [])
@@ -54,7 +55,7 @@ export default function ProfileScreen() {
     setSavingName(true)
     const { error } = await supabase.from('profiles').upsert({ id: user.id, full_name: nameInput.trim() })
     setSavingName(false)
-    if (error) { Alert.alert('Error', error.message); return }
+    if (error) { setAvatarError(error.message); return }
     setProfile((p: any) => ({ ...p, full_name: nameInput.trim() }))
     setEditingName(false)
   }
@@ -62,7 +63,7 @@ export default function ProfileScreen() {
   async function pickAvatar() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please grant photo library access to upload an avatar.')
+      setAvatarError('Please grant photo library access to upload an avatar.')
       return
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -82,15 +83,19 @@ export default function ProfileScreen() {
   async function uploadAvatar(file: File | Blob, extHint?: string) {
     if (!user) return
     setUploadingAvatar(true)
+    setAvatarError(null)
     try {
       const ext = extHint ?? ((file as File).name?.split('.').pop() || 'jpg')
       const path = `${user.id}/avatar.${ext}`
-      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
-      if (upErr) { Alert.alert('Upload error', upErr.message); return }
+      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: (file as File).type || `image/${ext}` })
+      if (upErr) { setAvatarError(upErr.message); return }
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
       const url = `${publicUrl}?t=${Date.now()}`
-      await supabase.from('profiles').upsert({ id: user.id, avatar_url: url })
+      const { error: dbErr } = await supabase.from('profiles').upsert({ id: user.id, avatar_url: url })
+      if (dbErr) { setAvatarError(dbErr.message); return }
       setProfile((p: any) => ({ ...p, avatar_url: url }))
+    } catch (e: unknown) {
+      setAvatarError(e instanceof Error ? e.message : 'Upload failed')
     } finally {
       setUploadingAvatar(false)
     }
@@ -219,6 +224,11 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.body}>
+        {avatarError && (
+          <View style={[styles.inlineError, { marginTop: -8 }]}>
+            <Text style={styles.inlineErrorText}>⚠️ {avatarError}</Text>
+          </View>
+        )}
         {/* Name */}
         {editingName ? (
           <View style={styles.nameEdit}>
@@ -484,6 +494,8 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
 
+  inlineError: { backgroundColor: C.errorSoft, borderRadius: 10, borderWidth: 1, borderColor: C.errorBorder, padding: 10 },
+  inlineErrorText: { color: C.error, fontSize: 13 },
   signOutBtn: { alignItems: 'center', paddingVertical: 8 },
   signOutText: { color: C.textFaint, fontSize: 14, textDecorationLine: 'underline' },
 
