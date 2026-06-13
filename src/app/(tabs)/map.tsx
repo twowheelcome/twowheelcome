@@ -36,10 +36,10 @@ export default function MapScreen() {
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState('')
   const [sendSuccess, setSendSuccess] = useState(false)
-  const [guestVehicle, setGuestVehicle] = useState('')
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const fileInputRef = useRef<any>(null)
+  const [arrivalChip, setArrivalChip] = useState<'tonight' | 'tomorrow' | 'other'>('tonight')
   const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().split('T')[0])
   const [departureDate, setDepartureDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0])
   const [arrivalTime, setArrivalTime] = useState(() => defaultArrivalTime())
@@ -88,7 +88,7 @@ export default function MapScreen() {
 
   useEffect(() => {
     if (requesting) {
-      setGuestVehicle('')
+      setArrivalChip('tonight')
       setArrivalDate(new Date().toISOString().split('T')[0])
       setDepartureDate(new Date(Date.now() + 86400000).toISOString().split('T')[0])
       setArrivalTime(defaultArrivalTime())
@@ -170,7 +170,6 @@ export default function MapScreen() {
           arrival_date: arrivalDate,
           departure_date: departureDate,
           arrival_time: arrivalTime.trim() || null,
-          guest_vehicle: guestVehicle || null,
           conversation_id: convId,
           photo_url: uploadedPhotoUrl,
         })
@@ -245,46 +244,61 @@ export default function MapScreen() {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.sectionLabel}>YOUR VEHICLE</Text>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              {[{ value: 'moto', icon: '🏍', label: 'Moto' }].map(v => (
-                <TouchableOpacity
-                  key={v.value}
-                  style={[{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: C.bg },
-                    guestVehicle === v.value && { borderColor: C.accent, backgroundColor: C.accentSoft }]}
-                  onPress={() => setGuestVehicle(guestVehicle === v.value ? '' : v.value)}
-                >
-                  <Text style={{ fontSize: 22 }}>{v.icon}</Text>
-                  <Text style={[{ color: C.textMuted, fontWeight: '700', fontSize: 15 }, guestVehicle === v.value && { color: C.accent }]}>{v.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.card}>
             <Text style={styles.sectionLabel}>WHEN ARE YOU ARRIVING?</Text>
-            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
-              {[
-                { label: '🌙 Tonight', offset: 0 },
-                { label: '☀️ Tomorrow', offset: 1 },
-              ].map(({ label, offset }) => {
-                const d = new Date(Date.now() + offset * 86400000).toISOString().split('T')[0]
-                const active = arrivalDate === d
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+              {([
+                { chip: 'tonight' as const, label: '🌙 Tonight', offset: 0 },
+                { chip: 'tomorrow' as const, label: '☀️ Tomorrow', offset: 1 },
+                { chip: 'other' as const, label: '📅 Other day', offset: null },
+              ] as const).map(({ chip, label, offset }) => {
+                const active = arrivalChip === chip
                 return (
                   <TouchableOpacity
-                    key={label}
-                    style={[{ flex: 1, padding: 14, borderRadius: 100, borderWidth: 1, borderColor: C.border, backgroundColor: C.bg, alignItems: 'center' },
+                    key={chip}
+                    style={[{ flex: 1, padding: 12, borderRadius: 100, borderWidth: 1, borderColor: C.border, backgroundColor: C.bg, alignItems: 'center' },
                       active && { borderColor: C.accent, backgroundColor: C.accentSoft }]}
                     onPress={() => {
-                      setArrivalDate(d)
-                      setDepartureDate(new Date(Date.now() + (offset + 1) * 86400000).toISOString().split('T')[0])
+                      setArrivalChip(chip)
+                      if (offset !== null) {
+                        const d = new Date(Date.now() + offset * 86400000).toISOString().split('T')[0]
+                        setArrivalDate(d)
+                        setDepartureDate(new Date(Date.now() + (offset + 1) * 86400000).toISOString().split('T')[0])
+                      }
                     }}
                   >
-                    <Text style={[{ color: C.textMuted, fontWeight: '700', fontSize: 15 }, active && { color: C.accent }]}>{label}</Text>
+                    <Text style={[{ color: C.textMuted, fontWeight: '700', fontSize: 13 }, active && { color: C.accent }]}>{label}</Text>
                   </TouchableOpacity>
                 )
               })}
             </View>
+            {arrivalChip === 'other' && (
+              <View style={{ marginBottom: 10, gap: 4 }}>
+                {Platform.OS === 'web' ? (
+                  <input type="date" value={arrivalDate}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={(e: any) => {
+                      const d = e.target.value
+                      setArrivalDate(d)
+                      const dep = new Date(new Date(d).getTime() + 86400000).toISOString().split('T')[0]
+                      setDepartureDate(dep)
+                    }}
+                    style={{ background: C.bg, border: `1px solid ${C.borderMid}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontSize: 13, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any}
+                  />
+                ) : (
+                  <TextInput
+                    style={styles.dateInput}
+                    value={arrivalDate}
+                    onChangeText={d => {
+                      setArrivalDate(d)
+                      const dep = new Date(new Date(d).getTime() + 86400000).toISOString().split('T')[0]
+                      setDepartureDate(dep)
+                    }}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor="#777"
+                  />
+                )}
+              </View>
+            )}
             <View style={{ gap: 6 }}>
               <Text style={styles.dateFieldLabel}>EST. ARRIVAL TIME</Text>
               {Platform.OS === 'web' ? (

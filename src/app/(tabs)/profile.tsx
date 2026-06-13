@@ -107,9 +107,9 @@ export default function ProfileScreen() {
     try {
       const ext = extHint ?? ((file as File).name?.split('.').pop() || 'jpg')
       const path = `${user.id}/cover.${ext}`
-      const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+      const { error } = await supabase.storage.from('profile-covers').upload(path, file, { upsert: true })
       if (error) return
-      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+      const { data: { publicUrl } } = supabase.storage.from('profile-covers').getPublicUrl(path)
       const url = `${publicUrl}?t=${Date.now()}`
       await supabase.from('profiles').upsert({ id: user.id, cover_url: url })
       setCoverUrl(url)
@@ -164,7 +164,8 @@ export default function ProfileScreen() {
           </div>
         )}
         {Platform.OS === 'web' && (
-          <div style={{ position: 'absolute', bottom: 52, right: 14, zIndex: 20 } as any}>
+          <div style={{ position: 'absolute', bottom: 52, right: 14, zIndex: 20, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 } as any}>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', textAlign: 'right', maxWidth: 160 } as any}>Upload a photo of yourself with your bike</div>
             <div style={{ position: 'relative', display: 'inline-block' }}>
               <button style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 100, padding: '5px 12px', color: 'white', fontSize: 11, cursor: 'pointer', opacity: uploadingCover ? 0.5 : 1 }}>
                 {uploadingCover ? '...' : '📷 Cover'}

@@ -21,7 +21,7 @@ interface Host {
   parkings?: string[]
   vehicle_types?: string[]
   pricing: string
-  profiles: { full_name: string } | null
+  profiles: { full_name: string; avatar_url?: string | null } | null
 }
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -155,10 +155,19 @@ export default function HostMap({
         ? `<div style="font-size:11px;color:${C.buddy};margin-top:4px;">⭐ You've stayed here · exact address saved</div>`
         : `<div style="font-size:11px;color:${C.textDim};margin-top:4px;">🔒 Approx. area — unlocks on accept</div>`
 
+      const avatarHtml = host.profiles?.avatar_url
+        ? `<img src="${host.profiles.avatar_url}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid ${isBuddy ? C.buddy : C.accent};flex-shrink:0;" />`
+        : `<div style="width:36px;height:36px;border-radius:50%;background:${C.accent}33;border:2px solid ${isBuddy ? C.buddy : C.accent};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${C.accent};flex-shrink:0;">${(host.profiles?.full_name || 'R')[0].toUpperCase()}</div>`
+
       const popupContent = `
         <div style="font-family:-apple-system,sans-serif;min-width:190px;">
-          <div style="font-weight:700;font-size:14px;color:${C.text};">${host.profiles?.full_name || 'Rider'}${isBuddy ? ' ⭐' : ''}</div>
-          <div style="color:${C.textDim};font-size:12px;margin-top:2px;">🏍 📍 ${host.location_city}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            ${avatarHtml}
+            <div>
+              <div style="font-weight:700;font-size:14px;color:${C.text};">${host.profiles?.full_name || 'Rider'}${isBuddy ? ' ⭐' : ''}</div>
+              <div style="color:${C.textDim};font-size:12px;">🏍 📍 ${host.location_city}</div>
+            </div>
+          </div>
           ${etaStr ? `<div style="color:${C.accent};font-size:15px;font-weight:700;margin:6px 0 0;">${etaStr.split('·')[0].trim()}</div><div style="color:${C.textDim};font-size:11px;margin-bottom:4px;">${etaStr.split('·')[1]?.trim() || ''} · ${modeRef.current}</div>` : ''}
           <div style="display:flex;align-items:center;gap:6px;background:${safety.color}18;border:1px solid ${safety.color}55;border-radius:8px;padding:6px 8px;margin:6px 0 4px;">
             <span style="font-size:16px;">${safety.icon}</span>
