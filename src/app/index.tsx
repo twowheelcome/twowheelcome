@@ -1,7 +1,7 @@
 import { Session } from '@supabase/supabase-js'
 import { router } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
+import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Feather } from '@expo/vector-icons'
 import { supabase } from '../lib/supabase'
@@ -48,13 +48,12 @@ export default function AuthScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Forest gradient header */}
+      {/* Forest gradient hero */}
       <LinearGradient
         colors={['#1C3020', '#162418', '#100C08']}
         locations={[0, 0.55, 1]}
         style={styles.heroGradient}
       >
-        {/* Tree silhouettes using shapes */}
         <View style={styles.treeLine}>
           {[60, 80, 45, 90, 55, 70, 40, 85, 50, 75, 42, 68, 58, 82].map((h, i) => (
             <View key={i} style={[styles.tree, {
@@ -69,9 +68,18 @@ export default function AuthScreen() {
         <View style={styles.mist} />
       </LinearGradient>
 
-      {/* Logo area */}
-      <View style={styles.logoWrap}>
-        <Text style={styles.logo}>TWOWHEELCOME</Text>
+      {/* Badge logo overlapping the hero */}
+      <View style={styles.badgeWrap}>
+        <Image
+          source={require('../../assets/images/logo.png')}
+          style={styles.badge}
+          resizeMode="contain"
+        />
+      </View>
+
+      {/* Wordmark + tyre-track rule */}
+      <View style={styles.wordmarkWrap}>
+        <Text style={styles.wordmark}>TWOWHEELCOME</Text>
         <View style={styles.tireTrack}>
           {Array.from({ length: 18 }).map((_, i) => (
             <View key={i} style={[styles.trackDash, i % 2 === 0 ? styles.trackDashOdd : styles.trackDashEven]} />
@@ -112,16 +120,16 @@ export default function AuthScreen() {
           disabled={loading}
         >
           <Text style={styles.btnPrimaryText}>
-            {loading ? 'Loading...' : mode === 'login' ? 'Sign in' : 'Sign up'}
+            {loading ? 'LOADING...' : mode === 'login' ? 'LOG IN' : 'SIGN UP'}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.btnOutline}
-          onPress={() => setMode(mode === 'login' ? 'register' : 'login')}
+          onPress={() => { setAuthError(''); setAuthSuccess(''); setMode(mode === 'login' ? 'register' : 'login') }}
         >
           <Text style={styles.btnOutlineText}>
-            {mode === 'login' ? 'Create account' : 'Sign in'}
+            {mode === 'login' ? 'SIGN UP' : 'BACK TO LOG IN'}
           </Text>
         </TouchableOpacity>
 
@@ -153,9 +161,8 @@ const styles = StyleSheet.create({
     backgroundColor: C.bg,
   },
   heroGradient: {
-    height: 220,
+    height: 200,
     overflow: 'hidden',
-    position: 'relative',
   },
   treeLine: {
     position: 'absolute',
@@ -182,19 +189,27 @@ const styles = StyleSheet.create({
     right: 0,
     height: 80,
     backgroundColor: 'rgba(28, 40, 28, 0.6)',
-    borderRadius: 0,
   },
-  logoWrap: {
+  badgeWrap: {
     alignItems: 'center',
-    paddingTop: 28,
-    paddingBottom: 36,
+    marginTop: -52,
+    zIndex: 10,
+  },
+  badge: {
+    width: 104,
+    height: 104,
+  },
+  wordmarkWrap: {
+    alignItems: 'center',
+    paddingTop: 14,
+    paddingBottom: 28,
     gap: 10,
     maxWidth: 440,
     width: '100%',
     alignSelf: 'center',
   },
-  logo: {
-    fontSize: 42,
+  wordmark: {
+    fontSize: 34,
     fontFamily: 'Rye_400Regular',
     color: C.text,
     letterSpacing: 1,
@@ -256,9 +271,9 @@ const styles = StyleSheet.create({
   },
   btnPrimaryText: {
     color: C.white,
-    fontWeight: '700',
+    fontFamily: 'Oswald_700Bold',
     fontSize: 16,
-    letterSpacing: 0.3,
+    letterSpacing: 1.5,
   },
   btnOutline: {
     height: 54,
@@ -270,8 +285,9 @@ const styles = StyleSheet.create({
   },
   btnOutlineText: {
     color: C.text,
-    fontWeight: '600',
+    fontFamily: 'Oswald_700Bold',
     fontSize: 16,
+    letterSpacing: 1.5,
   },
   forgotWrap: {
     alignItems: 'center',
