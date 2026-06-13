@@ -22,6 +22,8 @@ interface Host {
   vehicle_types?: string[]
   pricing: string
   profiles: { full_name: string; avatar_url?: string | null } | null
+  avg_rating: number | null
+  review_count: number
 }
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -167,7 +169,10 @@ export default function HostMap({
             ${avatarHtml}
             <div>
               <div style="font-weight:700;font-size:14px;color:${C.text};">${host.profiles?.full_name || 'Rider'}${isBuddy ? ' ⭐' : ''}</div>
-              <div style="color:${C.textDim};font-size:12px;">🏍 📍 ${host.location_city}</div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="color:${C.textDim};font-size:12px;">📍 ${host.location_city}</span>
+                ${host.avg_rating != null ? `<span style="color:#F5C842;font-weight:700;font-size:12px;">★ ${host.avg_rating.toFixed(1)}</span><span style="color:${C.textDim};font-size:11px;">(${host.review_count})</span>` : ''}
+              </div>
             </div>
           </div>
           ${etaStr ? `<div style="color:${C.accent};font-size:15px;font-weight:700;margin:6px 0 0;">${etaStr.split('·')[0].trim()}</div><div style="color:${C.textDim};font-size:11px;margin-bottom:4px;">${etaStr.split('·')[1]?.trim() || ''} · ${modeRef.current}</div>` : ''}

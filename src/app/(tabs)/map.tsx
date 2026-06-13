@@ -103,17 +103,32 @@ export default function MapScreen() {
     if (!data || data.length === 0) { setHosts([]); setLoading(false); return }
 
     const userIds = [...new Set(data.map((h: any) => h.user_id))]
-    const { data: profilesData } = await supabase
-      .from('profiles')
-      .select('id, full_name, avatar_url, bio')
-      .in('id', userIds)
+    const [{ data: profilesData }, { data: reviewsData }] = await Promise.all([
+      supabase.from('profiles').select('id, full_name, avatar_url, bio').in('id', userIds),
+      supabase.from('reviews').select('reviewee_id, rating').in('reviewee_id', userIds),
+    ])
 
     const profileMap: Record<string, any> = {}
     profilesData?.forEach(p => { profileMap[p.id] = p })
 
+    const ratingMap: Record<string, { sum: number; count: number }> = {}
+    reviewsData?.forEach((r: any) => {
+      if (!ratingMap[r.reviewee_id]) ratingMap[r.reviewee_id] = { sum: 0, count: 0 }
+      ratingMap[r.reviewee_id].sum += r.rating
+      ratingMap[r.reviewee_id].count += 1
+    })
+
     setHosts(data.map((h: any) => {
       const fuzzed = fuzzCoords(h.id, h.location_lat, h.location_lng)
-      return { ...h, profiles: profileMap[h.user_id] || null, location_lat: fuzzed.lat, location_lng: fuzzed.lng }
+      const rev = ratingMap[h.user_id]
+      return {
+        ...h,
+        profiles: profileMap[h.user_id] || null,
+        location_lat: fuzzed.lat,
+        location_lng: fuzzed.lng,
+        avg_rating: rev ? rev.sum / rev.count : null,
+        review_count: rev ? rev.count : 0,
+      }
     }))
     setLoading(false)
   }
@@ -526,10 +541,15 @@ export default function MapScreen() {
                   <Text style={styles.avatarText}>{host.profiles?.full_name?.charAt(0) || '?'}</Text>
                 </View>
                 <View style={styles.cardInfo}>
-                  <Text style={styles.cardName}>
-                    {host.profiles?.full_name || 'Anonymous Rider'}
-                    {isOwn && <Text style={styles.ownBadge}> (you)</Text>}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.cardName}>
+                      {host.profiles?.full_name || 'Anonymous Rider'}
+                      {isOwn && <Text style={styles.ownBadge}> (you)</Text>}
+                    </Text>
+                    {host.avg_rating != null && (
+                      <Text style={styles.cardRating}>★ {host.avg_rating.toFixed(1)} <Text style={styles.cardRatingCount}>({host.review_count})</Text></Text>
+                    )}
+                  </View>
                   <Text style={styles.cardLocation}>📍 {host.location_city}, {host.location_country}</Text>
                 </View>
                 {hostPricings.includes('free') && (
@@ -607,6 +627,8 @@ const styles = StyleSheet.create({
   avatarText:       { color: C.white, fontWeight: '800', fontSize: 18 },
   cardInfo:         { flex: 1 },
   cardName:         { color: C.text, fontWeight: '700', fontSize: 15 },
+  cardRating:       { color: C.buddy, fontWeight: '700', fontSize: 13 },
+  cardRatingCount:  { color: C.textDim, fontWeight: '400', fontSize: 12 },
   ownBadge:         { color: C.accent, fontSize: 13 },
   cardLocation:     { color: C.textDim, fontSize: 12, marginTop: 3 },
   pricePill:        { borderRadius: 100, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4 },
