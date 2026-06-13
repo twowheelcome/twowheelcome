@@ -229,6 +229,10 @@ export default function RequestsScreen() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [seenConvIds, setSeenConvIds] = useState<Set<string>>(new Set())
   const [hostLocMap, setHostLocMap] = useState<Record<string, HostLoc>>({})
+  const [myReview, setMyReview] = useState<{ rating: number; body: string } | null>(null)
+  const [reviewStars, setReviewStars] = useState(0)
+  const [reviewBody, setReviewBody] = useState('')
+  const [submittingReview, setSubmittingReview] = useState(false)
   const flatRef = useRef<FlatList<MsgRow>>(null)
   const channelRef = useRef<any>(null)
   const autoOpenedRef = useRef<string | null>(null)
@@ -369,8 +373,37 @@ export default function RequestsScreen() {
       }
     }
 
+    // Fetch my existing review for this stay
+    const acceptedReq = normalized.find(m => m.request?.status === 'ACCEPTED')?.request
+    setMyReview(null); setReviewStars(0); setReviewBody('')
+    if (acceptedReq && currentUser) {
+      const { data: rev } = await supabase
+        .from('reviews')
+        .select('rating, body')
+        .eq('stay_request_id', acceptedReq.id)
+        .eq('reviewer_id', currentUser.id)
+        .maybeSingle()
+      if (rev) { setMyReview({ rating: rev.rating, body: rev.body ?? '' }); setReviewStars(rev.rating) }
+    }
+
     subscribeToConv(conv.id)
     setTimeout(() => flatRef.current?.scrollToEnd({ animated: false }), 100)
+  }
+
+  async function submitReview() {
+    const req = messages.find(m => m.request?.status === 'ACCEPTED')?.request
+    if (!req || !currentUser || !reviewStars) return
+    const revieweeId = currentUser.id === req.host_id ? req.guest_id : req.host_id
+    setSubmittingReview(true)
+    const { error } = await supabase.from('reviews').insert({
+      stay_request_id: req.id,
+      reviewer_id: currentUser.id,
+      reviewee_id: revieweeId,
+      rating: reviewStars,
+      body: reviewBody.trim() || null,
+    })
+    setSubmittingReview(false)
+    if (!error) setMyReview({ rating: reviewStars, body: reviewBody })
   }
 
   function normalizeMsg(m: any): MsgRow {
@@ -481,6 +514,7 @@ export default function RequestsScreen() {
         <View style={styles.header}>
           <TouchableOpacity onPress={() => {
             setSelected(null)
+            setMyReview(null); setReviewStars(0); setReviewBody('')
             if (channelRef.current) supabase.removeChannel(channelRef.current)
           }}>
             <Text style={styles.back}>←</Text>
@@ -497,6 +531,44 @@ export default function RequestsScreen() {
           keyExtractor={m => m.id}
           contentContainerStyle={styles.msgList}
           onLayout={() => flatRef.current?.scrollToEnd({ animated: false })}
+          ListFooterComponent={() => {
+            const acceptedReq = messages.find(m => m.request?.status === 'ACCEPTED')?.request
+            if (!acceptedReq) return null
+            if (myReview) return (
+              <View style={styles.reviewDone}>
+                <Text style={styles.reviewDoneText}>
+                  {'⭐'.repeat(myReview.rating)}{'☆'.repeat(5 - myReview.rating)}{'  '}Your review submitted
+                </Text>
+              </View>
+            )
+            return (
+              <View style={styles.reviewCard}>
+                <Text style={styles.reviewTitle}>⭐ RATE THIS STAY</Text>
+                <View style={styles.reviewStars}>
+                  {[1,2,3,4,5].map(n => (
+                    <TouchableOpacity key={n} onPress={() => setReviewStars(n)} hitSlop={8}>
+                      <Text style={[styles.reviewStar, n <= reviewStars && styles.reviewStarActive]}>★</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TextInput
+                  style={styles.reviewInput}
+                  placeholder="Say something... (optional)"
+                  placeholderTextColor={C.placeholder}
+                  value={reviewBody}
+                  onChangeText={setReviewBody}
+                  multiline
+                />
+                <TouchableOpacity
+                  style={[styles.reviewSubmit, (!reviewStars || submittingReview) && styles.reviewSubmitDisabled]}
+                  onPress={submitReview}
+                  disabled={!reviewStars || submittingReview}
+                >
+                  <Text style={styles.reviewSubmitText}>{submittingReview ? 'Submitting...' : 'SUBMIT REVIEW'}</Text>
+                </TouchableOpacity>
+              </View>
+            )
+          }}
           renderItem={({ item: m }) => {
             const isMine = m.sender_id === currentUser?.id
             const isHost = m.request ? currentUser?.id === m.request.host_id : false
@@ -758,4 +830,28 @@ const styles = StyleSheet.create({
     backgroundColor: C.accent,
   },
   convStatusText: { color: C.white, fontSize: 11, fontWeight: '700' },
+
+  reviewCard: {
+    backgroundColor: C.surface, borderRadius: 20, borderWidth: 1, borderColor: C.buddyBorder,
+    padding: 16, gap: 12, marginTop: 16,
+  },
+  reviewTitle: { color: C.buddy, fontSize: 10, fontWeight: '800', letterSpacing: 2, fontFamily: 'Oswald_700Bold' },
+  reviewStars: { flexDirection: 'row', gap: 8 },
+  reviewStar: { fontSize: 32, color: C.border },
+  reviewStarActive: { color: C.buddy },
+  reviewInput: {
+    backgroundColor: C.elevated, borderRadius: 14, padding: 12,
+    color: C.text, fontSize: 14, minHeight: 60,
+    borderWidth: 1, borderColor: C.border,
+  },
+  reviewSubmit: {
+    backgroundColor: C.buddy, borderRadius: 100, padding: 13, alignItems: 'center',
+  },
+  reviewSubmitDisabled: { backgroundColor: C.elevated },
+  reviewSubmitText: { color: C.white, fontWeight: '700', fontSize: 13, fontFamily: 'Oswald_700Bold', letterSpacing: 1 },
+  reviewDone: {
+    backgroundColor: C.buddySoft, borderRadius: 14, borderWidth: 1, borderColor: C.buddyBorder,
+    padding: 12, alignItems: 'center', marginTop: 16,
+  },
+  reviewDoneText: { color: C.buddy, fontSize: 13, fontWeight: '600' },
 })

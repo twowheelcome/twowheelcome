@@ -19,6 +19,7 @@ interface Host {
   location_country: string
   parking: string
   parkings?: string[]
+  vehicle_types?: string[]
   pricing: string
   profiles: { full_name: string } | null
 }
@@ -51,11 +52,13 @@ export default function HostMap({
   onHostSelect,
   mode = 'road',
   buddyIds = [],
+  satellite = false,
 }: {
   hosts: Host[]
   onHostSelect: (host: Host) => void
   mode?: 'road' | 'trail'
   buddyIds?: string[]
+  satellite?: boolean
 }) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
@@ -65,7 +68,16 @@ export default function HostMap({
   const modeRef = useRef(mode); modeRef.current = mode
   const buddyRef = useRef(buddyIds); buddyRef.current = buddyIds
   const userPosRef = useRef<{ lat: number; lng: number } | null>(null)
+  const satelliteRef = useRef(satellite)
+  const tileLayerRef = useRef<any>(null)
+  satelliteRef.current = satellite
   const [locating, setLocating] = useState(false)
+
+  function getVehicleEmoji(host: Host): string {
+    const vt = host.vehicle_types || []
+    if (vt.includes('bicycle') && !vt.includes('moto')) return '🚲'
+    return '🏍'
+  }
 
   function getSafetyKey(host: Host): keyof typeof SAFETY {
     const primary = host.parkings?.[0] || host.parking
@@ -84,8 +96,9 @@ export default function HostMap({
       const safetyKey = getSafetyKey(host)
       const safety = SAFETY[safetyKey]
       const isBuddy = buddyRef.current.includes(host.id)
-      const pinColor = isBuddy ? C.buddy : safety.color
+      const pinColor = isBuddy ? C.buddy : C.accent
       const size = isBuddy ? 44 : 36
+      const pinEmoji = getVehicleEmoji(host)
 
       // Fuzz circle for non-buddy hosts
       if (!isBuddy) {
@@ -122,7 +135,7 @@ export default function HostMap({
             cursor:pointer;
           ">
             <div style="transform:rotate(45deg);display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:${isBuddy ? 18 : 15}px;">
-              ${safety.icon}
+              ${pinEmoji}
             </div>
           </div>
         </div>
@@ -188,11 +201,14 @@ export default function HostMap({
       const L = mod.default
       const map = L.map(mapRef.current, { zoomControl: false }).setView([49.5, 15.5], 7)
 
-      // Dark tiles
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OSM</a> © <a href="https://carto.com/attributions">CARTO</a>',
-        maxZoom: 19,
-      }).addTo(map)
+      // Tile layer (dark or satellite)
+      const initTileUrl = satelliteRef.current
+        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+      const initAttrib = satelliteRef.current
+        ? 'Tiles &copy; Esri'
+        : '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      tileLayerRef.current = L.tileLayer(initTileUrl, { attribution: initAttrib, maxZoom: 19 }).addTo(map)
 
       L.control.zoom({ position: 'bottomright' }).addTo(map)
       mapInstanceRef.current = map
@@ -221,6 +237,21 @@ export default function HostMap({
     if (!mapInstanceRef.current) return
     import('leaflet').then(mod => addMarkers(mod.default, hosts))
   }, [hosts, mode, buddyIds])
+
+  useEffect(() => {
+    if (!mapInstanceRef.current) return
+    import('leaflet').then(mod => {
+      const L = mod.default
+      if (tileLayerRef.current) tileLayerRef.current.remove()
+      const tileUrl = satellite
+        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+      const attrib = satellite
+        ? 'Tiles &copy; Esri'
+        : '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      tileLayerRef.current = L.tileLayer(tileUrl, { attribution: attrib, maxZoom: 19 }).addTo(mapInstanceRef.current)
+    })
+  }, [satellite])
 
   return (
     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>

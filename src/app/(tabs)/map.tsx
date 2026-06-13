@@ -47,16 +47,22 @@ export default function MapScreen() {
   const [showMap, setShowMap] = useState(true)
   const [HostMap, setHostMap] = useState<any>(null)
   const [mode, setMode] = useState<'road' | 'trail'>('road')
-  const [filterGarage, setFilterGarage] = useState(false)
+  const [filterMoto, setFilterMoto] = useState(false)
+  const [filterBike, setFilterBike] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
   const [filterFree, setFilterFree] = useState(false)
+  const [satelliteMap, setSatelliteMap] = useState(false)
 
-  const activeCount = (filterGarage ? 1 : 0) + (filterOpen ? 1 : 0) + (filterFree ? 1 : 0)
+  const activeCount = (filterMoto ? 1 : 0) + (filterBike ? 1 : 0) + (filterOpen ? 1 : 0) + (filterFree ? 1 : 0)
 
   const filteredHosts = hosts.filter(h => {
-    if (filterGarage) {
-      const hp: string[] = h.parkings?.length ? h.parkings : (h.parking ? [h.parking] : [])
-      if (!hp.map(getSafetyKey).includes('locked_garage')) return false
+    if (filterMoto) {
+      const vt: string[] = h.vehicle_types?.length ? h.vehicle_types : ['moto']
+      if (!vt.includes('moto')) return false
+    }
+    if (filterBike) {
+      const vt: string[] = h.vehicle_types?.length ? h.vehicle_types : []
+      if (!vt.includes('bicycle')) return false
     }
     if (filterOpen && !h.is_open) return false
     if (filterFree) {
@@ -371,9 +377,10 @@ export default function MapScreen() {
 
   function FilterChips({ floating = false }: { floating?: boolean }) {
     const chips = [
-      { key: 'garage', label: '🔒 Locked garage', active: filterGarage, onPress: () => setFilterGarage(v => !v) },
-      { key: 'open',   label: '🟢 Open now',       active: filterOpen,   onPress: () => setFilterOpen(v => !v) },
-      { key: 'free',   label: '🤝 Free',            active: filterFree,   onPress: () => setFilterFree(v => !v) },
+      { key: 'moto', emoji: '🏍', label: 'Moto',    active: filterMoto, onPress: () => setFilterMoto(v => !v) },
+      { key: 'bike', emoji: '🚲', label: 'Bicycle',  active: filterBike, onPress: () => setFilterBike(v => !v) },
+      { key: 'open', emoji: '🟢', label: 'Open',     active: filterOpen, onPress: () => setFilterOpen(v => !v) },
+      { key: 'free', emoji: '🤝', label: 'Free',     active: filterFree, onPress: () => setFilterFree(v => !v) },
     ]
     return (
       <View style={floating ? styles.floatingFilterWrap : styles.filterWrap}>
@@ -388,13 +395,14 @@ export default function MapScreen() {
               style={[styles.fChip, chip.active && styles.fChipOn, floating && styles.fChipFloating]}
               onPress={chip.onPress}
             >
+              <Text style={{ fontSize: 18, lineHeight: 22 }}>{chip.emoji}</Text>
               <Text style={[styles.fChipLabel, chip.active && styles.fChipLabelOn]}>{chip.label}</Text>
             </TouchableOpacity>
           ))}
           {activeCount > 0 && (
             <TouchableOpacity
               style={[styles.fChip, styles.fChipClear]}
-              onPress={() => { setFilterGarage(false); setFilterOpen(false); setFilterFree(false) }}
+              onPress={() => { setFilterMoto(false); setFilterBike(false); setFilterOpen(false); setFilterFree(false) }}
             >
               <Text style={styles.fChipClearText}>✕ Reset</Text>
             </TouchableOpacity>
@@ -424,6 +432,14 @@ export default function MapScreen() {
                 <Text style={[styles.tabPillText, !showMap && styles.tabPillTextActive]}>List</Text>
               </TouchableOpacity>
             </View>
+            {showMap && (
+              <TouchableOpacity
+                style={[styles.satelliteBtn, satelliteMap && styles.satelliteBtnActive]}
+                onPress={() => setSatelliteMap(v => !v)}
+              >
+                <Text style={{ fontSize: 16 }}>🛰</Text>
+              </TouchableOpacity>
+            )}
             <UserChip />
           </View>
         </View>
@@ -438,10 +454,17 @@ export default function MapScreen() {
             onHostSelect={(host: any) => { setSelected(host); setRequesting(true) }}
             mode={mode}
             buddyIds={[]}
+            satellite={satelliteMap}
           />
           {/* Filter chips overlay — top */}
           <View style={styles.mapFilterOverlay} pointerEvents="box-none">
             <FilterChips floating />
+          </View>
+          {/* FAB + */}
+          <View style={styles.fabWrap} pointerEvents="box-none">
+            <TouchableOpacity style={styles.fab} onPress={() => router.push('/become-host')}>
+              <Text style={styles.fabText}>+</Text>
+            </TouchableOpacity>
           </View>
           {/* Road / Trail toggle — bottom-left */}
           <View style={styles.modeToggleWrap} pointerEvents="box-none">
@@ -552,10 +575,10 @@ const styles = StyleSheet.create({
   tabPillActive:    { backgroundColor: C.accent },
   tabPillText:      { color: C.textDim, fontSize: 12, fontWeight: '600' },
   tabPillTextActive:{ color: C.white, fontWeight: '700' },
-  filterWrap:         { height: 50, backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border },
-  floatingFilterWrap: { position: 'absolute', top: 12, left: 0, right: 0, zIndex: 10, height: 50 },
-  filterScrollContent:{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, alignItems: 'center', height: 50 },
-  fChip:            { alignItems: 'center', justifyContent: 'center', backgroundColor: C.elevated, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 6, borderWidth: 1, borderColor: C.border },
+  filterWrap:         { height: 66, backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border },
+  floatingFilterWrap: { position: 'absolute', top: 12, left: 0, right: 0, zIndex: 10, height: 66 },
+  filterScrollContent:{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, alignItems: 'center', height: 66 },
+  fChip:            { alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 2, backgroundColor: C.elevated, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: C.border },
   fChipFloating:    { backgroundColor: C.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 6 },
   fChipOn:          { backgroundColor: C.accent, borderColor: C.accent },
   fChipLabel:       { color: C.textDim, fontSize: 13, fontWeight: '600' },
@@ -563,6 +586,11 @@ const styles = StyleSheet.create({
   fChipClear:       { backgroundColor: 'transparent', borderColor: C.textDim },
   fChipClearText:   { color: C.textDim, fontSize: 13, fontWeight: '600' },
   mapFilterOverlay: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
+  satelliteBtn:       { backgroundColor: C.elevated, borderWidth: 1, borderColor: C.border, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 6 },
+  satelliteBtnActive: { backgroundColor: C.accent, borderColor: C.accent },
+  fabWrap:          { position: 'absolute', bottom: 24, left: 0, right: 0, alignItems: 'center', zIndex: 10 },
+  fab:              { width: 72, height: 72, borderRadius: 36, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 8, elevation: 10 },
+  fabText:          { color: C.white, fontSize: 36, fontWeight: '700', lineHeight: 38, marginTop: -2 },
   modeToggleWrap:   { position: 'absolute', bottom: 24, left: 16, zIndex: 10 },
   modeToggle:       { flexDirection: 'row', backgroundColor: C.surface, borderRadius: 100, padding: 3, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 6, elevation: 8 },
   modeBtn:          { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 100 },

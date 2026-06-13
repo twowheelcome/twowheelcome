@@ -20,6 +20,9 @@ export default function ProfileScreen() {
   const [bikeModel, setBikeModel] = useState('')
   const [editingBike, setEditingBike] = useState(false)
   const [savingBike, setSavingBike] = useState(false)
+  const [coverUrl, setCoverUrl] = useState<string | null>(null)
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const [reviews, setReviews] = useState<{ rating: number; body: string | null; reviewer_name: string | null; created_at: string }[]>([])
 
   useEffect(() => { loadAll() }, [])
 
@@ -27,14 +30,22 @@ export default function ProfileScreen() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.replace('/'); return }
     setUser(user)
-    const [p, h] = await Promise.all([
+    const [p, h, r] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
       supabase.from('host_locations').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
+      supabase.from('reviews').select('rating, body, created_at, reviewer:profiles!reviewer_id(full_name)').eq('reviewee_id', user.id).order('created_at', { ascending: false }),
     ])
     setProfile(p.data)
     setHostLocations(h.data || [])
     setNameInput(p.data?.full_name || '')
     setBikeModel(p.data?.bike_model || '')
+    setCoverUrl(p.data?.cover_url || null)
+    setReviews((r.data || []).map((rev: any) => ({
+      rating: rev.rating,
+      body: rev.body,
+      reviewer_name: rev.reviewer?.full_name ?? null,
+      created_at: rev.created_at,
+    })))
     setLoading(false)
   }
 
@@ -85,6 +96,24 @@ export default function ProfileScreen() {
     }
   }
 
+  async function uploadCover(file: File | Blob, extHint?: string) {
+    if (!user) return
+    setUploadingCover(true)
+    try {
+      const ext = extHint ?? ((file as File).name?.split('.').pop() || 'jpg')
+      const path = `${user.id}/cover.${ext}`
+      const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+      if (error) return
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+      const url = `${publicUrl}?t=${Date.now()}`
+      await supabase.from('profiles').upsert({ id: user.id, cover_url: url })
+      setCoverUrl(url)
+      setProfile((p: any) => ({ ...p, cover_url: url }))
+    } finally {
+      setUploadingCover(false)
+    }
+  }
+
   async function saveBike() {
     setSavingBike(true)
     await supabase.from('profiles').upsert({ id: user.id, bike_model: bikeModel.trim() })
@@ -105,16 +134,42 @@ export default function ProfileScreen() {
   const initials = profile?.full_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || '?'
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Rider'
   const isHost = hostLocations.length > 0
+  const avgRating = reviews.length > 0
+    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+    : null
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Hero section */}
       <View style={styles.hero}>
-        <LinearGradient
-          colors={['#1A2E1E', '#2A1C10', C.bg]}
-          locations={[0, 0.6, 1]}
-          style={styles.heroBg}
-        />
+        {coverUrl ? (
+          <Image source={{ uri: coverUrl }} style={styles.heroBg} resizeMode="cover" />
+        ) : (
+          <LinearGradient
+            colors={['#1A2E1E', '#2A1C10', C.bg]}
+            locations={[0, 0.6, 1]}
+            style={styles.heroBg}
+          />
+        )}
+        {coverUrl && <View style={[styles.heroBg, { backgroundColor: 'rgba(0,0,0,0.25)' }]} />}
+        {Platform.OS === 'web' && (
+          <div style={{ position: 'absolute', top: 14, right: 16, display: 'flex', gap: 8, zIndex: 20 } as any}>
+            <button style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 100, padding: '6px 14px', color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Share</button>
+            <button style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 100, padding: '6px 14px', color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>⚙ Settings</button>
+          </div>
+        )}
+        {Platform.OS === 'web' && (
+          <div style={{ position: 'absolute', bottom: 52, right: 14, zIndex: 20 } as any}>
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              <button style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 100, padding: '5px 12px', color: 'white', fontSize: 11, cursor: 'pointer', opacity: uploadingCover ? 0.5 : 1 }}>
+                {uploadingCover ? '...' : '📷 Cover'}
+              </button>
+              <input type="file" accept="image/*"
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' } as any}
+                onChange={(e: any) => { const f = e.target.files?.[0]; if (f) uploadCover(f) }} />
+            </div>
+          </div>
+        )}
         {Platform.OS === 'web' ? (
           <div style={{ position: 'relative', width: 84, height: 84, marginLeft: 24, marginBottom: -42, zIndex: 10, flexShrink: 0 } as any}>
             <View style={styles.avatarCircle}>
@@ -227,13 +282,15 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNum}>—</Text>
-            <Text style={styles.statLabel}>nights</Text>
+            <Text style={[styles.statNum, avgRating ? { color: C.buddy } : {}]}>
+              {avgRating ? `⭐ ${avgRating}` : '—'}
+            </Text>
+            <Text style={styles.statLabel}>rating</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNum}>—</Text>
-            <Text style={styles.statLabel}>trips</Text>
+            <Text style={styles.statNum}>{reviews.length || '—'}</Text>
+            <Text style={styles.statLabel}>reviews</Text>
           </View>
         </View>
 
@@ -269,6 +326,22 @@ export default function ProfileScreen() {
             </View>
           )
         })()}
+
+        {/* Reviews */}
+        {reviews.length > 0 && (
+          <View style={styles.reviewsSection}>
+            <Text style={styles.reviewsSectionTitle}>REVIEWS</Text>
+            {reviews.map((rev, i) => (
+              <View key={i} style={styles.reviewItem}>
+                <View style={styles.reviewItemHeader}>
+                  <Text style={styles.reviewItemName}>{rev.reviewer_name || 'Rider'}</Text>
+                  <Text style={styles.reviewItemStars}>{'⭐'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}</Text>
+                </View>
+                {rev.body ? <Text style={styles.reviewItemBody}>"{rev.body}"</Text> : null}
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Menu items */}
         <View style={styles.menuGroup}>
@@ -413,4 +486,15 @@ const styles = StyleSheet.create({
 
   signOutBtn: { alignItems: 'center', paddingVertical: 8 },
   signOutText: { color: C.textFaint, fontSize: 14, textDecorationLine: 'underline' },
+
+  reviewsSection: { gap: 10 },
+  reviewsSectionTitle: { color: C.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 2, fontFamily: 'Oswald_700Bold' },
+  reviewItem: {
+    backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: C.border,
+    padding: 14, gap: 6,
+  },
+  reviewItemHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  reviewItemName: { color: C.text, fontSize: 14, fontWeight: '700' },
+  reviewItemStars: { fontSize: 13 },
+  reviewItemBody: { color: C.textMuted, fontSize: 13, lineHeight: 19, fontStyle: 'italic' },
 })
