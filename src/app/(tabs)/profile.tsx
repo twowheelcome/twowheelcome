@@ -107,9 +107,9 @@ export default function ProfileScreen() {
     try {
       const ext = extHint ?? ((file as File).name?.split('.').pop() || 'jpg')
       const path = `${user.id}/cover.${ext}`
-      const { error } = await supabase.storage.from('profile-covers').upload(path, file, { upsert: true })
+      const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
       if (error) return
-      const { data: { publicUrl } } = supabase.storage.from('profile-covers').getPublicUrl(path)
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
       const url = `${publicUrl}?t=${Date.now()}`
       await supabase.from('profiles').upsert({ id: user.id, cover_url: url })
       setCoverUrl(url)
