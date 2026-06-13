@@ -106,9 +106,13 @@ export default function MapScreen() {
     if (!data || data.length === 0) { setHosts([]); setLoading(false); return }
 
     const userIds = [...new Set(data.map((h: any) => h.user_id))]
-    const [{ data: profilesData }, { data: reviewsData }] = await Promise.all([
+    const [{ data: profilesData }, { data: reviewsData }, { data: lastReviewsData }] = await Promise.all([
       supabase.from('profiles').select('id, full_name, avatar_url, bio').in('id', userIds),
       supabase.from('reviews').select('reviewee_id, rating').in('reviewee_id', userIds),
+      supabase.from('reviews')
+        .select('reviewee_id, rating, body, reviewer:profiles!reviewer_id(full_name)')
+        .in('reviewee_id', userIds)
+        .order('created_at', { ascending: false }),
     ])
 
     const profileMap: Record<string, any> = {}
@@ -121,6 +125,13 @@ export default function MapScreen() {
       ratingMap[r.reviewee_id].count += 1
     })
 
+    const lastReviewMap: Record<string, { rating: number; body: string | null; reviewer_name: string | null }> = {}
+    lastReviewsData?.forEach((r: any) => {
+      if (!lastReviewMap[r.reviewee_id]) {
+        lastReviewMap[r.reviewee_id] = { rating: r.rating, body: r.body, reviewer_name: r.reviewer?.full_name ?? null }
+      }
+    })
+
     setHosts(data.map((h: any) => {
       const fuzzed = fuzzCoords(h.id, h.location_lat, h.location_lng)
       const rev = ratingMap[h.user_id]
@@ -131,6 +142,7 @@ export default function MapScreen() {
         location_lng: fuzzed.lng,
         avg_rating: rev ? rev.sum / rev.count : null,
         review_count: rev ? rev.count : 0,
+        last_review: lastReviewMap[h.user_id] ?? null,
       }
     }))
     setLoading(false)
@@ -568,15 +580,23 @@ export default function MapScreen() {
                   <Text style={styles.detailInfo}>👥 Max. {host.max_guests} riders</Text>
                   {host.sleep_types?.length > 0 && (
                     <Text style={styles.detailInfo}>
-                      🛏 {host.sleep_types.map((s: string) => ({ tent: 'Tent', roof: 'Roof over head', room: 'Private room' }[s] || s)).join(' · ')}
+                      🛏 {(host.sleep_types as string[]).map(s => ({ tent: 'Tent', roof: 'Roof over head', room: 'Private room' }[s] || s)).join(' · ')}
                     </Text>
                   )}
                   {host.amenities?.length > 0 && (
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-                      {host.amenities.map((a: string) => {
+                      {(host.amenities as string[]).map(a => {
                         const icons: Record<string, string> = { shower: '🚿', toilet: '🚽', kitchen: '🍳', laundry: '👕', electricity: '⚡', wifi: '📶', pub_nearby: '🍺', breakfast: '☕', dinner: '🍽', local_routes: '🗺', group_ride: '🏍' }
-                        return <Text key={a} style={styles.amenityTag}>{icons[a] || '•'} {a.replace(/_/g, ' ')}</Text>
+                        const labels: Record<string, string> = { shower: 'Shower', toilet: 'Toilet', kitchen: 'Kitchen', laundry: 'Laundry', electricity: 'Power', wifi: 'WiFi', pub_nearby: 'Pub nearby', breakfast: 'Breakfast', dinner: 'Dinner', local_routes: 'Local routes', group_ride: 'Group ride' }
+                        return <Text key={a} style={styles.amenityTag}>{icons[a] || '•'} {labels[a] || a}</Text>
                       })}
+                    </View>
+                  )}
+                  {host.last_review && (
+                    <View style={styles.lastReview}>
+                      <Text style={styles.lastReviewStars}>{'★'.repeat(host.last_review.rating)}{'☆'.repeat(5 - host.last_review.rating)}</Text>
+                      {host.last_review.body ? <Text style={styles.lastReviewBody}>"{host.last_review.body}"</Text> : null}
+                      {host.last_review.reviewer_name ? <Text style={styles.lastReviewAuthor}>— {host.last_review.reviewer_name}</Text> : null}
                     </View>
                   )}
                   {!isOwn ? (
@@ -646,6 +666,10 @@ const styles = StyleSheet.create({
   cardRating:       { color: C.buddy, fontWeight: '700', fontSize: 13 },
   cardRatingCount:  { color: C.textDim, fontWeight: '400', fontSize: 12 },
   amenityTag:       { color: C.textDim, fontSize: 11, backgroundColor: C.elevated, borderRadius: 100, paddingHorizontal: 8, paddingVertical: 3 },
+  lastReview:       { marginTop: 10, backgroundColor: C.elevated, borderRadius: 10, padding: 10, borderLeftWidth: 3, borderLeftColor: C.buddy },
+  lastReviewStars:  { color: C.buddy, fontSize: 12, marginBottom: 3 },
+  lastReviewBody:   { color: C.text, fontSize: 13, fontStyle: 'italic', lineHeight: 18 },
+  lastReviewAuthor: { color: C.textDim, fontSize: 11, marginTop: 4 },
   ownBadge:         { color: C.accent, fontSize: 13 },
   cardLocation:     { color: C.textDim, fontSize: 12, marginTop: 3 },
   pricePill:        { borderRadius: 100, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4 },

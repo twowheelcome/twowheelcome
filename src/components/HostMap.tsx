@@ -19,10 +19,13 @@ interface Host {
   location_country: string
   parking: string
   parkings?: string[]
+  sleep_types?: string[]
+  amenities?: string[]
   pricing: string
   profiles: { full_name: string; avatar_url?: string | null } | null
   avg_rating: number | null
   review_count: number
+  last_review: { rating: number; body: string | null; reviewer_name: string | null } | null
 }
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -155,8 +158,27 @@ export default function HostMap({
         ? `<img src="${host.profiles.avatar_url}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid ${isBuddy ? C.buddy : C.accent};flex-shrink:0;" />`
         : `<div style="width:36px;height:36px;border-radius:50%;background:${C.accent}33;border:2px solid ${isBuddy ? C.buddy : C.accent};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${C.accent};flex-shrink:0;">${(host.profiles?.full_name || 'R')[0].toUpperCase()}</div>`
 
+      const sleepLabels: Record<string, string> = { tent: '⛺ Tent', roof: '🏠 Roof', room: '🛏 Room' }
+      const amenityIcons: Record<string, string> = { shower: '🚿', toilet: '🚽', kitchen: '🍳', laundry: '👕', electricity: '⚡', wifi: '📶', pub_nearby: '🍺', breakfast: '☕', dinner: '🍽', local_routes: '🗺', group_ride: '🏍' }
+
+      const sleepHtml = host.sleep_types?.length
+        ? `<div style="color:${C.textDim};font-size:11px;margin:5px 0 2px;">${(host.sleep_types as string[]).map(s => sleepLabels[s] || s).join(' · ')}</div>`
+        : ''
+
+      const amenitiesHtml = host.amenities?.length
+        ? `<div style="font-size:14px;letter-spacing:1px;margin:4px 0;">${(host.amenities as string[]).slice(0, 8).map(a => amenityIcons[a] || '').filter(Boolean).join(' ')}</div>`
+        : ''
+
+      const lastReviewHtml = host.last_review?.body
+        ? `<div style="margin-top:7px;background:${C.elevated};border-radius:7px;padding:7px 9px;border-left:3px solid #F5C842;">
+             <div style="color:#F5C842;font-size:11px;margin-bottom:2px;">${'★'.repeat(host.last_review.rating)}${'☆'.repeat(5 - host.last_review.rating)}</div>
+             <div style="color:${C.text};font-size:11px;font-style:italic;line-height:1.4;">"${host.last_review.body}"</div>
+             ${host.last_review.reviewer_name ? `<div style="color:${C.textDim};font-size:10px;margin-top:3px;">— ${host.last_review.reviewer_name}</div>` : ''}
+           </div>`
+        : ''
+
       const popupContent = `
-        <div style="font-family:-apple-system,sans-serif;min-width:190px;">
+        <div style="font-family:-apple-system,sans-serif;min-width:210px;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
             ${avatarHtml}
             <div>
@@ -167,15 +189,18 @@ export default function HostMap({
               </div>
             </div>
           </div>
-          ${etaStr ? `<div style="color:${C.accent};font-size:15px;font-weight:700;margin:6px 0 0;">${etaStr.split('·')[0].trim()}</div><div style="color:${C.textDim};font-size:11px;margin-bottom:4px;">${etaStr.split('·')[1]?.trim() || ''} · ${modeRef.current}</div>` : ''}
-          <div style="display:flex;align-items:center;gap:6px;background:${safety.color}18;border:1px solid ${safety.color}55;border-radius:8px;padding:6px 8px;margin:6px 0 4px;">
+          ${etaStr ? `<div style="color:${C.accent};font-size:15px;font-weight:700;margin:4px 0 0;">${etaStr.split('·')[0].trim()}</div><div style="color:${C.textDim};font-size:11px;margin-bottom:2px;">${etaStr.split('·')[1]?.trim() || ''} · ${modeRef.current}</div>` : ''}
+          <div style="display:flex;align-items:center;gap:6px;background:${safety.color}18;border:1px solid ${safety.color}55;border-radius:8px;padding:6px 8px;margin:5px 0 3px;">
             <span style="font-size:16px;">${safety.icon}</span>
             <div>
               <div style="color:${safety.color};font-weight:700;font-size:12px;">${safety.label}</div>
               <div style="color:${C.textDim};font-size:10px;">${safety.sub}</div>
             </div>
           </div>
+          ${sleepHtml}
+          ${amenitiesHtml}
           ${privacyLine}
+          ${lastReviewHtml}
           <button onclick="window.__twwHandlers['${host.id}']()"
             style="margin-top:8px;background:${C.accent};color:white;border:none;padding:9px 14px;border-radius:100px;cursor:pointer;width:100%;font-weight:700;font-size:12px;letter-spacing:1px;">
             KNOCK ON THE DOOR →
@@ -185,7 +210,7 @@ export default function HostMap({
 
       const marker = L.marker([host.location_lat, host.location_lng], { icon: markerIcon })
         .addTo(mapInstanceRef.current)
-        .bindPopup(popupContent, { className: 'tww-popup', maxWidth: 230 })
+        .bindPopup(popupContent, { className: 'tww-popup', maxWidth: 280 })
 
       markersRef.current.push(marker)
     })
