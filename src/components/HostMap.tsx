@@ -81,6 +81,7 @@ export default function HostMap({
   const overlayLayersRef = useRef<any[]>([])
   satelliteRef.current = satellite
   const [locating, setLocating] = useState(false)
+  const [locateError, setLocateError] = useState('')
 
   function getSafetyKey(host: Host): keyof typeof SAFETY {
     const primary = host.parkings?.[0] || host.parking
@@ -328,13 +329,24 @@ export default function HostMap({
 
       {/* Near me — bottom-right */}
       <button
-        onClick={() => {
-          if (!mapInstanceRef.current) return
+        onClick={(e) => {
+          e.stopPropagation()
+          if (!mapInstanceRef.current || locating) return
+          if (!navigator.geolocation) { setLocateError('Geolocation not supported'); return }
           setLocating(true)
-          const map = mapInstanceRef.current
-          map.once('locationfound', () => setLocating(false))
-          map.once('locationerror', () => setLocating(false))
-          map.locate({ setView: true, maxZoom: 12 })
+          setLocateError('')
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const { latitude: lat, longitude: lng } = pos.coords
+              mapInstanceRef.current?.setView([lat, lng], 13)
+              setLocating(false)
+            },
+            () => {
+              setLocateError('Location access denied')
+              setLocating(false)
+            },
+            { timeout: 10000, enableHighAccuracy: true }
+          )
         }}
         style={{
           position: 'absolute', bottom: 80, right: 16, zIndex: 1000,
@@ -342,11 +354,11 @@ export default function HostMap({
           borderRadius: 100, padding: '10px 16px',
           color: C.text, fontWeight: 700, fontSize: 13, cursor: 'pointer',
           display: 'flex', alignItems: 'center', gap: 6,
-          boxShadow: '0 2px 16px rgba(0,0,0,0.6)',
+          boxShadow: '0 2px 16px rgba(0,0,0,0.2)',
           opacity: locating ? 0.7 : 1,
         }}
       >
-        📍 {locating ? 'Locating...' : 'Near me'}
+        📍 {locating ? 'Locating...' : locateError || 'Near me'}
       </button>
     </div>
   )
