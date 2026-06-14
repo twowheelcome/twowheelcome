@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   FlatList, Image, KeyboardAvoidingView, Linking, Platform,
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
@@ -6,7 +6,7 @@ import {
 import { useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { Feather } from '@expo/vector-icons'
 import { supabase } from '../../lib/supabase'
-import { C } from '../../lib/theme'
+import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { unreadStore } from '../../lib/unreadStore'
 import { UserChip } from '../../components/UserChip'
 
@@ -55,10 +55,12 @@ type MsgRow = {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-const STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  PENDING:  { label: 'Pending',  color: C.text,  bg: C.accent },
-  ACCEPTED: { label: 'Accepted', color: C.white, bg: C.success },
-  REJECTED: { label: 'Rejected', color: C.white, bg: C.error },
+function makeStatus(C: ThemeColors): Record<string, { label: string; color: string; bg: string }> {
+  return {
+    PENDING:  { label: 'Pending',  color: C.text,  bg: C.accent },
+    ACCEPTED: { label: 'Accepted', color: C.white, bg: C.success },
+    REJECTED: { label: 'Rejected', color: C.white, bg: C.error },
+  }
 }
 
 // For DATE strings (YYYY-MM-DD) — manual parse to avoid timezone shifts
@@ -88,6 +90,9 @@ function RequestCard({
   hostLoc?: HostLoc | null
   onRespond: (id: string, status: 'ACCEPTED' | 'REJECTED') => void
 }) {
+  const C = useTheme()
+  const rc = useMemo(() => makeRc(C), [C])
+  const STATUS = useMemo(() => makeStatus(C), [C])
   const s = STATUS[req.status] || STATUS.PENDING
   const vehicle = req.guest_vehicle === 'moto' ? '🏍 Moto' : null
   const guestsLabel = req.guests_count === 1 ? '1 rider' : `${req.guests_count} riders`
@@ -181,7 +186,7 @@ function RequestCard({
   )
 }
 
-const rc = StyleSheet.create({
+function makeRc(C: ThemeColors) { return StyleSheet.create({
   card: {
     backgroundColor: C.surface, borderRadius: 20,
     borderWidth: 1, borderColor: C.border,
@@ -214,11 +219,13 @@ const rc = StyleSheet.create({
   acceptTxt: { color: C.white, fontWeight: '700', fontSize: 13 },
   rejectBtn: { flex: 1, borderRadius: 100, padding: 13, alignItems: 'center', borderWidth: 1, borderColor: C.error },
   rejectTxt: { color: C.error, fontWeight: '700', fontSize: 13 },
-})
+}) }
 
 // ── Main Screen ───────────────────────────────────────────────────────────
 
 export default function RequestsScreen() {
+  const C = useTheme()
+  const styles = useMemo(() => makeStyles(C), [C])
   const [convs, setConvs] = useState<ConvRow[]>([])
   const [activeTab, setActiveTab] = useState<'requests' | 'chats'>('chats')
   const [selected, setSelected] = useState<ConvRow | null>(null)
@@ -717,7 +724,7 @@ export default function RequestsScreen() {
 
 // ── Styles ────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+function makeStyles(C: ThemeColors) { return StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   header: {
     flexDirection: 'row', alignItems: 'center',
@@ -854,4 +861,4 @@ const styles = StyleSheet.create({
     padding: 12, alignItems: 'center', marginTop: 16,
   },
   reviewDoneText: { color: C.buddy, fontSize: 13, fontWeight: '600' },
-})
+}) }

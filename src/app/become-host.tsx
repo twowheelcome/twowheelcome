@@ -1,16 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native'
 import { supabase } from '../lib/supabase'
 import { router } from 'expo-router'
 import type { Pin } from '../components/LocationPicker'
-import { C } from '../lib/theme'
+import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 
-const PARKING = [
-  { value: 'garage_locked', icon: '🔒', label: 'Locked Garage', desc: 'Fort Knox — best protection', color: C.success },
-  { value: 'carport', icon: '🔐', label: 'Covered Carport', desc: 'Covered and gated', color: C.info },
-  { value: 'yard', icon: '🛡', label: 'Fenced Yard', desc: 'Secure yard', color: C.accent },
-  { value: 'street', icon: '🛣', label: 'Street Parking', desc: 'At your own risk', color: '#94a3b8' },
-]
+function makePARKING(C: ThemeColors) {
+  return [
+    { value: 'garage_locked', icon: '🔒', label: 'Locked Garage', desc: 'Fort Knox — best protection', color: C.success },
+    { value: 'carport', icon: '🔐', label: 'Covered Carport', desc: 'Covered and gated', color: C.info },
+    { value: 'yard', icon: '🛡', label: 'Fenced Yard', desc: 'Secure yard', color: C.accent },
+    { value: 'street', icon: '🛣', label: 'Street Parking', desc: 'At your own risk', color: '#94a3b8' },
+  ]
+}
 
 const SLEEP = [
   { value: 'tent', icon: '⛺', label: 'Tent', desc: 'Bring your own — space available' },
@@ -58,6 +60,9 @@ function toggle(arr: string[], value: string): string[] {
 
 
 export default function BecomeHostScreen() {
+  const C = useTheme()
+  const PARKING = useMemo(() => makePARKING(C), [C])
+  const styles = useMemo(() => makeStyles(C), [C])
   const [locations, setLocations] = useState<Location[]>([emptyLocation()])
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -321,7 +326,7 @@ export default function BecomeHostScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+function makeStyles(C: ThemeColors) { return StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   content: { padding: 20, paddingBottom: 60, gap: 16 },
 
@@ -383,4 +388,4 @@ const styles = StyleSheet.create({
   successText: { color: C.success, fontSize: 14, lineHeight: 21 },
   backBtn: { backgroundColor: C.success, borderRadius: 100, padding: 12, alignItems: 'center' },
   backBtnText: { color: C.white, fontWeight: '700', fontSize: 13 },
-})
+}) }

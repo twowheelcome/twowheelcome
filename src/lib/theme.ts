@@ -1,55 +1,22 @@
-// TWOWHEELCOME — design system  ·  "Living Green" scheme
-// Olive-warm earth + vibrant moss green. Terracotta = the only action
-// colour; moss green = availability / community; gold = "buddy on the route".
+// TWOWHEELCOME — design system
+// Two modes: DARK (#2F3438 base) + LIGHT (#F7F1E6 base)
+// Accent orange: #C96E2A (dark) / #E06A23 (light)
 
-export const C = {
-  // ── Backgrounds ────────────────────────────────────────────────
-  bg:        '#0E0D09',  // near-black olive-brown — app canvas
-  surface:   '#201E15',  // cards, panels (lifted for separation)
-  elevated:  '#2D2A1B',  // inputs, chips, wells
-  border:    '#463F2B',  // default hairline
-  borderMid: '#5A5135',  // outline buttons, dividers
-  hover:     '#29261A',
+export type ThemeColors = { readonly [K in keyof typeof DARK]: string }
 
-  // ── Text ───────────────────────────────────────────────────────
-  text:        '#F0E8D7',  // warm cream
-  textMuted:   '#C0B08B',  // secondary
-  textDim:     '#897C5C',  // labels, meta
-  textFaint:   '#5A4F38',  // disabled
-  placeholder: '#847651',
-
-  // ── Accent — terracotta rust (PRIMARY action — every CTA) ───────
-  accent:       '#C47050',
-  accentSoft:   '#C4705018',
-  accentBorder: '#C4705055',
-
-  // ── Forest green (structural depth, hero gradients) ─────────────
-  forest:       '#234A2C',
-  forestSoft:   '#234A2C30',
-  forestBorder: '#234A2C80',
-
-  // ── Leather brown ───────────────────────────────────────────────
-  leather:       '#3D2314',
-  leatherSoft:   '#3D231418',
-  leatherBorder: '#3D231455',
-
-  // ── Earth (saddle) ──────────────────────────────────────────────
-  secondary:       '#7A5C40',
-  secondarySoft:   '#7A5C4018',
-  secondaryBorder: '#7A5C4055',
-
-  // ── Semantic ────────────────────────────────────────────────────
-  success:       '#76C085',
-  successSoft:   '#76C0851F',
-  successBorder: '#76C08566',
+const base = {
+  // ── Semantic (same across modes) ─────────────────────────────────
+  success:       '#4A9E5C',
+  successSoft:   '#4A9E5C1F',
+  successBorder: '#4A9E5C66',
 
   error:       '#CB4636',
   errorSoft:   '#CB46361A',
   errorBorder: '#CB463655',
 
-  warning:       '#D08049',
-  warningSoft:   '#D0804918',
-  warningBorder: '#D0804955',
+  warning:     '#D08049',
+  warningSoft: '#D0804918',
+  warningBorder:'#D0804955',
 
   info:       '#5A8FAE',
   infoSoft:   '#5A8FAE18',
@@ -59,35 +26,106 @@ export const C = {
   purpleSoft:   '#8A6A8A18',
   purpleBorder: '#8A6A8A55',
 
-  // ── Buddy on the route (gold) ────────────────────────────────────
-  // A host you've stayed with & rated OK — gold pin on the map.
+  // Buddy pin — host you've stayed with and rated (gold, both modes)
   buddy:       '#E0A23C',
   buddySoft:   '#E0A23C1F',
   buddyBorder: '#E0A23C66',
 
-  // ── Base ────────────────────────────────────────────────────────
   white: '#ffffff',
   black: '#000000',
 } as const
 
-// ── Bike-safety scale ─────────────────────────────────────────────
-// The heart of the product. Every host's parking maps to one level;
-// the level's colour + rank is shown as the hero block on each host.
-export const SAFETY = {
-  locked_garage: { icon: '🔒', label: 'Locked garage',   sub: 'Safest — behind a locked door', color: C.success, rank: 'Safest' },
-  carport:       { icon: '🏠', label: 'Covered carport',  sub: 'Covered & off the street',      color: C.info,    rank: 'Good'   },
-  fenced_yard:   { icon: '🚧', label: 'Fenced yard',      sub: 'Behind a locked gate',          color: C.warning, rank: 'Okay'   },
-  street:        { icon: '🛣️', label: 'Street parking',    sub: 'Visible — keep an eye on it',   color: C.error,   rank: 'Basic'  },
+export const DARK = {
+  ...base,
+
+  // ── Backgrounds ─────────────────────────────────────────────────
+  bg:        '#2F3438',
+  surface:   '#38404A',
+  elevated:  '#424C56',
+  border:    '#525D68',
+  borderMid: '#65717D',
+  hover:     '#3A4248',
+
+  // ── Text ────────────────────────────────────────────────────────
+  text:        '#F2EBDD',
+  textMuted:   '#A89880',
+  textDim:     '#7A7060',
+  textFaint:   '#504840',
+  placeholder: '#7A7060',
+
+  // ── Accent — orange (PRIMARY action) ────────────────────────────
+  accent:       '#C96E2A',
+  accentSoft:   '#C96E2A18',
+  accentBorder: '#C96E2A55',
+
+  // ── Legacy aliases (used in a few gradients) ─────────────────────
+  forest:       '#2F3438',
+  forestSoft:   '#2F343830',
+  forestBorder: '#2F343880',
+
+  leather:       '#38404A',
+  leatherSoft:   '#38404A18',
+  leatherBorder: '#38404A55',
+
+  secondary:       '#7A8A96',
+  secondarySoft:   '#7A8A9618',
+  secondaryBorder: '#7A8A9655',
 } as const
 
-// ── Shape & type constants ────────────────────────────────────────
+export const LIGHT = {
+  ...base,
+
+  // ── Backgrounds ─────────────────────────────────────────────────
+  bg:        '#F7F1E6',
+  surface:   '#EDE6D3',
+  elevated:  '#E4D9C5',
+  border:    '#C8BAA0',
+  borderMid: '#B0A082',
+  hover:     '#E8DFD0',
+
+  // ── Text ────────────────────────────────────────────────────────
+  text:        '#2D2F33',
+  textMuted:   '#636670',
+  textDim:     '#9A9DA5',
+  textFaint:   '#C0C2C8',
+  placeholder: '#9A9DA5',
+
+  // ── Accent — orange (PRIMARY action) ────────────────────────────
+  accent:       '#E06A23',
+  accentSoft:   '#E06A2318',
+  accentBorder: '#E06A2355',
+
+  // ── Legacy aliases ────────────────────────────────────────────────
+  forest:       '#F7F1E6',
+  forestSoft:   '#F7F1E630',
+  forestBorder: '#F7F1E680',
+
+  leather:       '#EDE6D3',
+  leatherSoft:   '#EDE6D318',
+  leatherBorder: '#EDE6D355',
+
+  secondary:       '#8A7A6A',
+  secondarySoft:   '#8A7A6A18',
+  secondaryBorder: '#8A7A6A55',
+} as const
+
+// Backward-compat default (dark)
+export const C = DARK
+
+// ── Bike-safety scale ─────────────────────────────────────────────
+export const SAFETY = {
+  locked_garage: { icon: '🔒', label: 'Locked garage',   sub: 'Safest — behind a locked door', color: base.success, rank: 'Safest' },
+  carport:       { icon: '🏠', label: 'Covered carport',  sub: 'Covered & off the street',      color: base.info,    rank: 'Good'   },
+  fenced_yard:   { icon: '🚧', label: 'Fenced yard',      sub: 'Behind a locked gate',          color: base.warning, rank: 'Okay'   },
+  street:        { icon: '🛣️', label: 'Street parking',    sub: 'Visible — keep an eye on it',   color: base.error,   rank: 'Basic'  },
+} as const
+
+// ── Shape & type constants ─────────────────────────────────────────
 export const RADIUS = { pill: 100, card: 20, lg: 18, md: 14, sm: 12 } as const
 export const FONT = {
-  display: 'Rye',     // logo / hero only
-  head:    'Oswald',  // headings, labels, buttons (700–900, uppercase, tracked)
-  body:    'System',  // body, chat, inputs
+  display: 'Rye',
+  head:    'Oswald',
+  body:    'System',
 } as const
 
-// ── Terrain-aware ETA — distance shown as TIME, not km ────────────
-// Same distance is ~10 min on road, ~27 min on trail. Riders pick mode.
-export const SPEED = { road: 72, trail: 27 } as const // km/h
+export const SPEED = { road: 72, trail: 27 } as const

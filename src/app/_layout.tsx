@@ -5,38 +5,14 @@ import { useFonts as useRye, Rye_400Regular } from '@expo-google-fonts/rye'
 import * as SplashScreen from 'expo-splash-screen'
 import * as Notifications from 'expo-notifications'
 import { router } from 'expo-router'
-import { C } from '../lib/theme'
+import { ThemeProvider, useTheme } from '../lib/ThemeContext'
 import { supabase } from '../lib/supabase'
 import { registerPushToken } from '../lib/pushNotifications'
 
 SplashScreen.preventAutoHideAsync()
 
-export default function RootLayout() {
-  const [o] = useOswald({ Oswald_700Bold })
-  const [r] = useRye({ Rye_400Regular })
-  const fontsLoaded = o && r
-  const notifSubRef = useRef<Notifications.Subscription | null>(null)
-
-  useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync()
-  }, [fontsLoaded])
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) registerPushToken(user.id)
-    })
-
-    // Tap on notification → open Chats tab
-    notifSubRef.current = Notifications.addNotificationResponseReceivedListener(response => {
-      const url = response.notification.request.content.data?.url
-      if (typeof url === 'string') router.push(url as any)
-      else router.push('/(tabs)/requests')
-    })
-
-    return () => { notifSubRef.current?.remove() }
-  }, [])
-
-  if (!fontsLoaded) return null
+function AppStack() {
+  const C = useTheme()
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
@@ -55,5 +31,38 @@ export default function RootLayout() {
         }}
       />
     </Stack>
+  )
+}
+
+export default function RootLayout() {
+  const [o] = useOswald({ Oswald_700Bold })
+  const [r] = useRye({ Rye_400Regular })
+  const fontsLoaded = o && r
+  const notifSubRef = useRef<Notifications.Subscription | null>(null)
+
+  useEffect(() => {
+    if (fontsLoaded) SplashScreen.hideAsync()
+  }, [fontsLoaded])
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) registerPushToken(user.id)
+    })
+
+    notifSubRef.current = Notifications.addNotificationResponseReceivedListener(response => {
+      const url = response.notification.request.content.data?.url
+      if (typeof url === 'string') router.push(url as any)
+      else router.push('/(tabs)/requests')
+    })
+
+    return () => { notifSubRef.current?.remove() }
+  }, [])
+
+  if (!fontsLoaded) return null
+
+  return (
+    <ThemeProvider>
+      <AppStack />
+    </ThemeProvider>
   )
 }

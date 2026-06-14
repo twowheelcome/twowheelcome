@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Platform, Modal } from 'react-native'
 import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
-import { C } from '../../lib/theme'
+import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { UserChip } from '../../components/UserChip'
 import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
 
@@ -27,6 +27,8 @@ function defaultArrivalTime() {
 }
 
 export default function MapScreen() {
+  const C = useTheme()
+  const styles = useMemo(() => makeStyles(C), [C])
   const [hosts, setHosts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<any>(null)
@@ -724,7 +726,7 @@ export default function MapScreen() {
   }
 }
 
-const styles = StyleSheet.create({
+function makeStyles(C: ThemeColors) { return StyleSheet.create({
   container:        { flex: 1, backgroundColor: C.bg },
   header:           { paddingHorizontal: 20, paddingTop: 52, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface },
   headerRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -833,4 +835,4 @@ const styles = StyleSheet.create({
   photoBtn:         { borderWidth: 1, borderColor: C.border, borderRadius: 12, borderStyle: 'dashed', padding: 24, alignItems: 'center', justifyContent: 'center' },
   photoBtnFilled:   { borderStyle: 'solid', borderColor: C.accent },
   photoBtnText:     { color: C.textMuted, fontSize: 13, fontWeight: '600' },
-})
+}) }

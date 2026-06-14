@@ -1,5 +1,5 @@
-import { View, Text, StyleSheet } from 'react-native'
-import { C } from '../lib/theme'
+import { View, Text } from 'react-native'
+import { useTheme } from '../lib/ThemeContext'
 
 export interface Pin {
   lat: number
@@ -14,20 +14,10 @@ interface Props {
 }
 
 export default function LocationPicker(_props: Props) {
+  const C = useTheme()
   return (
-    <View style={styles.placeholder}>
-      <Text style={styles.text}>🗺 Výběr na mapě je dostupný ve webové verzi</Text>
+    <View style={{ height: '100%' as any, backgroundColor: C.elevated, alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <Text style={{ color: C.textFaint, fontSize: 13, textAlign: 'center' }}>🗺 Výběr na mapě je dostupný ve webové verzi</Text>
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  placeholder: {
-    height: '100%' as any,
-    backgroundColor: C.elevated,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-  },
-  text: { color: C.textFaint, fontSize: 13, textAlign: 'center' },
-})

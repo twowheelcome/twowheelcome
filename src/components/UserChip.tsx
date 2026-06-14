@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Text, TouchableOpacity, View } from 'react-native'
 import { router } from 'expo-router'
 import { supabase } from '../lib/supabase'
-import { C } from '../lib/theme'
+import { useTheme } from '../lib/ThemeContext'
 
 // Module-level cache so all instances share one fetch
 let _name: string | null | undefined = undefined
@@ -19,6 +19,7 @@ async function loadName() {
 }
 
 export function UserChip() {
+  const C = useTheme()
   const [name, setName] = useState<string | null>(_name ?? null)
 
   useEffect(() => {
@@ -32,26 +33,15 @@ export function UserChip() {
   const initial = name.charAt(0).toUpperCase()
 
   return (
-    <TouchableOpacity style={s.chip} onPress={() => router.push('/(tabs)/profile')} activeOpacity={0.7}>
-      <View style={s.avatar}>
-        <Text style={s.initial}>{initial}</Text>
+    <TouchableOpacity
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: C.elevated, borderRadius: 20, paddingVertical: 5, paddingLeft: 5, paddingRight: 11, borderWidth: 1, borderColor: C.border }}
+      onPress={() => router.push('/(tabs)/profile')}
+      activeOpacity={0.7}
+    >
+      <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: C.white, fontSize: 12, fontWeight: '800' }}>{initial}</Text>
       </View>
-      <Text style={s.name} numberOfLines={1}>{name}</Text>
+      <Text style={{ color: C.text, fontSize: 13, fontWeight: '600', maxWidth: 100 }} numberOfLines={1}>{name}</Text>
     </TouchableOpacity>
   )
 }
-
-const s = StyleSheet.create({
-  chip: {
-    flexDirection: 'row', alignItems: 'center', gap: 7,
-    backgroundColor: C.elevated, borderRadius: 20,
-    paddingVertical: 5, paddingLeft: 5, paddingRight: 11,
-    borderWidth: 1, borderColor: C.border,
-  },
-  avatar: {
-    width: 26, height: 26, borderRadius: 13,
-    backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center',
-  },
-  initial: { color: C.white, fontSize: 12, fontWeight: '800' },
-  name: { color: C.text, fontSize: 13, fontWeight: '600', maxWidth: 100 },
-})

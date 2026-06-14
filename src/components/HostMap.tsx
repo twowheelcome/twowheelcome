@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { C, SAFETY, SPEED } from '../lib/theme'
+import { SAFETY, SPEED } from '../lib/theme'
+import { useTheme } from '../lib/ThemeContext'
 
 // Map DB parking keys → SAFETY keys
 const DB_TO_SAFETY: Record<string, keyof typeof SAFETY> = {
@@ -64,6 +65,7 @@ export default function HostMap({
   buddyIds?: string[]
   satellite?: boolean
 }) {
+  const C = useTheme()
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const markersRef = useRef<any[]>([])

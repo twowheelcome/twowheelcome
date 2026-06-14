@@ -1,13 +1,13 @@
 import { Session } from '@supabase/supabase-js'
 import { router } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Feather } from '@expo/vector-icons'
 import { supabase } from '../lib/supabase'
-import { C } from '../lib/theme'
+import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 
-function TireTrack() {
+function TireTrack({ C }: { C: ThemeColors }) {
   if (Platform.OS === 'web') {
     const width = 224
     const h = Math.round(width * 0.17)
@@ -36,6 +36,8 @@ function TireTrack() {
 }
 
 export default function AuthScreen() {
+  const C = useTheme()
+  const styles = useMemo(() => makeStyles(C), [C])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -113,7 +115,7 @@ export default function AuthScreen() {
         <Text style={styles.wordmark}>
           TWOWHEEL<Text style={{ color: C.accent }}>COME</Text>
         </Text>
-        <TireTrack />
+        <TireTrack C={C} />
         <Text style={styles.tagline}>Riders host riders</Text>
       </View>
 
@@ -185,61 +187,63 @@ export default function AuthScreen() {
   )
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg },
+function makeStyles(C: ThemeColors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: C.bg },
 
-  heroGradient: { height: 200, overflow: 'hidden' },
-  treeLine: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '100%', flexDirection: 'row' },
-  tree: {
-    position: 'absolute', width: 0, height: 0, backgroundColor: 'transparent',
-    borderStyle: 'solid', borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: '#0A180C',
-  },
-  mist: {
-    position: 'absolute', bottom: -10, left: 0, right: 0, height: 80,
-    backgroundColor: 'rgba(28, 40, 28, 0.6)',
-  },
+    heroGradient: { height: 200, overflow: 'hidden' },
+    treeLine: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '100%', flexDirection: 'row' },
+    tree: {
+      position: 'absolute', width: 0, height: 0, backgroundColor: 'transparent',
+      borderStyle: 'solid', borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: '#0A180C',
+    },
+    mist: {
+      position: 'absolute', bottom: -10, left: 0, right: 0, height: 80,
+      backgroundColor: 'rgba(28, 40, 28, 0.6)',
+    },
 
-  wordmarkWrap: {
-    alignItems: 'center', paddingTop: 20, paddingBottom: 28, gap: 6,
-    maxWidth: 440, width: '100%', alignSelf: 'center',
-  },
-  wordmark: {
-    fontSize: 34, fontFamily: 'Rye_400Regular', color: C.text,
-    letterSpacing: 1,
-    textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 1, height: 3 }, textShadowRadius: 6,
-  },
-  tagline: {
-    color: C.textDim, fontSize: 10.5, letterSpacing: 3, textTransform: 'uppercase',
-    fontFamily: 'Oswald_700Bold', marginTop: 2,
-  },
+    wordmarkWrap: {
+      alignItems: 'center', paddingTop: 20, paddingBottom: 28, gap: 6,
+      maxWidth: 440, width: '100%', alignSelf: 'center',
+    },
+    wordmark: {
+      fontSize: 34, fontFamily: 'Rye_400Regular', color: C.text,
+      letterSpacing: 1,
+      textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 1, height: 3 }, textShadowRadius: 6,
+    },
+    tagline: {
+      color: C.textDim, fontSize: 10.5, letterSpacing: 3, textTransform: 'uppercase',
+      fontFamily: 'Oswald_700Bold', marginTop: 2,
+    },
 
-  form: { paddingHorizontal: 24, gap: 12, maxWidth: 440, width: '100%', alignSelf: 'center' },
+    form: { paddingHorizontal: 24, gap: 12, maxWidth: 440, width: '100%', alignSelf: 'center' },
 
-  inputWrap: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: C.elevated,
-    borderRadius: 100, paddingHorizontal: 18, borderWidth: 1, borderColor: C.border, height: 54,
-  },
-  inputIcon: { marginRight: 10 },
-  input: { flex: 1, color: C.text, fontSize: 15 },
+    inputWrap: {
+      flexDirection: 'row', alignItems: 'center', backgroundColor: C.elevated,
+      borderRadius: 100, paddingHorizontal: 18, borderWidth: 1, borderColor: C.border, height: 54,
+    },
+    inputIcon: { marginRight: 10 },
+    input: { flex: 1, color: C.text, fontSize: 15 },
 
-  btnPrimary: {
-    height: 54, backgroundColor: C.accent, borderRadius: 100,
-    alignItems: 'center', justifyContent: 'center', marginTop: 4,
-  },
-  btnPrimaryText: {
-    color: C.white, fontFamily: 'Oswald_700Bold', fontSize: 16, letterSpacing: 1.5,
-  },
-  btnOutline: {
-    height: 54, borderRadius: 100, borderWidth: 1.5, borderColor: C.borderMid,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  btnOutlineText: { color: C.text, fontFamily: 'Oswald_700Bold', fontSize: 16, letterSpacing: 1.5 },
+    btnPrimary: {
+      height: 54, backgroundColor: C.accent, borderRadius: 100,
+      alignItems: 'center', justifyContent: 'center', marginTop: 4,
+    },
+    btnPrimaryText: {
+      color: C.white, fontFamily: 'Oswald_700Bold', fontSize: 16, letterSpacing: 1.5,
+    },
+    btnOutline: {
+      height: 54, borderRadius: 100, borderWidth: 1.5, borderColor: C.borderMid,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    btnOutlineText: { color: C.text, fontFamily: 'Oswald_700Bold', fontSize: 16, letterSpacing: 1.5 },
 
-  forgotWrap: { alignItems: 'center', paddingVertical: 4 },
-  forgotText: { color: C.textDim, fontSize: 14 },
+    forgotWrap: { alignItems: 'center', paddingVertical: 4 },
+    forgotText: { color: C.textDim, fontSize: 14 },
 
-  msgError: { backgroundColor: C.errorSoft, borderWidth: 1, borderColor: C.errorBorder, borderRadius: 14, padding: 14 },
-  msgErrorText: { color: C.error, fontSize: 13, lineHeight: 19 },
-  msgSuccess: { backgroundColor: C.successSoft, borderWidth: 1, borderColor: C.successBorder, borderRadius: 14, padding: 14 },
-  msgSuccessText: { color: C.success, fontSize: 13, lineHeight: 19 },
-})
+    msgError: { backgroundColor: C.errorSoft, borderWidth: 1, borderColor: C.errorBorder, borderRadius: 14, padding: 14 },
+    msgErrorText: { color: C.error, fontSize: 13, lineHeight: 19 },
+    msgSuccess: { backgroundColor: C.successSoft, borderWidth: 1, borderColor: C.successBorder, borderRadius: 14, padding: 14 },
+    msgSuccessText: { color: C.success, fontSize: 13, lineHeight: 19 },
+  })
+}

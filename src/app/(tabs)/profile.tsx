@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Image, Platform } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Feather } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
-import { C } from '../../lib/theme'
+import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { SafetyBlock } from '../../components/SafetyBlock'
 
 export default function ProfileScreen() {
+  const C = useTheme()
+  const styles = useMemo(() => makeStyles(C), [C])
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [hostLocations, setHostLocations] = useState<any[]>([])
@@ -356,7 +358,7 @@ export default function ProfileScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+function makeStyles(C: ThemeColors) { return StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   content: { paddingBottom: 40 },
 
@@ -471,4 +473,4 @@ const styles = StyleSheet.create({
   reviewItemName: { color: C.text, fontSize: 14, fontWeight: '700' },
   reviewItemStars: { fontSize: 13 },
   reviewItemBody: { color: C.textMuted, fontSize: 13, lineHeight: 19, fontStyle: 'italic' },
-})
+}) }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { C } from '../lib/theme'
+import { useTheme } from '../lib/ThemeContext'
 
 export interface Pin {
   lat: number
@@ -54,6 +54,7 @@ async function searchAddress(query: string): Promise<SearchResult[]> {
 }
 
 export default function LocationPicker({ pin, onChange }: Props) {
+  const C = useTheme()
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const markerRef = useRef<any>(null)

@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native'
-import { C, SAFETY } from '../lib/theme'
+import { SAFETY } from '../lib/theme'
+import { useTheme } from '../lib/ThemeContext'
 
 export function getSafetyKey(parking: string): keyof typeof SAFETY {
   const map: Record<string, keyof typeof SAFETY> = {
@@ -20,6 +21,7 @@ export function bestSafety(parkings: string[]): keyof typeof SAFETY {
 }
 
 export function SafetyBlock({ parkings }: { parkings: string[] }) {
+  const C = useTheme()
   const s = SAFETY[bestSafety(parkings)]
   return (
     <View style={[sb.block, { backgroundColor: s.color + '1F', borderColor: s.color + '70' }]}>
@@ -31,8 +33,8 @@ export function SafetyBlock({ parkings }: { parkings: string[] }) {
             <Text style={[sb.rankText, { color: s.color }]}>{s.rank}</Text>
           </View>
         </View>
-        <Text style={sb.sub}>{s.sub}</Text>
-        <Text style={sb.parking}>🏍 parking</Text>
+        <Text style={[sb.sub, { color: C.textDim }]}>{s.sub}</Text>
+        <Text style={[sb.parking, { color: C.textFaint }]}>🏍 parking</Text>
       </View>
     </View>
   )
@@ -46,6 +48,6 @@ const sb = StyleSheet.create({
   label:    { fontSize: 13, fontWeight: '700', letterSpacing: 0.5, fontFamily: 'Oswald_700Bold' },
   rankPill: { borderRadius: 100, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 2 },
   rankText: { fontSize: 11, fontWeight: '600' },
-  sub:      { color: C.textDim, fontSize: 12, marginTop: 1 },
-  parking:  { color: C.textFaint, fontSize: 11, marginTop: 2 },
+  sub:      { fontSize: 12, marginTop: 1 },
+  parking:  { fontSize: 11, marginTop: 2 },
 })

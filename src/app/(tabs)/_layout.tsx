@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { Tabs } from 'expo-router'
 import { Platform, View } from 'react-native'
 import { Feather } from '@expo/vector-icons'
-import { C } from '../../lib/theme'
+import { useTheme } from '../../lib/ThemeContext'
 import { unreadStore } from '../../lib/unreadStore'
 
-function TabIcon({ name, color, dot }: { name: React.ComponentProps<typeof Feather>['name']; color: string; dot?: boolean }) {
+function TabIcon({ name, color, dot, C }: { name: React.ComponentProps<typeof Feather>['name']; color: string | import('react-native').ColorValue; dot?: boolean; C: ReturnType<typeof useTheme> }) {
   return (
     <View style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
       <Feather name={name} size={22} color={color} />
@@ -21,6 +21,7 @@ function TabIcon({ name, color, dot }: { name: React.ComponentProps<typeof Feath
 }
 
 export default function TabsLayout() {
+  const C = useTheme()
   const [hasUnread, setHasUnread] = useState(unreadStore.get())
 
   useEffect(() => unreadStore.subscribe(setHasUnread), [])
@@ -51,21 +52,21 @@ export default function TabsLayout() {
         name="map"
         options={{
           title: 'Map',
-          tabBarIcon: ({ color }) => <TabIcon name="map-pin" color={color} />,
+          tabBarIcon: ({ color }) => <TabIcon name="map-pin" color={color} C={C} />,
         }}
       />
       <Tabs.Screen
         name="requests"
         options={{
           title: 'Messages',
-          tabBarIcon: ({ color }) => <TabIcon name="message-circle" color={color} dot={hasUnread} />,
+          tabBarIcon: ({ color }) => <TabIcon name="message-circle" color={color} dot={hasUnread} C={C} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <TabIcon name="user" color={color} />,
+          tabBarIcon: ({ color }) => <TabIcon name="user" color={color} C={C} />,
         }}
       />
     </Tabs>
