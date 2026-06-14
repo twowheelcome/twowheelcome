@@ -5,12 +5,13 @@ import { Feather } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
-import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
+import { useTheme, useThemePreference, type ThemeColors } from '../../lib/ThemeContext'
 import { SafetyBlock } from '../../components/SafetyBlock'
 
 export default function ProfileScreen() {
   const C = useTheme()
   const styles = useMemo(() => makeStyles(C), [C])
+  const { preference, setPreference } = useThemePreference()
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [hostLocations, setHostLocations] = useState<any[]>([])
@@ -339,15 +340,25 @@ export default function ProfileScreen() {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuTextWrap}>
-              <Text style={styles.menuTitle}>Settings</Text>
-              <Text style={styles.menuSub}>Edit profile</Text>
+          <View style={styles.menuItem}>
+            <View style={[styles.menuTextWrap, { flex: 1 }]}>
+              <Text style={styles.menuTitle}>Appearance</Text>
+              <Text style={styles.menuSub}>Theme preference</Text>
             </View>
-            <View style={styles.menuIcon}>
-              <Feather name="settings" size={18} color={C.accent} />
+            <View style={styles.themeToggle}>
+              {(['system', 'light', 'dark'] as const).map(p => (
+                <TouchableOpacity
+                  key={p}
+                  style={[styles.themeBtn, preference === p && styles.themeBtnActive]}
+                  onPress={() => setPreference(p)}
+                >
+                  <Text style={[styles.themeBtnText, preference === p && styles.themeBtnTextActive]}>
+                    {p === 'system' ? '⚙' : p === 'light' ? '☀' : '🌙'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          </TouchableOpacity>
+          </View>
         </View>
 
         <TouchableOpacity style={styles.signOutBtn} onPress={signOut}>
@@ -473,4 +484,10 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   reviewItemName: { color: C.text, fontSize: 14, fontWeight: '700' },
   reviewItemStars: { fontSize: 13 },
   reviewItemBody: { color: C.textMuted, fontSize: 13, lineHeight: 19, fontStyle: 'italic' },
+
+  themeToggle: { flexDirection: 'row', backgroundColor: C.elevated, borderRadius: 100, padding: 3, borderWidth: 1, borderColor: C.border, gap: 2 },
+  themeBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 100 },
+  themeBtnActive: { backgroundColor: C.accent },
+  themeBtnText: { fontSize: 14 },
+  themeBtnTextActive: { color: C.white },
 }) }
