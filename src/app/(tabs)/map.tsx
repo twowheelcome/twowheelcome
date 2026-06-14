@@ -588,23 +588,12 @@ export default function MapScreen() {
             mode={mode}
             buddyIds={[]}
             satellite={satelliteMap}
+            onSatelliteToggle={() => setSatelliteMap(v => !v)}
           />
           {/* FAB + */}
           <View style={styles.fabWrap} pointerEvents="box-none">
             <TouchableOpacity style={styles.fab} onPress={() => router.push('/become-host')}>
               <Text style={styles.fabText}>+</Text>
-            </TouchableOpacity>
-          </View>
-          {/* Satellite toggle — top-right */}
-          <View style={styles.satWrap} pointerEvents="box-none">
-            <TouchableOpacity
-              style={[styles.satBtn, satelliteMap && styles.satBtnActive]}
-              onPress={() => setSatelliteMap(v => !v)}
-            >
-              <Text style={styles.satIcon}>🛰</Text>
-              <Text style={[styles.satLabel, satelliteMap && styles.satLabelActive]}>
-                {satelliteMap ? 'Satellite' : 'Satellite'}
-              </Text>
             </TouchableOpacity>
           </View>
           {/* Road / Trail toggle — bottom-left */}

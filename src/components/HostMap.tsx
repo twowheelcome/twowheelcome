@@ -58,12 +58,14 @@ export default function HostMap({
   mode = 'road',
   buddyIds = [],
   satellite = false,
+  onSatelliteToggle,
 }: {
   hosts: Host[]
   onHostSelect: (host: Host) => void
   mode?: 'road' | 'trail'
   buddyIds?: string[]
   satellite?: boolean
+  onSatelliteToggle?: () => void
 }) {
   const C = useTheme()
   const mapRef = useRef<HTMLDivElement>(null)
@@ -304,6 +306,27 @@ export default function HostMap({
   return (
     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
       <div ref={mapRef as any} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+
+      {/* Satellite toggle — top-right */}
+      {onSatelliteToggle && (
+        <button
+          onClick={onSatelliteToggle}
+          style={{
+            position: 'absolute', top: 16, right: 16, zIndex: 1000,
+            background: satellite ? C.accent : C.surface,
+            border: `2px solid ${satellite ? C.accent : C.border}`,
+            borderRadius: 100, padding: '9px 16px',
+            color: satellite ? C.white : C.textMuted,
+            fontWeight: 700, fontSize: 13, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6,
+            boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
+          }}
+        >
+          🛰 Satellite
+        </button>
+      )}
+
+      {/* Near me — bottom-right */}
       <button
         onClick={() => {
           if (!mapInstanceRef.current) return
