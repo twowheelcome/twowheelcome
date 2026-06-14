@@ -453,14 +453,6 @@ export default function MapScreen() {
                 <Text style={[styles.tabPillText, !showMap && styles.tabPillTextActive]}>List</Text>
               </TouchableOpacity>
             </View>
-            {showMap && (
-              <TouchableOpacity
-                style={[styles.satelliteBtn, satelliteMap && styles.satelliteBtnActive]}
-                onPress={() => setSatelliteMap(v => !v)}
-              >
-                <Text style={{ fontSize: 16 }}>🛰</Text>
-              </TouchableOpacity>
-            )}
             <UserChip />
           </View>
         </View>
@@ -601,6 +593,18 @@ export default function MapScreen() {
           <View style={styles.fabWrap} pointerEvents="box-none">
             <TouchableOpacity style={styles.fab} onPress={() => router.push('/become-host')}>
               <Text style={styles.fabText}>+</Text>
+            </TouchableOpacity>
+          </View>
+          {/* Satellite toggle — top-right */}
+          <View style={styles.satWrap} pointerEvents="box-none">
+            <TouchableOpacity
+              style={[styles.satBtn, satelliteMap && styles.satBtnActive]}
+              onPress={() => setSatelliteMap(v => !v)}
+            >
+              <Text style={styles.satIcon}>🛰</Text>
+              <Text style={[styles.satLabel, satelliteMap && styles.satLabelActive]}>
+                {satelliteMap ? 'Satellite' : 'Satellite'}
+              </Text>
             </TouchableOpacity>
           </View>
           {/* Road / Trail toggle — bottom-left */}
@@ -778,6 +782,12 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   pCardDesc:        { color: C.textDim, fontSize: 10, textAlign: 'center' },
   satelliteBtn:       { backgroundColor: C.elevated, borderWidth: 1, borderColor: C.border, borderRadius: 100, paddingHorizontal: 10, paddingVertical: 6 },
   satelliteBtnActive: { backgroundColor: C.accent, borderColor: C.accent },
+  satWrap:       { position: 'absolute', top: 16, right: 16, zIndex: 10 },
+  satBtn:        { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.surface, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1.5, borderColor: C.border, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 6, elevation: 6 },
+  satBtnActive:  { backgroundColor: C.accent, borderColor: C.accent },
+  satIcon:       { fontSize: 16 },
+  satLabel:      { color: C.textMuted, fontSize: 13, fontWeight: '700' },
+  satLabelActive:{ color: C.white },
   fabWrap:          { position: 'absolute', bottom: 24, left: 0, right: 0, alignItems: 'center', zIndex: 10 },
   fab:              { width: 72, height: 72, borderRadius: 36, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 8, elevation: 10 },
   fabText:          { color: C.white, fontSize: 36, fontWeight: '700', lineHeight: 38, marginTop: -2 },
