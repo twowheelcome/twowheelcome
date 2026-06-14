@@ -415,12 +415,12 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     gap: 20,
   },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
-  name: { color: C.text, fontSize: 24, fontWeight: '800', letterSpacing: 0.3, fontFamily: 'Oswald_700Bold' },
+  name: { color: C.text, fontSize: 24, fontWeight: '800', letterSpacing: 0.3 },
   email: { color: C.textDim, fontSize: 13, marginTop: -12 },
   bikeModel: { color: C.textMuted, fontSize: 14, marginTop: -8 },
   placeCard: { backgroundColor: C.surface, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: C.border },
   placeCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  placeCardTitle: { color: C.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 2, fontFamily: 'Oswald_700Bold' },
+  placeCardTitle: { color: C.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 2 },
   openTag: { backgroundColor: C.successSoft, borderRadius: 100, borderWidth: 1, borderColor: C.successBorder, paddingHorizontal: 10, paddingVertical: 3 },
   openTagText: { color: C.success, fontSize: 11, fontWeight: '700' },
   placeDetails: { marginTop: 10, gap: 4 },
@@ -475,7 +475,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   signOutText: { color: C.textFaint, fontSize: 14, textDecorationLine: 'underline' },
 
   reviewsSection: { gap: 10 },
-  reviewsSectionTitle: { color: C.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 2, fontFamily: 'Oswald_700Bold' },
+  reviewsSectionTitle: { color: C.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 2 },
   reviewItem: {
     backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: C.border,
     padding: 14, gap: 6,

@@ -842,7 +842,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     backgroundColor: C.surface, borderRadius: 20, borderWidth: 1, borderColor: C.buddyBorder,
     padding: 16, gap: 12, marginTop: 16,
   },
-  reviewTitle: { color: C.buddy, fontSize: 10, fontWeight: '800', letterSpacing: 2, fontFamily: 'Oswald_700Bold' },
+  reviewTitle: { color: C.buddy, fontSize: 10, fontWeight: '800', letterSpacing: 2 },
   reviewStars: { flexDirection: 'row', gap: 8 },
   reviewStar: { fontSize: 32, color: C.border },
   reviewStarActive: { color: C.buddy },
@@ -855,7 +855,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     backgroundColor: C.buddy, borderRadius: 100, padding: 13, alignItems: 'center',
   },
   reviewSubmitDisabled: { backgroundColor: C.elevated },
-  reviewSubmitText: { color: C.white, fontWeight: '700', fontSize: 13, fontFamily: 'Oswald_700Bold', letterSpacing: 1 },
+  reviewSubmitText: { color: C.white, fontWeight: '700', fontSize: 13, letterSpacing: 1 },
   reviewDone: {
     backgroundColor: C.buddySoft, borderRadius: 14, borderWidth: 1, borderColor: C.buddyBorder,
     padding: 12, alignItems: 'center', marginTop: 16,

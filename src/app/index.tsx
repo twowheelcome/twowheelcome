@@ -248,7 +248,7 @@ function makeStyles(C: ThemeColors) {
     },
     tagline: {
       color: C.accent, fontSize: 11, letterSpacing: 3, textTransform: 'uppercase',
-      fontFamily: 'Oswald_700Bold',
+      ,
     },
 
     form: { paddingHorizontal: 24, gap: 12, maxWidth: 440, width: '100%', alignSelf: 'center', paddingBottom: 40 },
@@ -261,9 +261,9 @@ function makeStyles(C: ThemeColors) {
     input:     { flex: 1, color: C.text, fontSize: 15 },
 
     btnPrimary:     { height: 54, backgroundColor: C.accent, borderRadius: 100, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
-    btnPrimaryText: { color: C.white, fontFamily: 'Oswald_700Bold', fontSize: 16, letterSpacing: 1.5 },
+    btnPrimaryText: { color: C.white, fontSize: 16, letterSpacing: 1.5 },
     btnOutline:     { height: 54, borderRadius: 100, borderWidth: 1.5, borderColor: C.borderMid, alignItems: 'center', justifyContent: 'center' },
-    btnOutlineText: { color: C.text, fontFamily: 'Oswald_700Bold', fontSize: 16, letterSpacing: 1.5 },
+    btnOutlineText: { color: C.text, fontSize: 16, letterSpacing: 1.5 },
 
     forgotWrap: { alignItems: 'center', paddingVertical: 4 },
     forgotText: { color: C.textDim, fontSize: 14 },

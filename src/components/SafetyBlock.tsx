@@ -45,7 +45,7 @@ const sb = StyleSheet.create({
   icon:     { fontSize: 22, marginTop: 2 },
   info:     { flex: 1, gap: 2 },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  label:    { fontSize: 13, fontWeight: '700', letterSpacing: 0.5, fontFamily: 'Oswald_700Bold' },
+  label:    { fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
   rankPill: { borderRadius: 100, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 2 },
   rankText: { fontSize: 11, fontWeight: '600' },
   sub:      { fontSize: 12, marginTop: 1 },
