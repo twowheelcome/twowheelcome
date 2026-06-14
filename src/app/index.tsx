@@ -1,39 +1,121 @@
 import { Session } from '@supabase/supabase-js'
 import { router } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
-import { Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
+import { Platform, StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import { supabase } from '../lib/supabase'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 
-function TireTrack({ C }: { C: ThemeColors }) {
+// ── Hero illustration — mountains + helmet + road ─────────────────────────
+
+function HeroIllustration({ C }: { C: ThemeColors }) {
+  const w = 390, h = 300
+
+  // Mountain color layers — derived from theme surface/elevated
+  const m1 = C.surface    // far mountains
+  const m2 = C.elevated   // mid mountains
+  // near mountains: tint slightly beyond elevated
+  const isDark = C.bg === '#2F3438'
+  const m3 = isDark ? '#232C36' : '#C0B09A'
+
+  // Helmet fill = text color (cream in dark, near-black in light)
+  const hFill = C.text
+  // Visor cutout = bg
+  const vFill = C.bg
+
+  // Road tire track crossbars
+  const crossbars = [280, 255, 234, 216, 200, 187].map((y, i) => {
+    const spread = 14 + (280 - y) * 0.18
+    const cx = 195
+    return `<line x1="${(cx - spread).toFixed(0)}" y1="${y}" x2="${(cx + spread).toFixed(0)}" y2="${y}" stroke="${C.accent}" stroke-width="3.5" stroke-linecap="round" opacity="0.75"/>`
+  }).join('')
+
+  const svg = `
+<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" style="display:block;max-width:100%">
+  <defs>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${C.bg}" stop-opacity="0"/>
+      <stop offset="100%" stop-color="${C.bg}" stop-opacity="1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Sky -->
+  <rect width="${w}" height="${h}" fill="${C.bg}"/>
+
+  <!-- Mountains — far -->
+  <path d="M-5,${h} L-5,175 L35,125 L75,155 L115,108 L155,138 L200,88 L245,118 L285,82 L330,108 L365,88 L${w+5},105 L${w+5},${h} Z"
+        fill="${m1}" opacity="0.55"/>
+
+  <!-- Mountains — mid -->
+  <path d="M-5,${h} L-5,205 L28,168 L68,192 L105,160 L145,180 L182,150 L220,172 L258,144 L298,168 L335,148 L370,165 L${w+5},155 L${w+5},${h} Z"
+        fill="${m1}" opacity="0.85"/>
+
+  <!-- Mountains — near -->
+  <path d="M-5,${h} L-5,238 L22,215 L55,235 L88,208 L122,228 L155,205 L190,222 L225,200 L260,218 L292,198 L325,215 L358,200 L${w+5},212 L${w+5},${h} Z"
+        fill="${m2}"/>
+
+  <!-- Road — left track -->
+  <path d="M178,${h} Q 181,255 187,222 Q 191,198 193,175"
+        fill="none" stroke="${C.accent}" stroke-width="3.5" stroke-linecap="round" opacity="0.7"/>
+  <!-- Road — right track -->
+  <path d="M212,${h} Q 209,255 203,222 Q 199,198 197,175"
+        fill="none" stroke="${C.accent}" stroke-width="3.5" stroke-linecap="round" opacity="0.7"/>
+  <!-- Crossbars -->
+  ${crossbars}
+
+  <!-- ── Helmet ──────────────────────────────────────────────────────── -->
+  <!-- Dome -->
+  <path d="M150,168 C150,88 240,88 240,168 L237,182 C237,198 220,210 195,210 C170,210 153,198 153,182 Z"
+        fill="${hFill}"/>
+  <!-- Chin guard -->
+  <path d="M153,175 C153,200 170,214 195,214 C220,214 237,200 237,175 Z"
+        fill="${hFill}"/>
+
+  <!-- Goggle strip -->
+  <rect x="152" y="135" width="86" height="34" rx="10" fill="${vFill}" opacity="0.25"/>
+
+  <!-- Visor A-frame opening -->
+  <path d="M168,155 L195,192 L222,155 Z" fill="${vFill}"/>
+  <!-- Stem below A -->
+  <rect x="192" y="188" width="6" height="14" rx="2" fill="${vFill}"/>
+
+  <!-- Left goggle -->
+  <ellipse cx="176" cy="142" rx="16" ry="11" fill="${vFill}" opacity="0.35"/>
+  <!-- Right goggle -->
+  <ellipse cx="214" cy="142" rx="16" ry="11" fill="${vFill}" opacity="0.35"/>
+
+  <!-- Tread marks — left side -->
+  <rect x="130" y="148" width="17" height="5.5" rx="1.5" fill="${vFill}" opacity="0.45" transform="rotate(-22 138 150)"/>
+  <rect x="127" y="162" width="17" height="5.5" rx="1.5" fill="${vFill}" opacity="0.45" transform="rotate(-15 135 164)"/>
+  <rect x="126" y="176" width="17" height="5.5" rx="1.5" fill="${vFill}" opacity="0.4"  transform="rotate(-6 134 178)"/>
+
+  <!-- Tread marks — right side -->
+  <rect x="243" y="148" width="17" height="5.5" rx="1.5" fill="${vFill}" opacity="0.45" transform="rotate(22 251 150)"/>
+  <rect x="246" y="162" width="17" height="5.5" rx="1.5" fill="${vFill}" opacity="0.45" transform="rotate(15 254 164)"/>
+  <rect x="247" y="176" width="17" height="5.5" rx="1.5" fill="${vFill}" opacity="0.4"  transform="rotate(6 255 178)"/>
+
+  <!-- Fade to bg at bottom -->
+  <rect x="0" y="240" width="${w}" height="60" fill="url(#fade)"/>
+</svg>`
+
   if (Platform.OS === 'web') {
-    const width = 224
-    const h = Math.round(width * 0.17)
-    const n = 17
-    const blocks = Array.from({ length: n }, (_, i) => {
-      const t = i / (n - 1)
-      const x = 6 + t * (width - 12)
-      const arc = Math.sin(t * Math.PI)
-      const y = h - 5 - arc * (h - 12)
-      const rot = (t - 0.5) * 26
-      return `<rect x="${(x - 3.4).toFixed(1)}" y="${(y - 5).toFixed(1)}" width="6.8" height="11" rx="1.6" transform="rotate(${rot.toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)})" fill="${C.accent}" opacity="0.92"/>`
-    }).join('')
-    const svg = `<svg viewBox="0 0 ${width} ${h}" width="${width}" height="${h}" style="display:block"><path d="M6 ${h - 4} Q ${width / 2} 2 ${width - 6} ${h - 4}" fill="none" stroke="${C.accent}" stroke-width="2.2" stroke-linecap="round" opacity="0.5"/><path d="M6 ${h - 1} Q ${width / 2} ${h - 6} ${width - 6} ${h - 1}" fill="none" stroke="${C.accent}" stroke-width="2.2" stroke-linecap="round" opacity="0.28"/>${blocks}</svg>`
-    return <div dangerouslySetInnerHTML={{ __html: svg }} style={{ display: 'flex' } as any} />
+    return (
+      <div
+        style={{ width: '100%', overflow: 'hidden', flexShrink: 0 } as any}
+        dangerouslySetInnerHTML={{ __html: svg }}
+      />
+    )
   }
+
+  // Native fallback — simple gradient block
   return (
-    <View style={{ flexDirection: 'row', gap: 3, alignItems: 'center' }}>
-      {Array.from({ length: 18 }).map((_, i) => (
-        <View key={i} style={[
-          { height: 5, borderRadius: 2 },
-          i % 2 === 0 ? { width: 14, backgroundColor: C.accent, opacity: 0.9 } : { width: 6, backgroundColor: C.accent, opacity: 0.4 },
-        ]} />
-      ))}
+    <View style={{ height: h, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ fontSize: 60 }}>🏔</Text>
     </View>
   )
 }
+
+// ── Auth screen ───────────────────────────────────────────────────────────
 
 export default function AuthScreen() {
   const C = useTheme()
@@ -73,50 +155,15 @@ export default function AuthScreen() {
     setLoading(false)
   }
 
-  const ridgeSvg = `
-    <svg viewBox="0 0 390 200" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
-      <path d="M0,120 C70,96 130,128 200,108 S330,120 390,100 L390,200 L0,200 Z" fill="#244A2C" opacity="0.9"/>
-      <path d="M0,148 C80,128 140,154 205,136 S330,148 390,130 L390,200 L0,200 Z" fill="#172E1C" opacity="0.95"/>
-      ${[40, 70, 300, 330, 355].map(x => `<path d="M${x} 162 l5 13 l-10 0 Z M${x} 152 l4 10 l-8 0 Z" fill="${C.bg}" opacity="0.85"/>`).join('')}
-    </svg>
-    <div style="position:absolute;bottom:0;left:0;right:0;height:80px;background:linear-gradient(180deg,transparent,${C.bg})"></div>
-  `
-
   return (
-    <View style={styles.container}>
-      {/* Ridge hero */}
-      <LinearGradient
-        colors={['#2A5234', '#1B331F', C.bg]}
-        locations={[0, 0.52, 1]}
-        style={styles.heroGradient}
-      >
-        {Platform.OS === 'web' ? (
-          <div
-            style={{ position: 'absolute', inset: 0 } as any}
-            dangerouslySetInnerHTML={{ __html: ridgeSvg }}
-          />
-        ) : (
-          <>
-            <View style={styles.treeLine}>
-              {[60, 80, 45, 90, 55, 70, 40, 85, 50, 75, 42, 68, 58, 82].map((h, i) => (
-                <View key={i} style={[styles.tree, {
-                  borderBottomWidth: h, borderLeftWidth: h * 0.38, borderRightWidth: h * 0.38,
-                  bottom: 0, left: `${i * 7.2}%` as any,
-                }]} />
-              ))}
-            </View>
-            <View style={styles.mist} />
-          </>
-        )}
-      </LinearGradient>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer} bounces={false}>
+      {/* Hero illustration */}
+      <HeroIllustration C={C} />
 
-      {/* Wordmark + TireTrack + tagline */}
+      {/* Wordmark */}
       <View style={styles.wordmarkWrap}>
-        <Text style={styles.wordmark}>
-          TWOWHEEL<Text style={{ color: C.accent }}>COME</Text>
-        </Text>
-        <TireTrack C={C} />
-        <Text style={styles.tagline}>Riders host riders</Text>
+        <Text style={styles.wordmark}>twowheelcome</Text>
+        <Text style={styles.tagline}>THE ADV COMMUNITY HOME</Text>
       </View>
 
       {/* Form */}
@@ -183,67 +230,47 @@ export default function AuthScreen() {
           </TouchableOpacity>
         )}
       </View>
-    </View>
+    </ScrollView>
   )
 }
 
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: C.bg },
-
-    heroGradient: { height: 200, overflow: 'hidden' },
-    treeLine: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '100%', flexDirection: 'row' },
-    tree: {
-      position: 'absolute', width: 0, height: 0, backgroundColor: 'transparent',
-      borderStyle: 'solid', borderLeftColor: 'transparent', borderRightColor: 'transparent', borderBottomColor: '#0A180C',
-    },
-    mist: {
-      position: 'absolute', bottom: -10, left: 0, right: 0, height: 80,
-      backgroundColor: 'rgba(28, 40, 28, 0.6)',
-    },
+    container:        { flex: 1, backgroundColor: C.bg },
+    contentContainer: { flexGrow: 1 },
 
     wordmarkWrap: {
-      alignItems: 'center', paddingTop: 20, paddingBottom: 28, gap: 6,
+      alignItems: 'center', paddingTop: 8, paddingBottom: 24, gap: 4,
       maxWidth: 440, width: '100%', alignSelf: 'center',
     },
     wordmark: {
-      fontSize: 34, fontFamily: 'Rye_400Regular', color: C.text,
-      letterSpacing: 1,
-      textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 1, height: 3 }, textShadowRadius: 6,
+      fontSize: 30, fontFamily: 'Rye_400Regular', color: C.text, letterSpacing: 0.5,
     },
     tagline: {
-      color: C.textDim, fontSize: 10.5, letterSpacing: 3, textTransform: 'uppercase',
-      fontFamily: 'Oswald_700Bold', marginTop: 2,
+      color: C.accent, fontSize: 11, letterSpacing: 3, textTransform: 'uppercase',
+      fontFamily: 'Oswald_700Bold',
     },
 
-    form: { paddingHorizontal: 24, gap: 12, maxWidth: 440, width: '100%', alignSelf: 'center' },
+    form: { paddingHorizontal: 24, gap: 12, maxWidth: 440, width: '100%', alignSelf: 'center', paddingBottom: 40 },
 
     inputWrap: {
       flexDirection: 'row', alignItems: 'center', backgroundColor: C.elevated,
       borderRadius: 100, paddingHorizontal: 18, borderWidth: 1, borderColor: C.border, height: 54,
     },
     inputIcon: { marginRight: 10 },
-    input: { flex: 1, color: C.text, fontSize: 15 },
+    input:     { flex: 1, color: C.text, fontSize: 15 },
 
-    btnPrimary: {
-      height: 54, backgroundColor: C.accent, borderRadius: 100,
-      alignItems: 'center', justifyContent: 'center', marginTop: 4,
-    },
-    btnPrimaryText: {
-      color: C.white, fontFamily: 'Oswald_700Bold', fontSize: 16, letterSpacing: 1.5,
-    },
-    btnOutline: {
-      height: 54, borderRadius: 100, borderWidth: 1.5, borderColor: C.borderMid,
-      alignItems: 'center', justifyContent: 'center',
-    },
+    btnPrimary:     { height: 54, backgroundColor: C.accent, borderRadius: 100, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+    btnPrimaryText: { color: C.white, fontFamily: 'Oswald_700Bold', fontSize: 16, letterSpacing: 1.5 },
+    btnOutline:     { height: 54, borderRadius: 100, borderWidth: 1.5, borderColor: C.borderMid, alignItems: 'center', justifyContent: 'center' },
     btnOutlineText: { color: C.text, fontFamily: 'Oswald_700Bold', fontSize: 16, letterSpacing: 1.5 },
 
     forgotWrap: { alignItems: 'center', paddingVertical: 4 },
     forgotText: { color: C.textDim, fontSize: 14 },
 
-    msgError: { backgroundColor: C.errorSoft, borderWidth: 1, borderColor: C.errorBorder, borderRadius: 14, padding: 14 },
-    msgErrorText: { color: C.error, fontSize: 13, lineHeight: 19 },
-    msgSuccess: { backgroundColor: C.successSoft, borderWidth: 1, borderColor: C.successBorder, borderRadius: 14, padding: 14 },
+    msgError:       { backgroundColor: C.errorSoft, borderWidth: 1, borderColor: C.errorBorder, borderRadius: 14, padding: 14 },
+    msgErrorText:   { color: C.error, fontSize: 13, lineHeight: 19 },
+    msgSuccess:     { backgroundColor: C.successSoft, borderWidth: 1, borderColor: C.successBorder, borderRadius: 14, padding: 14 },
     msgSuccessText: { color: C.success, fontSize: 13, lineHeight: 19 },
   })
 }
