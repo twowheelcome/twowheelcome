@@ -34,7 +34,6 @@ export default function MapScreen() {
   const [sendError, setSendError] = useState('')
   const [sendSuccess, setSendSuccess] = useState(false)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const fileInputRef = useRef<any>(null)
   const [arrivalChip, setArrivalChip] = useState<'tonight' | 'tomorrow' | 'other'>('tonight')
   const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().split('T')[0])
@@ -102,7 +101,6 @@ export default function MapScreen() {
       setDepartureDate(new Date(Date.now() + 86400000).toISOString().split('T')[0])
       setArrivalTime(defaultArrivalTime())
       setPhotoFile(null)
-      setPhotoPreview(null)
     }
   }, [requesting])
 
@@ -360,7 +358,6 @@ export default function MapScreen() {
                     const file = e.target.files?.[0]
                     if (!file) return
                     setPhotoFile(file)
-                    setPhotoPreview(URL.createObjectURL(file))
                   }}
                 />
               )}
@@ -372,7 +369,7 @@ export default function MapScreen() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                     <Text style={{ fontSize: 20 }}>✅</Text>
                     <Text style={{ color: C.success, fontWeight: '700', fontSize: 14 }}>Photo added</Text>
-                    <TouchableOpacity onPress={() => { setPhotoFile(null); setPhotoPreview(null) }}>
+                    <TouchableOpacity onPress={() => setPhotoFile(null)}>
                       <Text style={{ color: C.textDim, fontSize: 12 }}>Remove</Text>
                     </TouchableOpacity>
                   </View>

@@ -29,7 +29,7 @@ export function SafetyBlock({ parkings }: { parkings: string[] }) {
   const secondary = order.filter(k => k !== best && keys.includes(k))
 
   return (
-    <View style={[sb.block, { backgroundColor: s.color + '12', borderColor: s.color + '55' }]}>
+    <View style={[sb.block, { backgroundColor: s.color + '10', borderColor: s.color + '66' }]}>
       <Text style={[sb.bikeLabel, { color: s.color }]}>Your bike sleeps here</Text>
       <View style={sb.mainRow}>
         <Text style={sb.icon}>{s.icon}</Text>
@@ -57,16 +57,16 @@ export function SafetyBlock({ parkings }: { parkings: string[] }) {
 }
 
 const sb = StyleSheet.create({
-  block:        { borderRadius: 14, borderWidth: 1, padding: 14, marginTop: 8 },
+  block:        { borderRadius: 20, borderWidth: 1.5, padding: 16 },
   bikeLabel:    { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
   mainRow:      { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  icon:         { fontSize: 24, marginTop: 1 },
-  info:         { flex: 1, gap: 3 },
+  icon:         { fontSize: 26, marginTop: 1 },
+  info:         { flex: 1, gap: 4 },
   labelRow:     { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  label:        { fontSize: 14, fontWeight: '700' },
+  label:        { fontSize: 16, fontWeight: '800' },
   rankPill:     { borderRadius: 100, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2 },
   rankText:     { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
-  sub:          { fontSize: 12, lineHeight: 17 },
+  sub:          { fontSize: 13, lineHeight: 19 },
   secondaryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.06)' },
   chip:         { borderRadius: 100, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 3 },
   chipText:     { fontSize: 11, fontWeight: '600' },

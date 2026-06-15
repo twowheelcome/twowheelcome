@@ -1,7 +1,5 @@
 import { useEffect, useRef } from 'react'
 import { Stack } from 'expo-router'
-import { useFonts as useOswald, Oswald_700Bold } from '@expo-google-fonts/oswald'
-import { useFonts as useRye, Rye_400Regular } from '@expo-google-fonts/rye'
 import * as SplashScreen from 'expo-splash-screen'
 import * as Notifications from 'expo-notifications'
 import { router } from 'expo-router'
@@ -35,14 +33,11 @@ function AppStack() {
 }
 
 export default function RootLayout() {
-  const [o] = useOswald({ Oswald_700Bold })
-  const [r] = useRye({ Rye_400Regular })
-  const fontsLoaded = o && r
   const notifSubRef = useRef<Notifications.Subscription | null>(null)
 
   useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync()
-  }, [fontsLoaded])
+    SplashScreen.hideAsync()
+  }, [])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -57,8 +52,6 @@ export default function RootLayout() {
 
     return () => { notifSubRef.current?.remove() }
   }, [])
-
-  if (!fontsLoaded) return null
 
   return (
     <ThemeProvider>

@@ -178,15 +178,15 @@ function makeStyles(C: ThemeColors) {
 
     hero: {
       alignItems: 'center',
-      paddingTop: 56,
+      paddingTop: 52,
       paddingBottom: 28,
       paddingHorizontal: 24,
-      backgroundColor: '#FFFFFF',
+      backgroundColor: '#F2EBDD',
     },
     logo: {
-      width: 240,
-      height: 200,
-      marginBottom: 12,
+      width: 228,
+      height: 188,
+      marginBottom: 10,
     },
     tagline: {
       color: C.accent, fontSize: 17, fontWeight: '600', textAlign: 'center', lineHeight: 24,
