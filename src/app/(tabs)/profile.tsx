@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Image, Platform } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Image, Platform, Modal } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
+import QRCode from 'react-native-qrcode-svg'
 import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
 import { useTheme, useThemePreference, type ThemeColors } from '../../lib/ThemeContext'
@@ -26,6 +26,7 @@ export default function ProfileScreen() {
   const [savingBike, setSavingBike] = useState(false)
   const [avatarError, setAvatarError] = useState<string | null>(null)
   const [reviews, setReviews] = useState<{ rating: number; body: string | null; reviewer_name: string | null; created_at: string }[]>([])
+  const [showQR, setShowQR] = useState(false)
 
   useEffect(() => { loadAll() }, [])
 
@@ -134,15 +135,10 @@ export default function ProfileScreen() {
         <UserChip />
       </View>
 
-      {/* Hero section */}
+      {/* Avatar + QR */}
       <View style={styles.hero}>
-        <LinearGradient
-          colors={[C.surface, C.bg]}
-          locations={[0, 1]}
-          style={styles.heroBg}
-        />
         {Platform.OS === 'web' ? (
-          <div style={{ position: 'relative', width: 84, height: 84, marginLeft: 24, marginBottom: -42, zIndex: 10, flexShrink: 0 } as any}>
+          <div style={{ position: 'relative', width: 96, height: 96, flexShrink: 0 } as any}>
             <View style={styles.avatarCircle}>
               {profile?.avatar_url ? (
                 <Image source={{ uri: profile.avatar_url }} style={styles.avatarPhoto} />
@@ -187,7 +183,33 @@ export default function ProfileScreen() {
             </View>
           </TouchableOpacity>
         )}
+        <TouchableOpacity style={styles.qrBtn} onPress={() => setShowQR(true)}>
+          <Feather name="share-2" size={16} color={C.accent} />
+          <Text style={styles.qrBtnText}>Share profile</Text>
+        </TouchableOpacity>
       </View>
+
+      {/* QR Modal */}
+      <Modal visible={showQR} transparent animationType="fade" onRequestClose={() => setShowQR(false)}>
+        <TouchableOpacity style={styles.qrOverlay} activeOpacity={1} onPress={() => setShowQR(false)}>
+          <View style={styles.qrSheet}>
+            <Text style={styles.qrTitle}>Share your host profile</Text>
+            <Text style={styles.qrSub}>Let riders scan this on the road</Text>
+            <View style={styles.qrBox}>
+              <QRCode
+                value={`https://www.twowheelcome.com/host/${user?.id}`}
+                size={200}
+                color={C.text}
+                backgroundColor={C.bg}
+              />
+            </View>
+            <Text style={styles.qrName}>{profile?.full_name || 'Your profile'}</Text>
+            <TouchableOpacity style={styles.qrClose} onPress={() => setShowQR(false)}>
+              <Text style={styles.qrCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       <View style={styles.body}>
         {avatarError && (
@@ -378,43 +400,72 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   headerAccent: { color: C.accent },
 
   hero: {
-    height: 180,
-    position: 'relative',
-    alignItems: 'flex-start',
-    justifyContent: 'flex-end',
-  },
-  heroBg: {
-    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    paddingTop: 24,
+    paddingBottom: 20,
+    paddingHorizontal: 24,
+    gap: 14,
+    backgroundColor: C.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: C.border,
   },
   avatarWrap: {
-    width: 84, height: 84,
-    marginLeft: 24, marginBottom: -42,
-    zIndex: 10,
+    width: 96, height: 96,
+    position: 'relative',
   },
   avatarCircle: {
-    width: 84, height: 84, borderRadius: 42,
-    backgroundColor: C.surface,
+    width: 96, height: 96, borderRadius: 48,
+    backgroundColor: C.elevated,
     borderWidth: 3, borderColor: C.accent,
     alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden',
   },
-  avatarPhoto: { width: 84, height: 84, borderRadius: 42 },
-  avatarText: { color: C.accent, fontSize: 32, fontWeight: '900' },
+  avatarPhoto: { width: 96, height: 96, borderRadius: 48 },
+  avatarText: { color: C.accent, fontSize: 36, fontWeight: '900' },
   avatarOverlay: {
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center', justifyContent: 'center',
   },
   avatarEditBadge: {
-    position: 'absolute', bottom: 0, right: 0,
-    width: 22, height: 22, borderRadius: 11,
+    position: 'absolute', bottom: 2, right: 2,
+    width: 24, height: 24, borderRadius: 12,
     backgroundColor: C.accent,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: C.bg,
   },
+  qrBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: C.elevated, borderRadius: 100,
+    borderWidth: 1, borderColor: C.border,
+    paddingHorizontal: 16, paddingVertical: 8,
+  },
+  qrBtnText: { color: C.accent, fontSize: 13, fontWeight: '700' },
+
+  qrOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  qrSheet: {
+    backgroundColor: C.bg, borderRadius: 24,
+    padding: 28, alignItems: 'center', gap: 10,
+    marginHorizontal: 24, width: 300,
+  },
+  qrTitle: { color: C.text, fontSize: 18, fontWeight: '800', textAlign: 'center' },
+  qrSub: { color: C.textMuted, fontSize: 13, textAlign: 'center', marginBottom: 4 },
+  qrBox: {
+    padding: 16, backgroundColor: C.bg,
+    borderRadius: 16, borderWidth: 1, borderColor: C.border,
+  },
+  qrName: { color: C.textMuted, fontSize: 13, marginTop: 4 },
+  qrClose: {
+    marginTop: 8, backgroundColor: C.accent,
+    borderRadius: 100, paddingHorizontal: 28, paddingVertical: 10,
+  },
+  qrCloseText: { color: C.white, fontWeight: '700', fontSize: 14 },
 
   body: {
-    paddingTop: 52,
+    paddingTop: 20,
     paddingHorizontal: 24,
     gap: 20,
   },

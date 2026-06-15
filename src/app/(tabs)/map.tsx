@@ -27,6 +27,7 @@ export default function MapScreen() {
   const [hosts, setHosts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<any>(null)
+  const [showHostProfile, setShowHostProfile] = useState(false)
   const [requesting, setRequesting] = useState(false)
   const [message, setMessage] = useState('')
   const [guests, setGuests] = useState(1)
@@ -109,7 +110,7 @@ export default function MapScreen() {
 
     const userIds = [...new Set(data.map((h: any) => h.user_id))]
     const [{ data: profilesData }, { data: reviewsData }, { data: lastReviewsData }] = await Promise.all([
-      supabase.from('profiles').select('id, full_name, avatar_url, bio').in('id', userIds),
+      supabase.from('profiles').select('id, full_name, avatar_url, bio, bike').in('id', userIds),
       supabase.from('reviews').select('reviewee_id, rating').in('reviewee_id', userIds),
       supabase.from('reviews')
         .select('reviewee_id, rating, body, reviewer:profiles!reviewer_id(full_name)')
@@ -243,7 +244,7 @@ export default function MapScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => setRequesting(false)}>
+          <TouchableOpacity onPress={() => { setRequesting(false); setShowHostProfile(true) }}>
             <Text style={styles.back}>← Back</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Request a stay</Text>
@@ -557,11 +558,122 @@ export default function MapScreen() {
         </View>
       </Modal>
 
+      {/* ── Host profile bottom sheet ─────────────────────────────────── */}
+      <Modal visible={showHostProfile && !!selected} animationType="slide" transparent={false} onRequestClose={() => setShowHostProfile(false)}>
+        {selected && (() => {
+          const isOwn = selected.user_id === currentUser?.id
+          const parkings: string[] = selected.parkings?.length ? selected.parkings : (selected.parking ? [selected.parking] : [])
+          const amenityIcons: Record<string, string> = { shower: '🚿', toilet: '🚽', kitchen: '🍳', laundry: '👕', electricity: '⚡', wifi: '📶', pub_nearby: '🍺', breakfast: '☕', dinner: '🍽', local_routes: '🗺', group_ride: '🏍' }
+          const amenityLabels: Record<string, string> = { shower: 'Shower', toilet: 'Toilet', kitchen: 'Kitchen', laundry: 'Laundry', electricity: 'Power', wifi: 'WiFi', pub_nearby: 'Pub nearby', breakfast: 'Breakfast', dinner: 'Dinner', local_routes: 'Local routes', group_ride: 'Group ride' }
+          const sleepLabels: Record<string, string> = { tent: '⛺ Tent', roof: '🏠 Roof over head', room: '🛏 Private room' }
+          const initials = (selected.profiles?.full_name || '?').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+          return (
+            <View style={{ flex: 1, backgroundColor: C.bg }}>
+              {/* Header */}
+              <View style={[styles.header, { flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+                <TouchableOpacity onPress={() => setShowHostProfile(false)} hitSlop={10}>
+                  <Text style={{ color: C.accent, fontSize: 16, fontWeight: '700' }}>← Back</Text>
+                </TouchableOpacity>
+                <Text style={{ color: C.text, fontSize: 17, fontWeight: '800', flex: 1 }}>Host profile</Text>
+              </View>
+
+              <ScrollView contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 100 }}>
+                {/* Avatar + name + meta */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                  <View style={[styles.avatar, { width: 72, height: 72, borderRadius: 36 }]}>
+                    <Text style={[styles.avatarText, { fontSize: 26 }]}>{initials}</Text>
+                  </View>
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <Text style={{ color: C.text, fontSize: 22, fontWeight: '900' }}>{selected.profiles?.full_name || 'Anonymous Rider'}</Text>
+                    {selected.avg_rating != null && (
+                      <Text style={{ color: C.accent, fontSize: 14, fontWeight: '700' }}>
+                        {'★'.repeat(Math.round(selected.avg_rating))}{'☆'.repeat(5 - Math.round(selected.avg_rating))} {selected.avg_rating.toFixed(1)} · {selected.review_count} {selected.review_count === 1 ? 'stay' : 'stays'}
+                      </Text>
+                    )}
+                    {selected.profiles?.bike && (
+                      <Text style={{ color: C.textMuted, fontSize: 13 }}>🏍 {selected.profiles.bike}</Text>
+                    )}
+                    <Text style={{ color: C.textMuted, fontSize: 13 }}>📍 {selected.location_city}, {selected.location_country}</Text>
+                  </View>
+                </View>
+
+                {/* Safety */}
+                <SafetyBlock parkings={parkings} />
+
+                {/* Bio / notes */}
+                {(selected.profiles?.bio || selected.notes) && (
+                  <Text style={{ color: C.text, fontSize: 15, lineHeight: 22 }}>
+                    {selected.notes || selected.profiles?.bio}
+                  </Text>
+                )}
+
+                {/* Sleep types */}
+                {selected.sleep_types?.length > 0 && (
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {(selected.sleep_types as string[]).map(s => (
+                      <View key={s} style={{ backgroundColor: C.surface, borderRadius: 100, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, paddingVertical: 6 }}>
+                        <Text style={{ color: C.text, fontSize: 13, fontWeight: '600' }}>{sleepLabels[s] || s}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Amenities */}
+                {selected.amenities?.length > 0 && (
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {(selected.amenities as string[]).map(a => (
+                      <View key={a} style={{ backgroundColor: C.surface, borderRadius: 100, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, paddingVertical: 6 }}>
+                        <Text style={{ color: C.textMuted, fontSize: 13 }}>{amenityIcons[a] || '•'} {amenityLabels[a] || a}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Max guests */}
+                <Text style={{ color: C.textMuted, fontSize: 13 }}>👥 Max {selected.max_guests} {selected.max_guests === 1 ? 'rider' : 'riders'}</Text>
+
+                {/* Reviews */}
+                {selected.last_review && (
+                  <View style={{ gap: 8 }}>
+                    <Text style={{ color: C.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' }}>Reviews from riders</Text>
+                    <View style={{ backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 14, gap: 6 }}>
+                      <Text style={{ color: C.accent, fontSize: 14 }}>{'★'.repeat(selected.last_review.rating)}{'☆'.repeat(5 - selected.last_review.rating)}</Text>
+                      {selected.last_review.body && <Text style={{ color: C.text, fontSize: 14, lineHeight: 20 }}>"{selected.last_review.body}"</Text>}
+                      {selected.last_review.reviewer_name && <Text style={{ color: C.textMuted, fontSize: 12 }}>— {selected.last_review.reviewer_name}</Text>}
+                    </View>
+                  </View>
+                )}
+              </ScrollView>
+
+              {/* Fixed CTA */}
+              <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, paddingBottom: 34, backgroundColor: C.bg, borderTopWidth: 1, borderTopColor: C.border }}>
+                {!isOwn ? (
+                  <TouchableOpacity
+                    style={{ height: 56, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 }}
+                    onPress={() => { setShowHostProfile(false); setRequesting(true) }}
+                  >
+                    <Text style={{ fontSize: 18 }}>🏠</Text>
+                    <Text style={{ color: C.white, fontSize: 16, fontWeight: '900', letterSpacing: 1 }}>KNOCK ON THE DOOR</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={{ height: 56, borderRadius: 100, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
+                    onPress={() => { setShowHostProfile(false); router.push('/become-host') }}
+                  >
+                    <Text style={{ color: C.text, fontSize: 15, fontWeight: '700' }}>Edit your listing</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )
+        })()}
+      </Modal>
+
       {HostMap ? (
         <View style={{ flex: 1 }}>
           <HostMap
             hosts={filteredHosts}
-            onHostSelect={(host: any) => { setSelected(host); setRequesting(true) }}
+            onHostSelect={(host: any) => { setSelected(host); setShowHostProfile(true) }}
             buddyIds={[]}
             satellite={satelliteMap}
             onSatelliteToggle={() => setSatelliteMap(v => !v)}
