@@ -134,12 +134,6 @@ export default function ProfileScreen() {
           locations={[0, 0.6, 1]}
           style={styles.heroBg}
         />
-        {Platform.OS === 'web' && (
-          <div style={{ position: 'absolute', top: 14, right: 16, display: 'flex', gap: 8, zIndex: 20 } as any}>
-            <button style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 100, padding: '6px 14px', color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Share</button>
-            <button style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: 100, padding: '6px 14px', color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>⚙ Settings</button>
-          </div>
-        )}
         {Platform.OS === 'web' ? (
           <div style={{ position: 'relative', width: 84, height: 84, marginLeft: 24, marginBottom: -42, zIndex: 10, flexShrink: 0 } as any}>
             <View style={styles.avatarCircle}>

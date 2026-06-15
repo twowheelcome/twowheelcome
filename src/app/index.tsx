@@ -248,7 +248,6 @@ function makeStyles(C: ThemeColors) {
     },
     tagline: {
       color: C.accent, fontSize: 11, letterSpacing: 3, textTransform: 'uppercase',
-      ,
     },
 
     form: { paddingHorizontal: 24, gap: 12, maxWidth: 440, width: '100%', alignSelf: 'center', paddingBottom: 40 },
