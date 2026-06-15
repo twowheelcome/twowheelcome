@@ -6,43 +6,8 @@ import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView 
 import { Feather } from '@expo/vector-icons'
 import { supabase } from '../lib/supabase'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
-import { SAFETY } from '../lib/theme'
 
 const ONBOARDING_KEY = '@twowheelcome/onboarding-seen'
-
-// ── Safety preview — shows the 4 bike parking levels ─────────────────────────
-
-function SafetyPreview({ C }: { C: ThemeColors }) {
-  const levels = [
-    { key: 'locked_garage' as const, icon: '🔒', label: 'Locked garage' },
-    { key: 'carport'       as const, icon: '🏠', label: 'Covered parking' },
-    { key: 'fenced_yard'   as const, icon: '🚧', label: 'Fenced yard' },
-    { key: 'street'        as const, icon: '🛣️', label: 'Street parking' },
-  ]
-  return (
-    <View style={{ gap: 8 }}>
-      <Text style={{ color: C.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 2 }}>
-        Bike safety options
-      </Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {levels.map(l => {
-          const s = SAFETY[l.key]
-          return (
-            <View key={l.key} style={{
-              flexDirection: 'row', alignItems: 'center', gap: 6,
-              backgroundColor: s.color + '14', borderRadius: 100,
-              borderWidth: 1, borderColor: s.color + '55',
-              paddingHorizontal: 12, paddingVertical: 6,
-            }}>
-              <Text style={{ fontSize: 14 }}>{l.icon}</Text>
-              <Text style={{ color: s.color, fontSize: 12, fontWeight: '600' }}>{l.label}</Text>
-            </View>
-          )
-        })}
-      </View>
-    </View>
-  )
-}
 
 // ── First-run onboarding ─────────────────────────────────────────────────────
 
@@ -180,20 +145,17 @@ export default function AuthScreen() {
       {/* Logo + tagline */}
       <View style={styles.hero}>
         <Image
-          source={require('../../assets/images/logo.png')}
+          source={require('../../assets/images/mark.png')}
           style={styles.logo}
           resizeMode="contain"
         />
+        <Text style={styles.wordmark}>
+          <Text style={styles.wordmarkAccent}>TWO</Text>
+          WHEEL
+          <Text style={styles.wordmarkAccent}>COME</Text>
+        </Text>
         <Text style={styles.tagline}>Safe night for your bike and you.</Text>
         <Text style={styles.taglineSub}>From riders to riders.</Text>
-      </View>
-
-      {/* Safety preview */}
-      <View style={styles.safetyWrap}>
-        <SafetyPreview C={C} />
-        <Text style={styles.pitch}>
-          Find a rider-host with safe parking, a place to sleep, and someone who gets it.
-        </Text>
       </View>
 
       {/* Form */}
@@ -271,22 +233,33 @@ export default function AuthScreen() {
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     container:        { flex: 1, backgroundColor: C.bg },
-    contentContainer: { flexGrow: 1 },
+    contentContainer: { flexGrow: 1, justifyContent: 'center', paddingVertical: 24 },
 
     hero: {
       alignItems: 'center',
-      paddingTop: 52,
-      paddingBottom: 28,
+      paddingTop: 0,
+      paddingBottom: 20,
       paddingHorizontal: 24,
       backgroundColor: '#F2EBDD',
     },
     logo: {
-      width: 228,
+      width: 198,
       height: 188,
-      marginBottom: 10,
+      marginBottom: 4,
+    },
+    wordmark: {
+      color: C.text,
+      fontSize: 31,
+      fontWeight: '900',
+      letterSpacing: 0,
+      lineHeight: 36,
+      marginBottom: 8,
+    },
+    wordmarkAccent: {
+      color: C.accent,
     },
     tagline: {
-      color: C.accent, fontSize: 17, fontWeight: '600', textAlign: 'center', lineHeight: 24,
+      color: C.accent, fontSize: 18, fontWeight: '700', textAlign: 'center', lineHeight: 25,
     },
     taglineSub: {
       color: C.textMuted, fontSize: 14, textAlign: 'center', marginTop: 4,
@@ -300,7 +273,7 @@ function makeStyles(C: ThemeColors) {
       color: C.textMuted, fontSize: 13, lineHeight: 20,
     },
 
-    form: { paddingHorizontal: 24, gap: 12, maxWidth: 440, width: '100%', alignSelf: 'center', paddingBottom: 40 },
+    form: { paddingHorizontal: 24, gap: 10, maxWidth: 440, width: '100%', alignSelf: 'center' },
 
     inputWrap: {
       flexDirection: 'row', alignItems: 'center', backgroundColor: C.elevated,
