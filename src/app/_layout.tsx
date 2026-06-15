@@ -44,13 +44,27 @@ export default function RootLayout() {
       if (user) registerPushToken(user.id)
     })
 
+    // Sync full_name from auth metadata to profiles on first login
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        const user = session.user
+        const metaName = user.user_metadata?.full_name as string | undefined
+        if (metaName) {
+          const { data: prof } = await supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle()
+          if (!prof?.full_name) {
+            await supabase.from('profiles').upsert({ id: user.id, full_name: metaName })
+          }
+        }
+      }
+    })
+
     notifSubRef.current = Notifications.addNotificationResponseReceivedListener(response => {
       const url = response.notification.request.content.data?.url
       if (typeof url === 'string') router.push(url as any)
       else router.push('/(tabs)/requests')
     })
 
-    return () => { notifSubRef.current?.remove() }
+    return () => { subscription.unsubscribe(); notifSubRef.current?.remove() }
   }, [])
 
   return (

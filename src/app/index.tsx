@@ -91,6 +91,7 @@ export default function AuthScreen() {
   const styles = useMemo(() => makeStyles(C), [C])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [fullName, setFullName] = useState('')
   const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [session, setSession] = useState<Session | null>(null)
@@ -117,12 +118,24 @@ export default function AuthScreen() {
 
   async function handleRegister() {
     setAuthError(''); setAuthSuccess('')
+    if (!fullName.trim()) { setAuthError('Please enter your name.'); return }
     if (!email.trim()) { setAuthError('Please enter your email.'); return }
     if (password.length < 6) { setAuthError('Password must be at least 6 characters.'); return }
     setLoading(true)
-    const { error } = await supabase.auth.signUp({ email, password })
-    if (error) setAuthError(error.message)
-    else setAuthSuccess('Done! Check your email to confirm your account.')
+    const name = fullName.trim()
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: name } },
+    })
+    if (error) {
+      setAuthError(error.message)
+    } else {
+      if (data.user) {
+        await supabase.from('profiles').upsert({ id: data.user.id, full_name: name })
+      }
+      setAuthSuccess('Done! Check your email to confirm your account.')
+    }
     setLoading(false)
   }
 
@@ -160,6 +173,20 @@ export default function AuthScreen() {
 
       {/* Form */}
       <View style={styles.form}>
+        {mode === 'register' && (
+          <View style={styles.inputWrap}>
+            <Feather name="user" size={16} color={C.textDim} style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Your name"
+              placeholderTextColor={C.placeholder}
+              value={fullName}
+              onChangeText={setFullName}
+              autoCapitalize="words"
+            />
+          </View>
+        )}
+
         <View style={styles.inputWrap}>
           <Feather name="mail" size={16} color={C.textDim} style={styles.inputIcon} />
           <TextInput
@@ -197,7 +224,7 @@ export default function AuthScreen() {
 
         <TouchableOpacity
           style={styles.btnOutline}
-          onPress={() => { setAuthError(''); setAuthSuccess(''); setMode(mode === 'login' ? 'register' : 'login') }}
+          onPress={() => { setAuthError(''); setAuthSuccess(''); setFullName(''); setMode(mode === 'login' ? 'register' : 'login') }}
         >
           <Text style={styles.btnOutlineText}>
             {mode === 'login' ? 'Create account' : 'Back to log in'}
