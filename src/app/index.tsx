@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { router } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView } from 'react-native'
-import { Feather } from '@expo/vector-icons'
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons'
 import { supabase } from '../lib/supabase'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 
@@ -15,17 +15,17 @@ function Onboarding({ C, onDone }: { C: ThemeColors; onDone: () => void }) {
   const [step, setStep] = useState(0)
   const slides = [
     {
-      icon: 'home' as const,
+      icon: 'motorbike' as const,
       title: 'Hotels solve where you sleep.',
       body: 'Twowheelcome helps you find where your bike can sleep safely too.',
     },
     {
-      icon: 'lock' as const,
+      icon: 'home-roof' as const,
       title: 'Bike safety comes first.',
       body: 'Every host shows the parking situation before anything else: locked garage, covered parking, fenced yard, or street.',
     },
     {
-      icon: 'users' as const,
+      icon: 'circle' as const,
       title: 'From riders to riders.',
       body: 'A place to rest, a safe spot for the bike, and someone who understands why both matter.',
     },
@@ -47,7 +47,7 @@ function Onboarding({ C, onDone }: { C: ThemeColors; onDone: () => void }) {
 
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18 }}>
         <View style={{ width: 132, height: 132, borderRadius: 66, backgroundColor: C.accentSoft, borderWidth: 1.5, borderColor: C.accentBorder, alignItems: 'center', justifyContent: 'center' }}>
-          <Feather name={current.icon} size={48} color={C.accent} />
+          <MaterialCommunityIcons name={current.icon} size={48} color={C.accent} />
         </View>
         <Text style={{ color: C.text, fontSize: 28, lineHeight: 34, fontWeight: '800', textAlign: 'center', maxWidth: 330 }}>
           {current.title}
@@ -259,10 +259,10 @@ function makeStyles(C: ThemeColors) {
       color: C.accent,
     },
     tagline: {
-      color: C.accent, fontSize: 18, fontWeight: '700', textAlign: 'center', lineHeight: 25,
+      color: C.text, fontSize: 18, fontWeight: '700', textAlign: 'center', lineHeight: 25,
     },
     taglineSub: {
-      color: C.textMuted, fontSize: 14, textAlign: 'center', marginTop: 4,
+      color: C.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 1.6, textAlign: 'center', marginTop: 8, textTransform: 'uppercase',
     },
 
     safetyWrap: {
