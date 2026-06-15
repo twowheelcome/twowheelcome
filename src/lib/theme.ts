@@ -76,12 +76,12 @@ export const LIGHT = {
   ...base,
 
   // ── Backgrounds ─────────────────────────────────────────────────
-  bg:        '#F7F1E6',
-  surface:   '#EDE6D3',
-  elevated:  '#E4D9C5',
-  border:    '#C8BAA0',
-  borderMid: '#B0A082',
-  hover:     '#E8DFD0',
+  bg:        '#F2EBDD',
+  surface:   '#E8DFCE',
+  elevated:  '#DDD3BF',
+  border:    '#C4B49A',
+  borderMid: '#ADA082',
+  hover:     '#E4D9C8',
 
   // ── Text ────────────────────────────────────────────────────────
   text:        '#2D2F33',
@@ -91,18 +91,18 @@ export const LIGHT = {
   placeholder: '#9A9DA5',
 
   // ── Accent — orange (PRIMARY action) ────────────────────────────
-  accent:       '#E06A23',
-  accentSoft:   '#E06A2318',
-  accentBorder: '#E06A2355',
+  accent:       '#C96E2A',
+  accentSoft:   '#C96E2A18',
+  accentBorder: '#C96E2A55',
 
   // ── Legacy aliases ────────────────────────────────────────────────
-  forest:       '#F7F1E6',
-  forestSoft:   '#F7F1E630',
-  forestBorder: '#F7F1E680',
+  forest:       '#F2EBDD',
+  forestSoft:   '#F2EBDD30',
+  forestBorder: '#F2EBDD80',
 
-  leather:       '#EDE6D3',
-  leatherSoft:   '#EDE6D318',
-  leatherBorder: '#EDE6D355',
+  leather:       '#E8DFCE',
+  leatherSoft:   '#E8DFCE18',
+  leatherBorder: '#E8DFCE55',
 
   secondary:       '#8A7A6A',
   secondarySoft:   '#8A7A6A18',
@@ -114,8 +114,8 @@ export const C = DARK
 
 // ── Bike-safety scale ─────────────────────────────────────────────
 export const SAFETY = {
-  locked_garage: { icon: '🔒', label: 'Locked garage',   sub: 'Behind a locked door. Best option for overnight stays.', color: base.success, rank: 'Safest' },
-  carport:       { icon: '🏠', label: 'Covered parking',  sub: 'Off-street and under cover.',                           color: base.info,    rank: 'Good'   },
+  locked_garage: { icon: '🔒', label: 'Locked garage',   sub: 'Behind a locked door. Best option for overnight stays.', color: base.info,    rank: 'Safest' },
+  carport:       { icon: '🏠', label: 'Covered parking',  sub: 'Off-street and under cover.',                           color: base.purple,  rank: 'Good'   },
   fenced_yard:   { icon: '🚧', label: 'Fenced yard',      sub: 'Behind a gate or fence.',                               color: base.warning, rank: 'Okay'   },
   street:        { icon: '🛣️', label: 'Street parking',    sub: 'Public street parking nearby. Ask about visibility.',   color: base.error,   rank: 'Basic'  },
 } as const

@@ -71,7 +71,9 @@ export default function MapScreen() {
   const filteredHosts = hosts.filter(h => {
     if (filterParkings.length) {
       const hp: string[] = h.parkings?.length ? h.parkings : (h.parking ? [h.parking] : [])
-      if (!filterParkings.some(p => hp.includes(p))) return false
+      const hpKeys = hp.map(getSafetyKey)
+      const filterKeys = filterParkings.map(getSafetyKey)
+      if (!filterKeys.some(k => hpKeys.includes(k))) return false
     }
     if (filterSleep.length) {
       const st: string[] = h.sleep_types || []
