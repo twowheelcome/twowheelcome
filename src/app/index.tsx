@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { router } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView } from 'react-native'
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons'
+import { Feather } from '@expo/vector-icons'
 import { supabase } from '../lib/supabase'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 
@@ -15,17 +15,17 @@ function Onboarding({ C, onDone }: { C: ThemeColors; onDone: () => void }) {
   const [step, setStep] = useState(0)
   const slides = [
     {
-      icon: 'motorbike' as const,
+      image: require('../../assets/images/bike.png'),
       title: 'Hotels solve where you sleep.',
       body: 'Twowheelcome helps you find where your bike can sleep safely too.',
     },
     {
-      icon: 'home-roof' as const,
+      image: require('../../assets/images/roof.png'),
       title: 'Bike safety comes first.',
       body: 'Every host shows the parking situation before anything else: locked garage, covered parking, fenced yard, or street.',
     },
     {
-      icon: 'circle' as const,
+      image: require('../../assets/images/kruh.png'),
       title: 'From riders to riders.',
       body: 'A place to rest, a safe spot for the bike, and someone who understands why both matter.',
     },
@@ -46,8 +46,8 @@ function Onboarding({ C, onDone }: { C: ThemeColors; onDone: () => void }) {
       </View>
 
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18 }}>
-        <View style={{ width: 132, height: 132, borderRadius: 66, backgroundColor: C.accentSoft, borderWidth: 1.5, borderColor: C.accentBorder, alignItems: 'center', justifyContent: 'center' }}>
-          <MaterialCommunityIcons name={current.icon} size={48} color={C.accent} />
+        <View style={{ width: 160, height: 160, alignItems: 'center', justifyContent: 'center' }}>
+          <Image source={current.image} style={{ width: 160, height: 160 }} resizeMode="contain" />
         </View>
         <Text style={{ color: C.text, fontSize: 28, lineHeight: 34, fontWeight: '800', textAlign: 'center', maxWidth: 330 }}>
           {current.title}
