@@ -648,7 +648,7 @@ export default function RequestsScreen() {
       ) : convs.length === 0 ? (
         <View style={styles.center}>
           <Text style={styles.emptyEmoji}>🏕️</Text>
-          <Text style={styles.emptyTitle}>Safe night for you and your bike.</Text>
+          <Text style={styles.emptyTitle}>Safe night for your bike and you.</Text>
           <Text style={styles.emptyText}>From riders to riders.{'\n\n'}Find a host on the map and send them a request — the chat opens automatically.</Text>
         </View>
       ) : (

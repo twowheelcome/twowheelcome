@@ -6,11 +6,6 @@ import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { UserChip } from '../../components/UserChip'
 import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
 
-const pricingMeta: Record<string, { icon: string; label: string; color: string }> = {
-  free:  { icon: '🤝', label: 'Free',        color: '#22c55e' },
-  tip:   { icon: '🙏', label: 'Tip Welcome', color: '#f59e0b' },
-  fixed: { icon: '💶', label: 'Paid',        color: '#3b82f6' },
-}
 
 // Deterministic ~500m offset from host ID so markers don't jump on refresh
 function fuzzCoords(id: string, lat: number, lng: number): { lat: number; lng: number } {
@@ -91,11 +86,6 @@ export default function MapScreen() {
     return true
   })
 
-  // Count hosts with secure (non-street) parking for the subtitle
-  const secureCount = hosts.filter(h => {
-    const hp: string[] = h.parkings?.length ? h.parkings : (h.parking ? [h.parking] : [])
-    return hp.map(getSafetyKey).some(k => k !== 'street')
-  }).length
 
   useEffect(() => {
     fetchHosts()
