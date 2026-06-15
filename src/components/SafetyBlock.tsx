@@ -22,32 +22,52 @@ export function bestSafety(parkings: string[]): keyof typeof SAFETY {
 
 export function SafetyBlock({ parkings }: { parkings: string[] }) {
   const C = useTheme()
-  const s = SAFETY[bestSafety(parkings)]
+  const order: (keyof typeof SAFETY)[] = ['locked_garage', 'carport', 'fenced_yard', 'street']
+  const keys = [...new Set(parkings.map(getSafetyKey))]
+  const best = order.find(k => keys.includes(k)) ?? 'street'
+  const s = SAFETY[best]
+  const secondary = order.filter(k => k !== best && keys.includes(k))
+
   return (
-    <View style={[sb.block, { backgroundColor: s.color + '1F', borderColor: s.color + '70' }]}>
-      <Text style={sb.icon}>{s.icon}</Text>
-      <View style={sb.info}>
-        <View style={sb.labelRow}>
-          <Text style={[sb.label, { color: s.color }]}>{s.label.toUpperCase()}</Text>
-          <View style={[sb.rankPill, { borderColor: s.color + '70' }]}>
-            <Text style={[sb.rankText, { color: s.color }]}>{s.rank}</Text>
+    <View style={[sb.block, { backgroundColor: s.color + '12', borderColor: s.color + '55' }]}>
+      <Text style={[sb.bikeLabel, { color: s.color }]}>Your bike sleeps here</Text>
+      <View style={sb.mainRow}>
+        <Text style={sb.icon}>{s.icon}</Text>
+        <View style={sb.info}>
+          <View style={sb.labelRow}>
+            <Text style={[sb.label, { color: s.color }]}>{s.label}</Text>
+            <View style={[sb.rankPill, { borderColor: s.color + '70', backgroundColor: s.color + '18' }]}>
+              <Text style={[sb.rankText, { color: s.color }]}>{s.rank}</Text>
+            </View>
           </View>
+          <Text style={[sb.sub, { color: C.textMuted }]}>{s.sub}</Text>
         </View>
-        <Text style={[sb.sub, { color: C.textDim }]}>{s.sub}</Text>
-        <Text style={[sb.parking, { color: C.textFaint }]}>🏍 parking</Text>
       </View>
+      {secondary.length > 0 && (
+        <View style={sb.secondaryRow}>
+          {secondary.map(k => (
+            <View key={k} style={[sb.chip, { borderColor: SAFETY[k].color + '55' }]}>
+              <Text style={[sb.chipText, { color: SAFETY[k].color }]}>{SAFETY[k].icon} {SAFETY[k].label}</Text>
+            </View>
+          ))}
+        </View>
+      )}
     </View>
   )
 }
 
 const sb = StyleSheet.create({
-  block:    { borderRadius: 14, borderWidth: 1, padding: 12, flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginTop: 8 },
-  icon:     { fontSize: 22, marginTop: 2 },
-  info:     { flex: 1, gap: 2 },
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  label:    { fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
-  rankPill: { borderRadius: 100, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 2 },
-  rankText: { fontSize: 11, fontWeight: '600' },
-  sub:      { fontSize: 12, marginTop: 1 },
-  parking:  { fontSize: 11, marginTop: 2 },
+  block:        { borderRadius: 14, borderWidth: 1, padding: 14, marginTop: 8 },
+  bikeLabel:    { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
+  mainRow:      { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  icon:         { fontSize: 24, marginTop: 1 },
+  info:         { flex: 1, gap: 3 },
+  labelRow:     { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  label:        { fontSize: 14, fontWeight: '700' },
+  rankPill:     { borderRadius: 100, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2 },
+  rankText:     { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
+  sub:          { fontSize: 12, lineHeight: 17 },
+  secondaryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.06)' },
+  chip:         { borderRadius: 100, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 3 },
+  chipText:     { fontSize: 11, fontWeight: '600' },
 })

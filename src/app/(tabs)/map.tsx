@@ -257,7 +257,7 @@ export default function MapScreen() {
           <TouchableOpacity onPress={() => setRequesting(false)}>
             <Text style={styles.back}>← Back</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>KNOCKING ON THE DOOR 🤞</Text>
+          <Text style={styles.headerTitle}>Request a stay</Text>
         </View>
         <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
           <View style={styles.card}>
@@ -417,7 +417,7 @@ export default function MapScreen() {
 
           {sendSuccess ? (
             <View style={[styles.infoBox, { borderColor: C.successBorder, backgroundColor: C.successSoft }]}>
-              <Text style={[styles.infoText, { color: C.success, fontSize: 15, fontWeight: '700' }]}>🤞 Request sent! Now ride and hope they're home.</Text>
+              <Text style={[styles.infoText, { color: C.success, fontSize: 15, fontWeight: '700' }]}>Request sent. Waiting for a reply.</Text>
             </View>
           ) : null}
           {sendError ? (
@@ -426,7 +426,7 @@ export default function MapScreen() {
             </View>
           ) : null}
           <TouchableOpacity style={styles.button} onPress={sendRequest} disabled={sending || sendSuccess}>
-            <Text style={styles.buttonText}>{sending ? 'SENDING... 🤞' : 'SEND REQUEST →'}</Text>
+            <Text style={styles.buttonText}>{sending ? 'Sending...' : 'Send request'}</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -480,13 +480,13 @@ export default function MapScreen() {
             </View>
             <ScrollView contentContainerStyle={styles.modalBody}>
 
-              {/* PARKING */}
-              <Text style={styles.filterSection}>🅿️ PARKING</Text>
+              {/* BIKE SAFETY */}
+              <Text style={styles.filterSection}>Bike safety</Text>
               {([
-                { value: 'garage_locked', icon: '🔒', label: 'Locked Garage', desc: 'Fort Knox — best protection' },
-                { value: 'carport',       icon: '🔐', label: 'Covered Carport', desc: 'Covered and gated' },
-                { value: 'yard',          icon: '🛡',  label: 'Fenced Yard', desc: 'Secure yard' },
-                { value: 'street',        icon: '🛣',  label: 'Street Parking', desc: 'At your own risk' },
+                { value: 'garage_locked', icon: '🔒', label: 'Locked garage',   desc: 'Best overnight protection' },
+                { value: 'carport',       icon: '🏠', label: 'Covered parking', desc: 'Off-street and under cover' },
+                { value: 'yard',          icon: '🚧', label: 'Fenced yard',     desc: 'Behind a gate or fence' },
+                { value: 'street',        icon: '🛣️', label: 'Street parking',  desc: 'Public parking nearby' },
               ] as const).map(o => {
                 const on = filterParkings.includes(o.value)
                 return (
@@ -499,7 +499,7 @@ export default function MapScreen() {
               })}
 
               {/* SLEEP */}
-              <Text style={styles.filterSection}>🛏 WHERE WILL THEY SLEEP?</Text>
+              <Text style={styles.filterSection}>Where to sleep</Text>
               {([
                 { value: 'tent', icon: '⛺', label: 'Tent', desc: 'Bring your own — space available' },
                 { value: 'roof', icon: '🏠', label: 'Roof Over Head', desc: 'Couch, mat, anything dry' },
@@ -516,7 +516,7 @@ export default function MapScreen() {
               })}
 
               {/* AMENITIES */}
-              <Text style={styles.filterSection}>🔧 WHAT DO THEY OFFER?</Text>
+              <Text style={styles.filterSection}>Amenities</Text>
               <View style={styles.chipsWrap}>
                 {([
                   { value: 'shower', icon: '🚿', label: 'Shower' },
@@ -542,7 +542,7 @@ export default function MapScreen() {
               </View>
 
               {/* GUESTS */}
-              <Text style={styles.filterSection}>👥 MIN. NUMBER OF RIDERS</Text>
+              <Text style={styles.filterSection}>Min. number of riders</Text>
               <View style={styles.guestsRow}>
                 <TouchableOpacity style={styles.guestBtn} onPress={() => setFilterMinGuests(v => Math.max(0, v - 1))}>
                   <Text style={styles.guestBtnText}>−</Text>
@@ -554,7 +554,7 @@ export default function MapScreen() {
               </View>
 
               {/* PRICING */}
-              <Text style={styles.filterSection}>💰 WHAT DO THEY WANT IN RETURN?</Text>
+              <Text style={styles.filterSection}>Pricing</Text>
               <View style={styles.pricingRow}>
                 {([
                   { value: 'free', icon: '🤝', label: 'Free', desc: 'Pure hospitality' },
@@ -649,7 +649,8 @@ export default function MapScreen() {
               style={[styles.card, selected?.id === host.id && styles.cardSelected]}
               onPress={() => setSelected(selected?.id === host.id ? null : host)}
             >
-              <View style={styles.cardRow}>
+              <SafetyBlock parkings={hostParkings} />
+              <View style={[styles.cardRow, { marginTop: 12 }]}>
                 <View style={styles.avatar}>
                   <Text style={styles.avatarText}>{host.profiles?.full_name?.charAt(0) || '?'}</Text>
                 </View>
@@ -671,7 +672,6 @@ export default function MapScreen() {
                   </View>
                 )}
               </View>
-              <SafetyBlock parkings={hostParkings} />
               {selected?.id === host.id && (
                 <View style={styles.detail}>
                   {host.notes ? <Text style={styles.detailBio}>{host.notes}</Text> : null}
@@ -699,11 +699,11 @@ export default function MapScreen() {
                   )}
                   {!isOwn ? (
                     <TouchableOpacity style={styles.requestButton} onPress={() => setRequesting(true)}>
-                      <Text style={styles.requestButtonText}>KNOCK ON THE DOOR →</Text>
+                      <Text style={styles.requestButtonText}>Ask to stay</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity style={styles.editButton} onPress={() => router.push('/become-host')}>
-                      <Text style={styles.editButtonText}>EDIT LISTING</Text>
+                      <Text style={styles.editButtonText}>Edit listing</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -743,7 +743,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   modalClose:       { backgroundColor: C.accent, borderRadius: 100, paddingHorizontal: 16, paddingVertical: 7 },
   modalCloseText:   { color: C.white, fontWeight: '700', fontSize: 13 },
   modalBody:        { padding: 18, gap: 8, paddingBottom: 40 },
-  filterSection:    { color: C.textDim, fontSize: 11, fontWeight: '700', letterSpacing: 2, marginTop: 12, marginBottom: 6 },
+  filterSection:    { color: C.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 0.5, marginTop: 16, marginBottom: 8 },
   optRow:           { flexDirection: 'row', alignItems: 'center', backgroundColor: C.elevated, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.border, gap: 10 },
   optRowOn:         { borderColor: C.accent, backgroundColor: C.accentSoft },
   optRowIcon:       { fontSize: 20, width: 28, textAlign: 'center' },

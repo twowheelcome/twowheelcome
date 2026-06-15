@@ -114,17 +114,17 @@ export const C = DARK
 
 // ── Bike-safety scale ─────────────────────────────────────────────
 export const SAFETY = {
-  locked_garage: { icon: '🔒', label: 'Locked garage',   sub: 'Safest — behind a locked door', color: base.success, rank: 'Safest' },
-  carport:       { icon: '🏠', label: 'Covered carport',  sub: 'Covered & off the street',      color: base.info,    rank: 'Good'   },
-  fenced_yard:   { icon: '🚧', label: 'Fenced yard',      sub: 'Behind a locked gate',          color: base.warning, rank: 'Okay'   },
-  street:        { icon: '🛣️', label: 'Street parking',    sub: 'Visible — keep an eye on it',   color: base.error,   rank: 'Basic'  },
+  locked_garage: { icon: '🔒', label: 'Locked garage',   sub: 'Behind a locked door. Best option for overnight stays.', color: base.success, rank: 'Safest' },
+  carport:       { icon: '🏠', label: 'Covered parking',  sub: 'Off-street and under cover.',                           color: base.info,    rank: 'Good'   },
+  fenced_yard:   { icon: '🚧', label: 'Fenced yard',      sub: 'Behind a gate or fence.',                               color: base.warning, rank: 'Okay'   },
+  street:        { icon: '🛣️', label: 'Street parking',    sub: 'Public street parking nearby. Ask about visibility.',   color: base.error,   rank: 'Basic'  },
 } as const
 
 // ── Shape & type constants ─────────────────────────────────────────
 export const RADIUS = { pill: 100, card: 20, lg: 18, md: 14, sm: 12 } as const
 export const FONT = {
-  display: 'Rye',
-  head:    'Oswald',
+  display: 'System',
+  head:    'System',
   body:    'System',
 } as const
 

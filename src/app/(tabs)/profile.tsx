@@ -280,7 +280,7 @@ export default function ProfileScreen() {
           return (
             <View style={styles.placeCard}>
               <View style={styles.placeCardHeader}>
-                <Text style={styles.placeCardTitle}>YOUR PLACE</Text>
+                <Text style={styles.placeCardTitle}>Bike safety at your place</Text>
                 {loc.is_open && (
                   <View style={styles.openTag}>
                     <Text style={styles.openTagText}>Open</Text>
@@ -296,7 +296,7 @@ export default function ProfileScreen() {
                   </Text>
                 )}
                 <Text style={styles.placeDetailText}>
-                  {isFree ? '🤝 Free · beer welcome 🍺' : pricings.includes('tip') ? '🙏 Tip welcome' : '💶 Paid'}
+                  {isFree ? '🤝 Free' : pricings.includes('tip') ? '🙏 Tip welcome' : '💶 Paid'}
                 </Text>
               </View>
             </View>
