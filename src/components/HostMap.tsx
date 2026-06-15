@@ -77,16 +77,14 @@ export default function HostMap({
     markersRef.current.forEach(m => m.remove())
     markersRef.current = []
     circlesRef.current.forEach(c => c.remove())
-    circlesRef.current = [];
-    (window as any).__twwHandlers = {}
+    circlesRef.current = []
 
     currentHosts.forEach(host => {
       if (!host.location_lat || !host.location_lng) return
-      const safetyKey = getSafetyKey(host)
-      const safety = SAFETY[safetyKey]
       const isBuddy = buddyRef.current.includes(host.id)
       const pinColor = isBuddy ? C.buddy : C.accent
-      const size = isBuddy ? 44 : 36
+      const size = isBuddy ? 44 : 38
+      const firstName = (host.profiles?.full_name || 'Rider').split(' ')[0]
 
       // Fuzz circle for non-buddy hosts
       if (!isBuddy) {
@@ -96,103 +94,50 @@ export default function HostMap({
           fill: false,
           dashArray: '8 6',
           weight: 2,
-          opacity: 0.55,
+          opacity: 0.45,
         }).addTo(mapInstanceRef.current)
         circlesRef.current.push(circle)
       }
 
-      const buddyStar = isBuddy ? `<div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:14px;line-height:1;">⭐</div>` : ''
       const avatarInner = host.profiles?.avatar_url
         ? `<img src="${host.profiles.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
-        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:${isBuddy ? 16 : 13}px;font-weight:700;color:${C.white};">${(host.profiles?.full_name || 'R')[0].toUpperCase()}</div>`
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:${isBuddy ? 17 : 15}px;font-weight:800;color:#fff;">${(host.profiles?.full_name || 'R')[0].toUpperCase()}</div>`
 
+      const buddyStar = isBuddy ? `<div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:13px;line-height:1;z-index:1;">⭐</div>` : ''
+
+      // Name label above circle
+      const nameLabel = `<div style="background:rgba(255,255,255,0.96);color:#2F3438;font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px;white-space:nowrap;max-width:72px;overflow:hidden;text-overflow:ellipsis;text-align:center;box-shadow:0 1px 5px rgba(0,0,0,0.22);margin-bottom:4px;pointer-events:none;">${firstName}</div>`
+
+      const totalH = 18 + 4 + size + 8  // label + gap + circle + arrow
       const markerHtml = `
-        <div style="position:relative;width:${size}px;height:${size + 8}px;">
+        <div style="position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;">
           ${buddyStar}
+          ${nameLabel}
           <div style="
-            position:absolute;left:0;top:0;width:${size}px;height:${size}px;
+            width:${size}px;height:${size}px;
             background:${pinColor};
             border-radius:50%;
-            border:2.5px solid ${isBuddy ? C.buddy : C.white};
-            box-shadow:0 2px 10px rgba(0,0,0,0.6);
+            border:2.5px solid ${isBuddy ? C.buddy : '#fff'};
+            box-shadow:0 2px 10px rgba(0,0,0,0.35);
             overflow:hidden;
-            cursor:pointer;
+            flex-shrink:0;
           ">
             ${avatarInner}
           </div>
-          <div style="position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid ${pinColor};"></div>
+          <div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid ${pinColor};"></div>
         </div>
       `
 
       const markerIcon = L.divIcon({
         html: markerHtml,
         className: '',
-        iconSize: [size, size + 8],
-        iconAnchor: [size / 2, size + 8],
-      });
-
-      (window as any).__twwHandlers[host.id] = () => onHostSelect(host)
-
-      const privacyLine = isBuddy
-        ? `<div style="font-size:11px;color:${C.buddy};margin-top:4px;">⭐ You've stayed here before</div>`
-        : `<div style="font-size:11px;color:${C.textDim};margin-top:4px;">🔒 Approx. area · exact spot comes from the host</div>`
-
-      const avatarHtml = host.profiles?.avatar_url
-        ? `<img src="${host.profiles.avatar_url}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid ${isBuddy ? C.buddy : C.accent};flex-shrink:0;" />`
-        : `<div style="width:36px;height:36px;border-radius:50%;background:${C.accent}33;border:2px solid ${isBuddy ? C.buddy : C.accent};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${C.accent};flex-shrink:0;">${(host.profiles?.full_name || 'R')[0].toUpperCase()}</div>`
-
-      const sleepLabels: Record<string, string> = { tent: '⛺ Tent', roof: '🏠 Roof', room: '🛏 Room' }
-      const amenityIcons: Record<string, string> = { shower: '🚿', toilet: '🚽', kitchen: '🍳', laundry: '👕', electricity: '⚡', wifi: '📶', pub_nearby: '🍺', breakfast: '☕', dinner: '🍽', local_routes: '🗺', group_ride: '🏍' }
-
-      const sleepHtml = host.sleep_types?.length
-        ? `<div style="color:${C.textDim};font-size:11px;margin:5px 0 2px;">${(host.sleep_types as string[]).map(s => sleepLabels[s] || s).join(' · ')}</div>`
-        : ''
-
-      const amenitiesHtml = host.amenities?.length
-        ? `<div style="font-size:14px;letter-spacing:1px;margin:4px 0;">${(host.amenities as string[]).slice(0, 8).map(a => amenityIcons[a] || '').filter(Boolean).join(' ')}</div>`
-        : ''
-
-      const lastReviewHtml = host.last_review?.body
-        ? `<div style="margin-top:7px;background:${C.elevated};border-radius:7px;padding:7px 9px;border-left:3px solid #F5C842;">
-             <div style="color:#F5C842;font-size:11px;margin-bottom:2px;">${'★'.repeat(host.last_review.rating)}${'☆'.repeat(5 - host.last_review.rating)}</div>
-             <div style="color:${C.text};font-size:11px;font-style:italic;line-height:1.4;">"${host.last_review.body}"</div>
-             ${host.last_review.reviewer_name ? `<div style="color:${C.textDim};font-size:10px;margin-top:3px;">— ${host.last_review.reviewer_name}</div>` : ''}
-           </div>`
-        : ''
-
-      const popupContent = `
-        <div style="font-family:-apple-system,sans-serif;min-width:210px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            ${avatarHtml}
-            <div>
-              <div style="font-weight:700;font-size:14px;color:${C.text};">${host.profiles?.full_name || 'Rider'}${isBuddy ? ' ⭐' : ''}</div>
-              <div style="display:flex;align-items:center;gap:6px;">
-                <span style="color:${C.textDim};font-size:12px;">📍 ${host.location_city}</span>
-                ${host.avg_rating != null ? `<span style="color:#F5C842;font-weight:700;font-size:12px;">★ ${host.avg_rating.toFixed(1)}</span><span style="color:${C.textDim};font-size:11px;">(${host.review_count})</span>` : ''}
-              </div>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;background:${safety.color}18;border:1px solid ${safety.color}55;border-radius:8px;padding:6px 8px;margin:5px 0 3px;">
-            <span style="font-size:16px;">${safety.icon}</span>
-            <div>
-              <div style="color:${safety.color};font-weight:700;font-size:12px;">${safety.label}</div>
-              <div style="color:${C.textDim};font-size:10px;">${safety.sub}</div>
-            </div>
-          </div>
-          ${sleepHtml}
-          ${amenitiesHtml}
-          ${privacyLine}
-          ${lastReviewHtml}
-          <button onclick="window.__twwHandlers['${host.id}']()"
-            style="margin-top:8px;background:${C.accent};color:white;border:none;padding:9px 14px;border-radius:100px;cursor:pointer;width:100%;font-weight:700;font-size:12px;letter-spacing:1px;">
-            KNOCK ON THE DOOR →
-          </button>
-        </div>
-      `
+        iconSize: [90, totalH],
+        iconAnchor: [45, totalH],
+      })
 
       const marker = L.marker([host.location_lat, host.location_lng], { icon: markerIcon })
         .addTo(mapInstanceRef.current)
-        .bindPopup(popupContent, { className: 'tww-popup', maxWidth: 280 })
+        .on('click', () => onHostSelect(host))
 
       markersRef.current.push(marker)
     })
@@ -201,16 +146,6 @@ export default function HostMap({
   useEffect(() => {
     if (typeof window === 'undefined' || !mapRef.current || mapInstanceRef.current) return
     injectLeafletCSS()
-
-    // Dark popup style
-    const style = document.createElement('style')
-    style.textContent = [
-      `.tww-popup .leaflet-popup-content-wrapper{background:${C.surface};border:1px solid ${C.border};border-radius:14px;padding:0;box-shadow:0 6px 32px rgba(0,0,0,0.7);}`,
-      `.tww-popup .leaflet-popup-content{margin:12px;}`,
-      `.tww-popup .leaflet-popup-tip{background:${C.surface};}`,
-      `.leaflet-popup-close-button{color:${C.textDim} !important;}`,
-    ].join('')
-    document.head.appendChild(style)
 
     import('leaflet').then(mod => {
       if (!mapRef.current) return

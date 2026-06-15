@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Platfo
 import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
-import { UserChip } from '../../components/UserChip'
 import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
 import { AppHeader } from '../../components/AppHeader'
 
@@ -426,7 +425,7 @@ export default function MapScreen() {
   // --- Main screen ---
   return (
     <View style={styles.container}>
-      <AppHeader right={<UserChip />} />
+      <AppHeader />
 
       <View style={styles.filterBar}>
         <TouchableOpacity style={[styles.filterBtn, activeCount > 0 && styles.filterBtnActive]} onPress={() => setShowFilters(true)}>
@@ -638,18 +637,26 @@ export default function MapScreen() {
               </ScrollView>
 
               {/* Fixed CTA */}
-              <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, paddingBottom: 34, backgroundColor: C.bg, borderTopWidth: 1, borderTopColor: C.border }}>
+              <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, paddingBottom: 34, backgroundColor: C.bg, borderTopWidth: 1, borderTopColor: C.border, gap: 10 }}>
                 {!isOwn ? (
-                  <TouchableOpacity
-                    style={{ height: 56, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 }}
-                    onPress={() => { setShowHostProfile(false); setRequesting(true) }}
-                  >
-                    <Text style={{ fontSize: 18 }}>🏠</Text>
-                    <Text style={{ color: C.white, fontSize: 16, fontWeight: '900', letterSpacing: 1 }}>KNOCK ON THE DOOR</Text>
-                  </TouchableOpacity>
+                  <>
+                    <TouchableOpacity
+                      style={{ height: 54, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 }}
+                      onPress={() => { setShowHostProfile(false); setRequesting(true) }}
+                    >
+                      <Text style={{ fontSize: 17 }}>🏠</Text>
+                      <Text style={{ color: C.white, fontSize: 15, fontWeight: '900', letterSpacing: 1 }}>KNOCK ON THE DOOR</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{ height: 48, borderRadius: 100, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
+                      onPress={() => router.push(`/host/${selected.user_id}` as any)}
+                    >
+                      <Text style={{ color: C.text, fontSize: 14, fontWeight: '700' }}>View full profile</Text>
+                    </TouchableOpacity>
+                  </>
                 ) : (
                   <TouchableOpacity
-                    style={{ height: 56, borderRadius: 100, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
+                    style={{ height: 54, borderRadius: 100, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
                     onPress={() => { setShowHostProfile(false); router.push('/become-host') }}
                   >
                     <Text style={{ color: C.text, fontSize: 15, fontWeight: '700' }}>Edit your listing</Text>
