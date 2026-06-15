@@ -1,7 +1,7 @@
 import { Session } from '@supabase/supabase-js'
 import { router } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView } from 'react-native'
+import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import { supabase } from '../lib/supabase'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
@@ -84,9 +84,13 @@ export default function AuthScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer} bounces={false}>
 
-      {/* Wordmark + tagline */}
+      {/* Logo + tagline */}
       <View style={styles.hero}>
-        <Text style={styles.wordmark}>twowheelcome</Text>
+        <Image
+          source={require('../../assets/images/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <Text style={styles.tagline}>Safe night for your bike and you.</Text>
         <Text style={styles.taglineSub}>From riders to riders.</Text>
       </View>
@@ -174,12 +178,15 @@ function makeStyles(C: ThemeColors) {
 
     hero: {
       alignItems: 'center',
-      paddingTop: 72,
+      paddingTop: 56,
       paddingBottom: 32,
       paddingHorizontal: 24,
+      backgroundColor: '#F2EBDD',
     },
-    wordmark: {
-      fontSize: 32, fontWeight: '900', color: C.text, letterSpacing: -0.5, marginBottom: 12,
+    logo: {
+      width: 260,
+      height: 220,
+      marginBottom: 8,
     },
     tagline: {
       color: C.accent, fontSize: 17, fontWeight: '600', textAlign: 'center', lineHeight: 24,
