@@ -4,6 +4,7 @@ import { Platform, View } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import { useTheme } from '../../lib/ThemeContext'
 import { unreadStore } from '../../lib/unreadStore'
+import { supabase } from '../../lib/supabase'
 
 function TabIcon({ name, color, dot, C }: { name: React.ComponentProps<typeof Feather>['name']; color: string | import('react-native').ColorValue; dot?: boolean; C: ReturnType<typeof useTheme> }) {
   return (
@@ -20,9 +21,50 @@ function TabIcon({ name, color, dot, C }: { name: React.ComponentProps<typeof Fe
   )
 }
 
+async function checkUnread(userId: string) {
+  const { data: convData } = await supabase
+    .from('conversations')
+    .select('id, user_a, user_b')
+    .or(`user_a.eq.${userId},user_b.eq.${userId}`)
+
+  if (!convData?.length) { unreadStore.set(false); return }
+
+  const convIds = convData.map((c: any) => c.id)
+  const { data: lastMsgs } = await supabase
+    .from('messages')
+    .select('conversation_id, sender_id')
+    .in('conversation_id', convIds)
+    .order('created_at', { ascending: false })
+
+  // For each conversation, check if the latest message is from someone else
+  const seen = new Set<string>()
+  let anyUnread = false
+  for (const msg of lastMsgs ?? []) {
+    if (seen.has(msg.conversation_id)) continue
+    seen.add(msg.conversation_id)
+    if (msg.sender_id !== userId) { anyUnread = true; break }
+  }
+  unreadStore.set(anyUnread)
+}
+
 export default function TabsLayout() {
   const C = useTheme()
   const [hasUnread, setHasUnread] = useState(unreadStore.get())
+
+  useEffect(() => {
+    // Check unread immediately on mount (so dot shows right after login)
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) checkUnread(user.id)
+    })
+
+    // Re-check when auth state changes (login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) checkUnread(session.user.id)
+      else unreadStore.set(false)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   useEffect(() => unreadStore.subscribe(setHasUnread), [])
 
