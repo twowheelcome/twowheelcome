@@ -548,7 +548,7 @@ export default function MapScreen() {
         </View>
       </Modal>
 
-      {/* ── Host mini bottom sheet ────────────────────────────────────── */}
+      {/* Host mini bottom sheet */}
       <Modal visible={showHostProfile && !!selected} animationType=”slide” transparent onRequestClose={() => setShowHostProfile(false)}>
         <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowHostProfile(false)} />
         {selected && (() => {
