@@ -27,6 +27,9 @@ export default function ProfileScreen() {
   const [avatarError, setAvatarError] = useState<string | null>(null)
   const [reviews, setReviews] = useState<{ rating: number; body: string | null; reviewer_name: string | null; created_at: string }[]>([])
   const [showQR, setShowQR] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   useEffect(() => { loadAll() }, [])
 
@@ -116,6 +119,25 @@ export default function ProfileScreen() {
     router.replace('/')
   }
 
+  async function deleteAccount() {
+    setDeleting(true)
+    setDeleteError('')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await supabase.functions.invoke('delete-account', {
+        headers: session?.access_token
+          ? { Authorization: `Bearer ${session.access_token}` }
+          : {},
+      })
+      if (res.error) throw res.error
+      await supabase.auth.signOut()
+      router.replace('/')
+    } catch (e: any) {
+      setDeleteError(e?.message || 'Failed to delete account. Try again.')
+      setDeleting(false)
+    }
+  }
+
   if (loading) {
     return <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}><ActivityIndicator color={C.accent} size="large" /></View>
   }
@@ -128,7 +150,8 @@ export default function ProfileScreen() {
     : null
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <View style={styles.container}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
       <AppHeader right={<UserChip />} />
 
       {/* Avatar + QR */}
@@ -364,8 +387,39 @@ export default function ProfileScreen() {
         <TouchableOpacity style={styles.signOutBtn} onPress={signOut}>
           <Text style={styles.signOutText}>Sign out</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity style={styles.deleteBtn} onPress={() => { setDeleteError(''); setShowDeleteConfirm(true) }}>
+          <Text style={styles.deleteBtnText}>Delete account</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
+
+    {/* Delete account confirmation modal */}
+
+    <Modal visible={showDeleteConfirm} transparent animationType="fade" onRequestClose={() => setShowDeleteConfirm(false)}>
+      <View style={styles.deleteOverlay}>
+        <View style={styles.deleteSheet}>
+          <Text style={styles.deleteSheetTitle}>Delete account?</Text>
+          <Text style={styles.deleteSheetBody}>
+            This will permanently delete your profile, listings, all sent requests, messages and reviews. This cannot be undone.
+          </Text>
+          {deleteError ? (
+            <Text style={styles.deleteSheetError}>{deleteError}</Text>
+          ) : null}
+          <TouchableOpacity
+            style={[styles.deleteConfirmBtn, deleting && { opacity: 0.6 }]}
+            onPress={deleteAccount}
+            disabled={deleting}
+          >
+            <Text style={styles.deleteConfirmBtnText}>{deleting ? 'Deleting...' : 'Yes, permanently delete'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.deleteCancelBtn} onPress={() => setShowDeleteConfirm(false)} disabled={deleting}>
+            <Text style={styles.deleteCancelBtnText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+    </View>
   )
 }
 
@@ -520,5 +574,18 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   reviewItemName: { color: C.text, fontSize: 14, fontWeight: '700' },
   reviewItemStars: { fontSize: 13 },
   reviewItemBody: { color: C.textMuted, fontSize: 13, lineHeight: 19, fontStyle: 'italic' },
+
+  deleteBtn: { alignItems: 'center', paddingVertical: 6, marginTop: 4 },
+  deleteBtnText: { color: C.error, fontSize: 13, textDecorationLine: 'underline' },
+
+  deleteOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  deleteSheet: { backgroundColor: C.bg, borderRadius: 20, padding: 24, width: '100%', maxWidth: 400, gap: 12, borderWidth: 1, borderColor: C.errorBorder },
+  deleteSheetTitle: { color: C.text, fontSize: 20, fontWeight: '900' },
+  deleteSheetBody: { color: C.textMuted, fontSize: 14, lineHeight: 21 },
+  deleteSheetError: { color: C.error, fontSize: 13 },
+  deleteConfirmBtn: { height: 50, borderRadius: 100, backgroundColor: C.error, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  deleteConfirmBtnText: { color: C.white, fontSize: 14, fontWeight: '800' },
+  deleteCancelBtn: { alignItems: 'center', paddingVertical: 8 },
+  deleteCancelBtnText: { color: C.textMuted, fontSize: 14, textDecorationLine: 'underline' },
 
 }) }
