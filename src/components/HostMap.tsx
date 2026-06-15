@@ -14,6 +14,8 @@ const DB_TO_SAFETY: Record<string, keyof typeof SAFETY> = {
   street:        'street',
 }
 
+let savedMapView: { center: [number, number]; zoom: number } | null = null
+
 interface Host {
   id: string
   location_lat: number
@@ -240,16 +242,22 @@ export default function HostMap({
     import('leaflet').then(mod => {
       if (!mapRef.current) return
       const L = mod.default
-      const map = L.map(mapRef.current, { zoomControl: false }).setView([49.5, 15.5], 7)
+      const initialCenter = savedMapView?.center ?? [49.5, 15.5]
+      const initialZoom = savedMapView?.zoom ?? 7
+      const map = L.map(mapRef.current, { zoomControl: false }).setView(initialCenter, initialZoom)
 
       // Tile layers
       setupTileLayers(L, map, satelliteRef.current)
 
       L.control.zoom({ position: 'bottomright' }).addTo(map)
       mapInstanceRef.current = map
+      map.on('moveend zoomend', () => {
+        const center = map.getCenter()
+        savedMapView = { center: [center.lat, center.lng], zoom: map.getZoom() }
+      })
       addMarkers(L, hostsRef.current)
 
-      map.locate({ setView: true, maxZoom: 11 })
+      map.locate({ setView: false, maxZoom: 11 })
       map.on('locationfound', (e: any) => {
         userPosRef.current = { lat: e.latlng.lat, lng: e.latlng.lng }
         // "You" dot

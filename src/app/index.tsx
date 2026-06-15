@@ -1,4 +1,5 @@
 import { Session } from '@supabase/supabase-js'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { router } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView } from 'react-native'
@@ -6,6 +7,8 @@ import { Feather } from '@expo/vector-icons'
 import { supabase } from '../lib/supabase'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 import { SAFETY } from '../lib/theme'
+
+const ONBOARDING_KEY = '@twowheelcome/onboarding-seen'
 
 // ── Safety preview — shows the 4 bike parking levels ─────────────────────────
 
@@ -41,6 +44,81 @@ function SafetyPreview({ C }: { C: ThemeColors }) {
   )
 }
 
+// ── First-run onboarding ─────────────────────────────────────────────────────
+
+function Onboarding({ C, onDone }: { C: ThemeColors; onDone: () => void }) {
+  const [step, setStep] = useState(0)
+  const slides = [
+    {
+      icon: 'home' as const,
+      title: 'Hotels solve where you sleep.',
+      body: 'Twowheelcome helps you find where your bike can sleep safely too.',
+    },
+    {
+      icon: 'lock' as const,
+      title: 'Bike safety comes first.',
+      body: 'Every host shows the parking situation before anything else: locked garage, covered parking, fenced yard, or street.',
+    },
+    {
+      icon: 'users' as const,
+      title: 'From riders to riders.',
+      body: 'A place to rest, a safe spot for the bike, and someone who understands why both matter.',
+    },
+  ]
+  const current = slides[step]
+  const isLast = step === slides.length - 1
+
+  return (
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingHorizontal: 24, paddingTop: 56, paddingBottom: 34 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Image source={require('../../assets/images/icon.png')} style={{ width: 32, height: 32, borderRadius: 8 }} />
+          <Text style={{ color: C.text, fontSize: 15, fontWeight: '800' }}>twowheelcome</Text>
+        </View>
+        <TouchableOpacity onPress={onDone} hitSlop={10}>
+          <Text style={{ color: C.textDim, fontSize: 13, fontWeight: '700' }}>Skip</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18 }}>
+        <View style={{ width: 132, height: 132, borderRadius: 66, backgroundColor: C.accentSoft, borderWidth: 1.5, borderColor: C.accentBorder, alignItems: 'center', justifyContent: 'center' }}>
+          <Feather name={current.icon} size={48} color={C.accent} />
+        </View>
+        <Text style={{ color: C.text, fontSize: 28, lineHeight: 34, fontWeight: '800', textAlign: 'center', maxWidth: 330 }}>
+          {current.title}
+        </Text>
+        <Text style={{ color: C.textMuted, fontSize: 15, lineHeight: 23, textAlign: 'center', maxWidth: 330 }}>
+          {current.body}
+        </Text>
+      </View>
+
+      <View style={{ gap: 22 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 7 }}>
+          {slides.map((_, i) => (
+            <View
+              key={i}
+              style={{
+                width: i === step ? 26 : 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: i === step ? C.accent : C.border,
+              }}
+            />
+          ))}
+        </View>
+        <TouchableOpacity
+          style={{ height: 54, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' }}
+          onPress={isLast ? onDone : () => setStep(step + 1)}
+        >
+          <Text style={{ color: C.white, fontSize: 16, fontWeight: '800' }}>
+            {isLast ? 'Find a safe night' : 'Next'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  )
+}
+
 // ── Auth screen ───────────────────────────────────────────────────────────────
 
 export default function AuthScreen() {
@@ -51,12 +129,14 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [session, setSession] = useState<Session | null>(null)
+  const [onboardingSeen, setOnboardingSeen] = useState<boolean | null>(null)
   const [authError, setAuthError] = useState('')
   const [authSuccess, setAuthSuccess] = useState('')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
     supabase.auth.onAuthStateChange((_event, session) => setSession(session))
+    AsyncStorage.getItem(ONBOARDING_KEY).then(value => setOnboardingSeen(value === 'true'))
   }, [])
 
   useEffect(() => {
@@ -79,6 +159,19 @@ export default function AuthScreen() {
     if (error) setAuthError(error.message)
     else setAuthSuccess('Done! Check your email to confirm your account.')
     setLoading(false)
+  }
+
+  async function finishOnboarding() {
+    await AsyncStorage.setItem(ONBOARDING_KEY, 'true')
+    setOnboardingSeen(true)
+  }
+
+  if (onboardingSeen === null) {
+    return <View style={styles.container} />
+  }
+
+  if (!onboardingSeen && !session) {
+    return <Onboarding C={C} onDone={finishOnboarding} />
   }
 
   return (
@@ -166,6 +259,10 @@ export default function AuthScreen() {
             <Text style={styles.forgotText}>Forgot your password?</Text>
           </TouchableOpacity>
         )}
+
+        <TouchableOpacity style={styles.forgotWrap} onPress={() => setOnboardingSeen(false)}>
+          <Text style={styles.forgotText}>View intro</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   )

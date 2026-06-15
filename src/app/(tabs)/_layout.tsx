@@ -34,17 +34,29 @@ export default function TabsLayout() {
           backgroundColor: C.surface,
           borderTopColor: C.border,
           borderTopWidth: 1,
-          height: Platform.OS === 'ios' ? 84 : 68,
-          paddingBottom: Platform.OS === 'ios' ? 24 : 12,
-          paddingTop: 10,
+          height: Platform.OS === 'ios' ? 92 : 76,
+          paddingBottom: Platform.OS === 'ios' ? 26 : 10,
+          paddingTop: 8,
         },
+        tabBarShowLabel: true,
+        tabBarLabelPosition: 'below-icon',
         tabBarActiveTintColor: C.accent,
         tabBarInactiveTintColor: C.textMuted,
+        tabBarItemStyle: {
+          paddingTop: 2,
+          paddingBottom: 2,
+        },
+        tabBarIconStyle: {
+          marginTop: 0,
+          marginBottom: 0,
+        },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '700',
           letterSpacing: 0.5,
-          marginTop: 2,
+          lineHeight: 14,
+          marginTop: 0,
+          marginBottom: 0,
         },
       }}
     >
