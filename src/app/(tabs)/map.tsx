@@ -549,7 +549,7 @@ export default function MapScreen() {
       </Modal>
 
       {/* Host mini bottom sheet */}
-      <Modal visible={showHostProfile && !!selected} animationType=”slide” transparent onRequestClose={() => setShowHostProfile(false)}>
+      <Modal visible={showHostProfile && !!selected} animationType="slide" transparent onRequestClose={() => setShowHostProfile(false)}>
         <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowHostProfile(false)} />
         {selected && (() => {
           const isOwn = selected.user_id === currentUser?.id
@@ -696,7 +696,7 @@ export default function MapScreen() {
                   {host.last_review && (
                     <View style={styles.lastReview}>
                       <Text style={styles.lastReviewStars}>{'★'.repeat(host.last_review.rating)}{'☆'.repeat(5 - host.last_review.rating)}</Text>
-                      {host.last_review.body ? <Text style={styles.lastReviewBody}>“{host.last_review.body}”</Text> : null}
+                      {host.last_review.body ? <Text style={styles.lastReviewBody}>"{host.last_review.body}"</Text> : null}
                       {host.last_review.reviewer_name ? <Text style={styles.lastReviewAuthor}>— {host.last_review.reviewer_name}</Text> : null}
                     </View>
                   )}
