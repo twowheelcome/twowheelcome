@@ -163,7 +163,7 @@ export default function AuthScreen() {
       {/* Wordmark */}
       <View style={styles.wordmarkWrap}>
         <Text style={styles.wordmark}>twowheelcome</Text>
-        <Text style={styles.tagline}>THE ADV COMMUNITY HOME</Text>
+        <Text style={styles.tagline}>Safe night for you and your bike.{'\n'}From riders to riders.</Text>
       </View>
 
       {/* Form */}
@@ -247,7 +247,7 @@ function makeStyles(C: ThemeColors) {
       fontSize: 30, fontFamily: 'Rye_400Regular', color: C.text, letterSpacing: 0.5,
     },
     tagline: {
-      color: C.accent, fontSize: 11, letterSpacing: 3, textTransform: 'uppercase',
+      color: C.accent, fontSize: 13, letterSpacing: 0.3, lineHeight: 20, marginTop: 6,
     },
 
     form: { paddingHorizontal: 24, gap: 12, maxWidth: 440, width: '100%', alignSelf: 'center', paddingBottom: 40 },

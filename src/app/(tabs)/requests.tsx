@@ -647,9 +647,9 @@ export default function RequestsScreen() {
         </View>
       ) : convs.length === 0 ? (
         <View style={styles.center}>
-          <Text style={styles.emptyEmoji}>📭</Text>
-          <Text style={styles.emptyTitle}>No conversations</Text>
-          <Text style={styles.emptyText}>Send a request to a host from the map — the chat will open automatically.</Text>
+          <Text style={styles.emptyEmoji}>🏕️</Text>
+          <Text style={styles.emptyTitle}>Safe night for you and your bike.</Text>
+          <Text style={styles.emptyText}>From riders to riders.{'\n\n'}Find a host on the map and send them a request — the chat opens automatically.</Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
