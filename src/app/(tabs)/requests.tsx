@@ -9,6 +9,7 @@ import { supabase } from '../../lib/supabase'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { unreadStore } from '../../lib/unreadStore'
 import { UserChip } from '../../components/UserChip'
+import { AppHeader } from '../../components/AppHeader'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -705,12 +706,7 @@ export default function RequestsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>
-          <Text style={styles.titleAccent}>TWO</Text>WHEEL<Text style={styles.titleAccent}>COME</Text>
-        </Text>
-        <UserChip />
-      </View>
+      <AppHeader right={<UserChip />} />
 
 
       {loading ? (
@@ -724,7 +720,7 @@ export default function RequestsScreen() {
           <Text style={styles.emptyText}>From riders to riders.{'\n\n'}Find a host on the map and send them a request — the chat opens automatically.</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
+        <ScrollView contentContainerStyle={styles.convList}>
           {convs
             .map(conv => {
               const name = conv.other.full_name || 'Rider'
@@ -783,8 +779,8 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   header: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 52, paddingBottom: 14,
-    backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border,
+    paddingHorizontal: 20, paddingTop: 46, paddingBottom: 14,
+    backgroundColor: C.bg, borderBottomWidth: 1, borderBottomColor: C.border,
   },
   title: { color: C.text, fontSize: 24, fontWeight: '900', letterSpacing: 1, flex: 1 },
   titleAccent: { color: C.accent },
@@ -873,14 +869,23 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   emptyEmoji: { fontSize: 52, marginBottom: 16 },
   emptyTitle: { color: C.text, fontSize: 18, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
   emptyText: { color: C.textDim, fontSize: 13, textAlign: 'center', lineHeight: 21 },
+  convList: {
+    width: '100%',
+    maxWidth: 920,
+    alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 24,
+    gap: 12,
+  },
   convRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    paddingHorizontal: 16, paddingVertical: 10,
+    paddingHorizontal: 0, paddingVertical: 0,
   },
   convCard: {
     flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: C.surface, borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 13,
+    backgroundColor: C.surface, borderRadius: 22,
+    paddingHorizontal: 16, paddingVertical: 15,
     borderWidth: 1, borderColor: C.border,
   },
   convAvatarWrap: { position: 'relative' },

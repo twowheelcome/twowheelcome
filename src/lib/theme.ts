@@ -127,5 +127,3 @@ export const FONT = {
   head:    'System',
   body:    'System',
 } as const
-
-export const SPEED = { road: 72, trail: 27 } as const

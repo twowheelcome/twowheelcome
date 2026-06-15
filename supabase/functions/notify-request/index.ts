@@ -90,19 +90,19 @@ Deno.serve(async req => {
     await Promise.all([
       guest?.email ? sendEmail(
         guest.email,
-        `✅ Address unlocked! — TWOwheelCOME`,
+        `✅ Request accepted — TWOwheelCOME`,
         `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#1a1a1a;color:#eee;padding:32px;border-radius:12px">
-          <h2 style="color:#76C085;margin:0 0 16px">🔓 Address unlocked!</h2>
+          <h2 style="color:#76C085;margin:0 0 16px">Request accepted</h2>
           <p><strong>${hostName}</strong> accepted your request.</p>
           <p style="color:#aaa">🗓 ${dateInfo}</p>
-          <p>Check the chat for the exact location. Safe travels! 🏍</p>
+          <p>Check the chat. The host will send the exact meeting point when you are set.</p>
           <a href="${APP_URL}" style="display:inline-block;margin-top:16px;background:#76C085;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Open app →</a>
         </div>`
       ) : Promise.resolve(),
       guestProfile?.push_token ? sendPush(
         guestProfile.push_token,
-        '🔓 Address unlocked!',
-        `${hostName} accepted — exact location is now in chat.`,
+        'Request accepted',
+        `${hostName} accepted. Exact spot comes in chat.`,
         chatUrl,
       ) : Promise.resolve(),
     ])

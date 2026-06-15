@@ -5,6 +5,7 @@ import { router } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { UserChip } from '../../components/UserChip'
 import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
+import { AppHeader } from '../../components/AppHeader'
 
 
 // Deterministic ~500m offset from host ID so markers don't jump on refresh
@@ -425,16 +426,7 @@ export default function MapScreen() {
   // --- Main screen ---
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.hostsTitle}><Text style={styles.hostsTitleAccent}>TWO</Text>WHEEL<Text style={styles.hostsTitleAccent}>COME</Text></Text>
-          </View>
-          <View style={styles.headerRight}>
-            <UserChip />
-          </View>
-        </View>
-      </View>
+      <AppHeader right={<UserChip />} />
 
       <View style={styles.filterBar}>
         <TouchableOpacity style={[styles.filterBtn, activeCount > 0 && styles.filterBtnActive]} onPress={() => setShowFilters(true)}>
@@ -782,12 +774,12 @@ export default function MapScreen() {
 
 function makeStyles(C: ThemeColors) { return StyleSheet.create({
   container:        { flex: 1, backgroundColor: C.bg },
-  header:           { paddingHorizontal: 20, paddingTop: 52, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface },
+  header:           { paddingHorizontal: 20, paddingTop: 46, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.bg },
   headerRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerRight:      { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  hostsTitle:       { color: C.text, fontSize: 24, fontWeight: '900', letterSpacing: 1 },
+  hostsTitle:       { color: C.text, fontSize: 22, fontWeight: '900', letterSpacing: 0 },
   hostsTitleAccent: { color: C.accent },
-  filterBar:        { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border },
+  filterBar:        { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: C.bg, borderBottomWidth: 1, borderBottomColor: C.border },
   filterBtn:        { flexDirection: 'row', alignItems: 'center', backgroundColor: C.elevated, borderRadius: 100, paddingHorizontal: 16, paddingVertical: 8, borderWidth: 1, borderColor: C.border },
   filterBtnActive:  { backgroundColor: C.accent, borderColor: C.accent },
   filterBtnText:    { color: C.textDim, fontSize: 13, fontWeight: '700' },

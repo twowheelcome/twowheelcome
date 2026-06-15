@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useFocusEffect } from 'expo-router'
 import { useCallback } from 'react'
-import { SAFETY, SPEED } from '../lib/theme'
+import { SAFETY } from '../lib/theme'
 import { useTheme } from '../lib/ThemeContext'
 
 // Map DB parking keys → SAFETY keys
@@ -33,21 +33,6 @@ interface Host {
   last_review: { rating: number; body: string | null; reviewer_name: string | null } | null
 }
 
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371
-  const dLat = (lat2 - lat1) * Math.PI / 180
-  const dLng = (lng2 - lng1) * Math.PI / 180
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
-
-function etaLabel(km: number, mode: 'road' | 'trail'): string {
-  const mins = Math.round((km / SPEED[mode]) * 60)
-  if (mins < 60) return `~${mins} min`
-  const h = Math.floor(mins / 60); const m = mins % 60
-  return m ? `~${h}h ${m}m` : `~${h}h`
-}
-
 function injectLeafletCSS() {
   if (document.getElementById('leaflet-css')) return
   const link = document.createElement('link')
@@ -59,14 +44,12 @@ function injectLeafletCSS() {
 export default function HostMap({
   hosts,
   onHostSelect,
-  mode = 'road',
   buddyIds = [],
   satellite = false,
   onSatelliteToggle,
 }: {
   hosts: Host[]
   onHostSelect: (host: Host) => void
-  mode?: 'road' | 'trail'
   buddyIds?: string[]
   satellite?: boolean
   onSatelliteToggle?: () => void
@@ -77,9 +60,7 @@ export default function HostMap({
   const markersRef = useRef<any[]>([])
   const circlesRef = useRef<any[]>([])
   const hostsRef = useRef(hosts); hostsRef.current = hosts
-  const modeRef = useRef(mode); modeRef.current = mode
   const buddyRef = useRef(buddyIds); buddyRef.current = buddyIds
-  const userPosRef = useRef<{ lat: number; lng: number } | null>(null)
   const satelliteRef = useRef(satellite)
   const tileLayerRef = useRef<any>(null)
   const overlayLayersRef = useRef<any[]>([])
@@ -120,13 +101,6 @@ export default function HostMap({
         circlesRef.current.push(circle)
       }
 
-      // ETA if user location known
-      let etaStr = ''
-      if (userPosRef.current) {
-        const km = haversineKm(userPosRef.current.lat, userPosRef.current.lng, host.location_lat, host.location_lng)
-        etaStr = `${etaLabel(km, modeRef.current)} · ${km.toFixed(0)} km`
-      }
-
       const buddyStar = isBuddy ? `<div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:14px;line-height:1;">⭐</div>` : ''
       const avatarInner = host.profiles?.avatar_url
         ? `<img src="${host.profiles.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
@@ -160,8 +134,8 @@ export default function HostMap({
       (window as any).__twwHandlers[host.id] = () => onHostSelect(host)
 
       const privacyLine = isBuddy
-        ? `<div style="font-size:11px;color:${C.buddy};margin-top:4px;">⭐ You've stayed here · exact address saved</div>`
-        : `<div style="font-size:11px;color:${C.textDim};margin-top:4px;">🔒 Approx. area — unlocks on accept</div>`
+        ? `<div style="font-size:11px;color:${C.buddy};margin-top:4px;">⭐ You've stayed here before</div>`
+        : `<div style="font-size:11px;color:${C.textDim};margin-top:4px;">🔒 Approx. area · exact spot comes from the host</div>`
 
       const avatarHtml = host.profiles?.avatar_url
         ? `<img src="${host.profiles.avatar_url}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid ${isBuddy ? C.buddy : C.accent};flex-shrink:0;" />`
@@ -198,7 +172,6 @@ export default function HostMap({
               </div>
             </div>
           </div>
-          ${etaStr ? `<div style="color:${C.accent};font-size:15px;font-weight:700;margin:4px 0 0;">${etaStr.split('·')[0].trim()}</div><div style="color:${C.textDim};font-size:11px;margin-bottom:2px;">${etaStr.split('·')[1]?.trim() || ''} · ${modeRef.current}</div>` : ''}
           <div style="display:flex;align-items:center;gap:6px;background:${safety.color}18;border:1px solid ${safety.color}55;border-radius:8px;padding:6px 8px;margin:5px 0 3px;">
             <span style="font-size:16px;">${safety.icon}</span>
             <div>
@@ -249,7 +222,6 @@ export default function HostMap({
       // Tile layers
       setupTileLayers(L, map, satelliteRef.current)
 
-      L.control.zoom({ position: 'bottomright' }).addTo(map)
       mapInstanceRef.current = map
       map.on('moveend zoomend', () => {
         const center = map.getCenter()
@@ -259,14 +231,12 @@ export default function HostMap({
 
       map.locate({ setView: false, maxZoom: 11 })
       map.on('locationfound', (e: any) => {
-        userPosRef.current = { lat: e.latlng.lat, lng: e.latlng.lng }
         // "You" dot
         const youIcon = L.divIcon({
           html: `<div style="width:14px;height:14px;background:${C.text};border:3px solid ${C.accent};border-radius:50%;box-shadow:0 0 0 5px ${C.accent}33;"></div>`,
           className: '', iconSize: [14, 14], iconAnchor: [7, 7],
         })
         L.marker([e.latlng.lat, e.latlng.lng], { icon: youIcon, zIndexOffset: 2000 }).addTo(map)
-        import('leaflet').then(m => addMarkers(m.default, hostsRef.current))
       })
     })
 
@@ -285,7 +255,7 @@ export default function HostMap({
   useEffect(() => {
     if (!mapInstanceRef.current) return
     import('leaflet').then(mod => addMarkers(mod.default, hosts))
-  }, [hosts, mode, buddyIds])
+  }, [hosts, buddyIds])
 
   function setupTileLayers(L: any, map: any, isSatellite: boolean) {
     if (tileLayerRef.current) tileLayerRef.current.remove()

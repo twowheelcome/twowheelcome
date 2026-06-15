@@ -8,6 +8,7 @@ import { router } from 'expo-router'
 import { useTheme, useThemePreference, type ThemeColors } from '../../lib/ThemeContext'
 import { SafetyBlock } from '../../components/SafetyBlock'
 import { UserChip } from '../../components/UserChip'
+import { AppHeader } from '../../components/AppHeader'
 
 export default function ProfileScreen() {
   const C = useTheme()
@@ -129,11 +130,7 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Header */}
-      <View style={styles.headerRow}>
-        <Text style={styles.headerTitle}><Text style={styles.headerAccent}>TWO</Text>WHEEL<Text style={styles.headerAccent}>COME</Text></Text>
-        <UserChip />
-      </View>
+      <AppHeader right={<UserChip />} />
 
       {/* Avatar + QR */}
       <View style={styles.hero}>
@@ -395,19 +392,20 @@ export default function ProfileScreen() {
 function makeStyles(C: ThemeColors) { return StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   content: { paddingBottom: 40 },
-  headerRow:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 52, paddingBottom: 14, backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border },
-  headerTitle:  { color: C.text, fontSize: 24, fontWeight: '900', letterSpacing: 1, flex: 1 },
+  headerRow:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 46, paddingBottom: 14, backgroundColor: C.bg, borderBottomWidth: 1, borderBottomColor: C.border },
+  headerTitle:  { color: C.text, fontSize: 22, fontWeight: '900', letterSpacing: 0, flex: 1 },
   headerAccent: { color: C.accent },
 
   hero: {
     alignItems: 'center',
-    paddingTop: 24,
-    paddingBottom: 20,
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+    paddingTop: 28,
+    paddingBottom: 12,
     paddingHorizontal: 24,
     gap: 14,
-    backgroundColor: C.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: C.border,
+    backgroundColor: C.bg,
   },
   avatarWrap: {
     width: 96, height: 96,
@@ -465,15 +463,18 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   qrCloseText: { color: C.white, fontWeight: '700', fontSize: 14 },
 
   body: {
-    paddingTop: 20,
+    width: '100%',
+    maxWidth: 760,
+    alignSelf: 'center',
+    paddingTop: 10,
     paddingHorizontal: 24,
-    gap: 20,
+    gap: 14,
   },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
   name: { color: C.text, fontSize: 24, fontWeight: '800', letterSpacing: 0.3 },
   email: { color: C.textDim, fontSize: 13, marginTop: -12 },
   bikeModel: { color: C.textMuted, fontSize: 14, marginTop: -8 },
-  placeCard: { backgroundColor: C.surface, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: C.border },
+  placeCard: { backgroundColor: C.surface, borderRadius: 22, padding: 16, borderWidth: 1, borderColor: C.border },
   placeCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   placeCardTitle: { color: C.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 2 },
   openTag: { backgroundColor: C.successSoft, borderRadius: 100, borderWidth: 1, borderColor: C.successBorder, paddingHorizontal: 10, paddingVertical: 3 },
@@ -493,7 +494,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
 
   statsCard: {
     backgroundColor: C.surface,
-    borderRadius: 18,
+    borderRadius: 22,
     padding: 20,
     flexDirection: 'row',
     borderWidth: 1,
@@ -507,7 +508,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   menuGroup: { gap: 10 },
   menuItem: {
     backgroundColor: C.surface,
-    borderRadius: 18,
+    borderRadius: 22,
     padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
