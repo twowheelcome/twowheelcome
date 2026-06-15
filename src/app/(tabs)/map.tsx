@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Platform, Modal } from 'react-native'
 import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
@@ -85,25 +85,7 @@ export default function MapScreen() {
   })
 
 
-  useEffect(() => {
-    fetchHosts()
-    supabase.auth.getUser().then(({ data: { user } }) => setCurrentUser(user))
-    if (Platform.OS === 'web') {
-      import('../../components/HostMap').then(m => setHostMap(() => m.default))
-    }
-  }, [])
-
-  useEffect(() => {
-    if (requesting) {
-      setArrivalChip('tonight')
-      setArrivalDate(new Date().toISOString().split('T')[0])
-      setDepartureDate(new Date(Date.now() + 86400000).toISOString().split('T')[0])
-      setArrivalTime(defaultArrivalTime())
-      setPhotoFile(null)
-    }
-  }, [requesting])
-
-  async function fetchHosts() {
+  const fetchHosts = useCallback(async () => {
     const { data, error } = await supabase.from('host_locations').select('*')
     if (error) { console.error(error); setLoading(false); return }
     if (!data || data.length === 0) { setHosts([]); setLoading(false); return }
@@ -149,6 +131,23 @@ export default function MapScreen() {
       }
     }))
     setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    void Promise.resolve().then(fetchHosts)
+    supabase.auth.getUser().then(({ data: { user } }) => setCurrentUser(user))
+    if (Platform.OS === 'web') {
+      import('../../components/HostMap').then(m => setHostMap(() => m.default))
+    }
+  }, [fetchHosts])
+
+  function beginRequest() {
+    setArrivalChip('tonight')
+    setArrivalDate(new Date().toISOString().split('T')[0])
+    setDepartureDate(new Date(Date.now() + 86400000).toISOString().split('T')[0])
+    setArrivalTime(defaultArrivalTime())
+    setPhotoFile(null)
+    setRequesting(true)
   }
 
   async function sendRequest() {
@@ -549,120 +548,61 @@ export default function MapScreen() {
         </View>
       </Modal>
 
-      {/* ── Host profile bottom sheet ─────────────────────────────────── */}
-      <Modal visible={showHostProfile && !!selected} animationType="slide" transparent={false} onRequestClose={() => setShowHostProfile(false)}>
+      {/* ── Host mini bottom sheet ────────────────────────────────────── */}
+      <Modal visible={showHostProfile && !!selected} animationType=”slide” transparent onRequestClose={() => setShowHostProfile(false)}>
+        <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowHostProfile(false)} />
         {selected && (() => {
           const isOwn = selected.user_id === currentUser?.id
           const parkings: string[] = selected.parkings?.length ? selected.parkings : (selected.parking ? [selected.parking] : [])
-          const amenityIcons: Record<string, string> = { shower: '🚿', toilet: '🚽', kitchen: '🍳', laundry: '👕', electricity: '⚡', wifi: '📶', pub_nearby: '🍺', breakfast: '☕', dinner: '🍽', local_routes: '🗺', group_ride: '🏍' }
-          const amenityLabels: Record<string, string> = { shower: 'Shower', toilet: 'Toilet', kitchen: 'Kitchen', laundry: 'Laundry', electricity: 'Power', wifi: 'WiFi', pub_nearby: 'Pub nearby', breakfast: 'Breakfast', dinner: 'Dinner', local_routes: 'Local routes', group_ride: 'Group ride' }
-          const sleepLabels: Record<string, string> = { tent: '⛺ Tent', roof: '🏠 Roof over head', room: '🛏 Private room' }
           const initials = (selected.profiles?.full_name || '?').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
           return (
-            <View style={{ flex: 1, backgroundColor: C.bg }}>
-              {/* Header */}
-              <View style={[styles.header, { flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
-                <TouchableOpacity onPress={() => setShowHostProfile(false)} hitSlop={10}>
-                  <Text style={{ color: C.accent, fontSize: 16, fontWeight: '700' }}>← Back</Text>
-                </TouchableOpacity>
-                <Text style={{ color: C.text, fontSize: 17, fontWeight: '800', flex: 1 }}>Host profile</Text>
-              </View>
+            <View style={{ backgroundColor: C.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 34, gap: 14, borderTopWidth: 1, borderTopColor: C.border }}>
+              {/* Drag handle */}
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: 'center', marginBottom: 4 }} />
 
-              <ScrollView contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 100 }}>
-                {/* Avatar + name + meta */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                  <View style={[styles.avatar, { width: 72, height: 72, borderRadius: 36 }]}>
-                    <Text style={[styles.avatarText, { fontSize: 26 }]}>{initials}</Text>
-                  </View>
-                  <View style={{ flex: 1, gap: 3 }}>
-                    <Text style={{ color: C.text, fontSize: 22, fontWeight: '900' }}>{selected.profiles?.full_name || 'Anonymous Rider'}</Text>
-                    {selected.avg_rating != null && (
-                      <Text style={{ color: C.accent, fontSize: 14, fontWeight: '700' }}>
-                        {'★'.repeat(Math.round(selected.avg_rating))}{'☆'.repeat(5 - Math.round(selected.avg_rating))} {selected.avg_rating.toFixed(1)} · {selected.review_count} {selected.review_count === 1 ? 'stay' : 'stays'}
-                      </Text>
-                    )}
-                    {selected.profiles?.bike && (
-                      <Text style={{ color: C.textMuted, fontSize: 13 }}>🏍 {selected.profiles.bike}</Text>
-                    )}
-                    <Text style={{ color: C.textMuted, fontSize: 13 }}>📍 {selected.location_city}, {selected.location_country}</Text>
-                  </View>
+              {/* Avatar + info */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                <View style={[styles.avatar, { width: 56, height: 56, borderRadius: 28 }]}>
+                  <Text style={[styles.avatarText, { fontSize: 20 }]}>{initials}</Text>
                 </View>
-
-                {/* Safety */}
-                <SafetyBlock parkings={parkings} />
-
-                {/* Bio / notes */}
-                {(selected.profiles?.bio || selected.notes) && (
-                  <Text style={{ color: C.text, fontSize: 15, lineHeight: 22 }}>
-                    {selected.notes || selected.profiles?.bio}
-                  </Text>
-                )}
-
-                {/* Sleep types */}
-                {selected.sleep_types?.length > 0 && (
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                    {(selected.sleep_types as string[]).map(s => (
-                      <View key={s} style={{ backgroundColor: C.surface, borderRadius: 100, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, paddingVertical: 6 }}>
-                        <Text style={{ color: C.text, fontSize: 13, fontWeight: '600' }}>{sleepLabels[s] || s}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                {/* Amenities */}
-                {selected.amenities?.length > 0 && (
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                    {(selected.amenities as string[]).map(a => (
-                      <View key={a} style={{ backgroundColor: C.surface, borderRadius: 100, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, paddingVertical: 6 }}>
-                        <Text style={{ color: C.textMuted, fontSize: 13 }}>{amenityIcons[a] || '•'} {amenityLabels[a] || a}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                {/* Max guests */}
-                <Text style={{ color: C.textMuted, fontSize: 13 }}>👥 Max {selected.max_guests} {selected.max_guests === 1 ? 'rider' : 'riders'}</Text>
-
-                {/* Reviews */}
-                {selected.last_review && (
-                  <View style={{ gap: 8 }}>
-                    <Text style={{ color: C.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' }}>Reviews from riders</Text>
-                    <View style={{ backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 14, gap: 6 }}>
-                      <Text style={{ color: C.accent, fontSize: 14 }}>{'★'.repeat(selected.last_review.rating)}{'☆'.repeat(5 - selected.last_review.rating)}</Text>
-                      {selected.last_review.body && <Text style={{ color: C.text, fontSize: 14, lineHeight: 20 }}>"{selected.last_review.body}"</Text>}
-                      {selected.last_review.reviewer_name && <Text style={{ color: C.textMuted, fontSize: 12 }}>— {selected.last_review.reviewer_name}</Text>}
-                    </View>
-                  </View>
-                )}
-              </ScrollView>
-
-              {/* Fixed CTA */}
-              <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, paddingBottom: 34, backgroundColor: C.bg, borderTopWidth: 1, borderTopColor: C.border, gap: 10 }}>
-                {!isOwn ? (
-                  <>
-                    <TouchableOpacity
-                      style={{ height: 54, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 }}
-                      onPress={() => { setShowHostProfile(false); setRequesting(true) }}
-                    >
-                      <Text style={{ fontSize: 17 }}>🏠</Text>
-                      <Text style={{ color: C.white, fontSize: 15, fontWeight: '900', letterSpacing: 1 }}>KNOCK ON THE DOOR</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={{ height: 48, borderRadius: 100, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
-                      onPress={() => router.push(`/host/${selected.user_id}` as any)}
-                    >
-                      <Text style={{ color: C.text, fontSize: 14, fontWeight: '700' }}>View full profile</Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <TouchableOpacity
-                    style={{ height: 54, borderRadius: 100, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
-                    onPress={() => { setShowHostProfile(false); router.push('/become-host') }}
-                  >
-                    <Text style={{ color: C.text, fontSize: 15, fontWeight: '700' }}>Edit your listing</Text>
-                  </TouchableOpacity>
-                )}
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Text style={{ color: C.text, fontSize: 18, fontWeight: '900' }}>{selected.profiles?.full_name || 'Anonymous Rider'}</Text>
+                  <Text style={{ color: C.textMuted, fontSize: 13 }}>📍 {selected.location_city}, {selected.location_country}</Text>
+                  {selected.avg_rating != null && (
+                    <Text style={{ color: C.accent, fontSize: 13, fontWeight: '700' }}>
+                      {'★'.repeat(Math.round(selected.avg_rating))}{'☆'.repeat(5 - Math.round(selected.avg_rating))} {selected.avg_rating.toFixed(1)} · {selected.review_count} {selected.review_count === 1 ? 'stay' : 'stays'}
+                    </Text>
+                  )}
+                </View>
               </View>
+
+              <SafetyBlock parkings={parkings} />
+
+              {/* CTAs */}
+              {!isOwn ? (
+                <>
+                  <TouchableOpacity
+                    style={{ height: 54, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 }}
+                    onPress={() => { setShowHostProfile(false); beginRequest() }}
+                  >
+                    <Text style={{ fontSize: 17 }}>🏠</Text>
+                    <Text style={{ color: C.white, fontSize: 15, fontWeight: '900', letterSpacing: 1 }}>KNOCK ON THE DOOR</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ height: 46, borderRadius: 100, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
+                    onPress={() => { setShowHostProfile(false); router.push(`/host/${selected.user_id}` as any) }}
+                  >
+                    <Text style={{ color: C.text, fontSize: 14, fontWeight: '700' }}>View full profile</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity
+                  style={{ height: 54, borderRadius: 100, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
+                  onPress={() => { setShowHostProfile(false); router.push('/become-host') }}
+                >
+                  <Text style={{ color: C.text, fontSize: 15, fontWeight: '700' }}>Edit your listing</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )
         })()}
@@ -756,12 +696,12 @@ export default function MapScreen() {
                   {host.last_review && (
                     <View style={styles.lastReview}>
                       <Text style={styles.lastReviewStars}>{'★'.repeat(host.last_review.rating)}{'☆'.repeat(5 - host.last_review.rating)}</Text>
-                      {host.last_review.body ? <Text style={styles.lastReviewBody}>"{host.last_review.body}"</Text> : null}
+                      {host.last_review.body ? <Text style={styles.lastReviewBody}>“{host.last_review.body}”</Text> : null}
                       {host.last_review.reviewer_name ? <Text style={styles.lastReviewAuthor}>— {host.last_review.reviewer_name}</Text> : null}
                     </View>
                   )}
                   {!isOwn ? (
-                    <TouchableOpacity style={styles.requestButton} onPress={() => setRequesting(true)}>
+                    <TouchableOpacity style={styles.requestButton} onPress={beginRequest}>
                       <Text style={styles.requestButtonText}>Ask to stay</Text>
                     </TouchableOpacity>
                   ) : (

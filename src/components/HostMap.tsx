@@ -1,18 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useFocusEffect } from 'expo-router'
-import { useCallback } from 'react'
-import { SAFETY } from '../lib/theme'
 import { useTheme } from '../lib/ThemeContext'
-
-// Map DB parking keys → SAFETY keys
-const DB_TO_SAFETY: Record<string, keyof typeof SAFETY> = {
-  garage_locked: 'locked_garage',
-  locked_garage: 'locked_garage',
-  carport:       'carport',
-  yard:          'fenced_yard',
-  fenced_yard:   'fenced_yard',
-  street:        'street',
-}
 
 let savedMapView: { center: [number, number]; zoom: number } | null = null
 
@@ -68,11 +56,6 @@ export default function HostMap({
   const [locating, setLocating] = useState(false)
   const [locateError, setLocateError] = useState('')
 
-  function getSafetyKey(host: Host): keyof typeof SAFETY {
-    const primary = host.parkings?.[0] || host.parking
-    return DB_TO_SAFETY[primary] || 'street'
-  }
-
   function addMarkers(L: any, currentHosts: Host[]) {
     markersRef.current.forEach(m => m.remove())
     markersRef.current = []
@@ -105,14 +88,10 @@ export default function HostMap({
 
       const buddyStar = isBuddy ? `<div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:13px;line-height:1;z-index:1;">⭐</div>` : ''
 
-      // Name label above circle
-      const nameLabel = `<div style="background:rgba(255,255,255,0.96);color:#2F3438;font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px;white-space:nowrap;max-width:72px;overflow:hidden;text-overflow:ellipsis;text-align:center;box-shadow:0 1px 5px rgba(0,0,0,0.22);margin-bottom:4px;pointer-events:none;">${firstName}</div>`
-
-      const totalH = 18 + 4 + size + 8  // label + gap + circle + arrow
+      const totalH = size + 8  // circle + arrow
       const markerHtml = `
         <div style="position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;">
           ${buddyStar}
-          ${nameLabel}
           <div style="
             width:${size}px;height:${size}px;
             background:${pinColor};
