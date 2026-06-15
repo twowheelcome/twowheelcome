@@ -40,9 +40,7 @@ export default function MapScreen() {
   const [departureDate, setDepartureDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0])
   const [arrivalTime, setArrivalTime] = useState(() => defaultArrivalTime())
   const [currentUser, setCurrentUser] = useState<any>(null)
-  const [showMap, setShowMap] = useState(true)
   const [HostMap, setHostMap] = useState<any>(null)
-  const [mode, setMode] = useState<'road' | 'trail'>('road')
   const [showFilters, setShowFilters] = useState(false)
   const [filterParkings, setFilterParkings] = useState<string[]>([])
   const [filterSleep, setFilterSleep] = useState<string[]>([])
@@ -198,6 +196,7 @@ export default function MapScreen() {
         .insert({
           guest_id: currentUser.id,
           host_id: selected.user_id,
+          location_id: selected.id,
           status: 'PENDING',
           guests_count: guests,
           message: message.trim(),
@@ -431,14 +430,6 @@ export default function MapScreen() {
             <Text style={styles.hostsTitle}><Text style={styles.hostsTitleAccent}>TWO</Text>WHEEL<Text style={styles.hostsTitleAccent}>COME</Text></Text>
           </View>
           <View style={styles.headerRight}>
-            <View style={styles.tabPills}>
-              <TouchableOpacity style={[styles.tabPill, showMap && styles.tabPillActive]} onPress={() => setShowMap(true)}>
-                <Text style={[styles.tabPillText, showMap && styles.tabPillTextActive]}>Map</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.tabPill, !showMap && styles.tabPillActive]} onPress={() => setShowMap(false)}>
-                <Text style={[styles.tabPillText, !showMap && styles.tabPillTextActive]}>List</Text>
-              </TouchableOpacity>
-            </View>
             <UserChip />
           </View>
         </View>
@@ -566,50 +557,22 @@ export default function MapScreen() {
         </View>
       </Modal>
 
-      {showMap && HostMap ? (
+      {HostMap ? (
         <View style={{ flex: 1 }}>
           <HostMap
             hosts={filteredHosts}
             onHostSelect={(host: any) => { setSelected(host); setRequesting(true) }}
-            mode={mode}
             buddyIds={[]}
             satellite={satelliteMap}
             onSatelliteToggle={() => setSatelliteMap(v => !v)}
           />
-          {/* FAB + */}
-          <View style={styles.fabWrap} pointerEvents="box-none">
-            <TouchableOpacity style={styles.fab} onPress={() => router.push('/become-host')}>
-              <Text style={styles.fabText}>+</Text>
-            </TouchableOpacity>
-          </View>
-          {/* Road / Trail toggle — bottom-left */}
-          <View style={styles.modeToggleWrap} pointerEvents="box-none">
-            <View style={styles.modeToggle}>
-              <TouchableOpacity
-                style={[styles.modeBtn, mode === 'road' && styles.modeBtnActive]}
-                onPress={() => setMode('road')}
-              >
-                <Text style={[styles.modeBtnText, mode === 'road' && styles.modeBtnTextActive]}>🛣 Road</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modeBtn, mode === 'trail' && styles.modeBtnActive]}
-                onPress={() => setMode('trail')}
-              >
-                <Text style={[styles.modeBtnText, mode === 'trail' && styles.modeBtnTextActive]}>⛰ Trail</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
         </View>
-      ) : showMap && !HostMap ? (
+      ) : (
         // Map not available on this platform — fall through to list
         <ScrollView style={styles.list} contentContainerStyle={{ padding: 16, gap: 12 }}>
           <View style={[styles.infoBox, { borderColor: C.border, backgroundColor: C.surface }]}>
             <Text style={[styles.infoText, { color: C.textDim }]}>🗺 Map view is available on web. Showing list instead.</Text>
           </View>
-          {renderList()}
-        </ScrollView>
-      ) : (
-        <ScrollView style={styles.list} contentContainerStyle={{ padding: 16, gap: 12 }}>
           {renderList()}
         </ScrollView>
       )}
@@ -710,13 +673,8 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   header:           { paddingHorizontal: 20, paddingTop: 52, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface },
   headerRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerRight:      { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  hostsTitle:       { color: C.text, fontSize: 22, fontWeight: '900', letterSpacing: 0.5 },
+  hostsTitle:       { color: C.text, fontSize: 24, fontWeight: '900', letterSpacing: 1 },
   hostsTitleAccent: { color: C.accent },
-  tabPills:         { flexDirection: 'row', backgroundColor: C.elevated, borderRadius: 100, padding: 3, borderWidth: 1, borderColor: C.border },
-  tabPill:          { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 100 },
-  tabPillActive:    { backgroundColor: C.accent },
-  tabPillText:      { color: C.textDim, fontSize: 12, fontWeight: '600' },
-  tabPillTextActive:{ color: C.white, fontWeight: '700' },
   filterBar:        { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border },
   filterBtn:        { flexDirection: 'row', alignItems: 'center', backgroundColor: C.elevated, borderRadius: 100, paddingHorizontal: 16, paddingVertical: 8, borderWidth: 1, borderColor: C.border },
   filterBtnActive:  { backgroundColor: C.accent, borderColor: C.accent },
@@ -763,15 +721,6 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   satIcon:       { fontSize: 16 },
   satLabel:      { color: C.textMuted, fontSize: 13, fontWeight: '700' },
   satLabelActive:{ color: C.white },
-  fabWrap:          { position: 'absolute', bottom: 24, left: 0, right: 0, alignItems: 'center', zIndex: 10 },
-  fab:              { width: 72, height: 72, borderRadius: 36, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 8, elevation: 10 },
-  fabText:          { color: C.white, fontSize: 36, fontWeight: '700', lineHeight: 38, marginTop: -2 },
-  modeToggleWrap:   { position: 'absolute', bottom: 24, left: 16, zIndex: 10 },
-  modeToggle:       { flexDirection: 'row', backgroundColor: C.surface, borderRadius: 100, padding: 3, borderWidth: 1, borderColor: C.border, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.4, shadowRadius: 6, elevation: 8 },
-  modeBtn:          { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 100 },
-  modeBtnActive:    { backgroundColor: C.accent },
-  modeBtnText:      { color: C.textDim, fontSize: 13, fontWeight: '600' },
-  modeBtnTextActive:{ color: C.white, fontWeight: '700' },
   back:             { color: C.accent, fontSize: 16, marginBottom: 8 },
   headerTitle:      { color: C.text, fontSize: 18, fontWeight: '800', letterSpacing: 1 },
   list:             { flex: 1 },

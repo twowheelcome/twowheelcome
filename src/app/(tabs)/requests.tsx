@@ -10,8 +10,6 @@ import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { unreadStore } from '../../lib/unreadStore'
 import { UserChip } from '../../components/UserChip'
 
-type HostLoc = { city: string; country: string }
-
 // ── Types ──────────────────────────────────────────────────────────────────
 
 type OtherUser = { id: string; full_name: string | null; avatar_url?: string | null }
@@ -39,6 +37,7 @@ type RequestData = {
   photo_url: string | null
   host_id: string
   guest_id: string
+  location_id: string | null
 }
 
 type MsgRow = {
@@ -79,16 +78,38 @@ function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 }
 
+function extractCoords(body: string | null): { lat: number; lng: number } | null {
+  const match = body?.match(/(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/)
+  if (!match) return null
+  const lat = Number(match[1])
+  const lng = Number(match[2])
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null
+  return { lat, lng }
+}
+
+async function openNavigation(lat: number, lng: number) {
+  const label = encodeURIComponent('Twowheelcome meeting point')
+  const coords = `${lat},${lng}`
+  const url = Platform.select({
+    android: `geo:${coords}?q=${coords}(${label})`,
+    ios: `http://maps.apple.com/?ll=${coords}&q=${label}`,
+    default: `https://www.google.com/maps/search/?api=1&query=${coords}`,
+  })!
+  await Linking.openURL(url)
+}
+
 // ── RequestCard ───────────────────────────────────────────────────────────
 
 function RequestCard({
-  req, body, isHost, hostLoc, onRespond,
+  req, body, isHost, onRespond, onSendCoordinates, sendingCoordinates,
 }: {
   req: RequestData
   body: string | null
   isHost: boolean
-  hostLoc?: HostLoc | null
   onRespond: (id: string, status: 'ACCEPTED' | 'REJECTED') => void
+  onSendCoordinates?: (req: RequestData) => void
+  sendingCoordinates?: boolean
 }) {
   const C = useTheme()
   const rc = useMemo(() => makeRc(C), [C])
@@ -97,12 +118,6 @@ function RequestCard({
   const vehicle = req.guest_vehicle === 'moto' ? '🏍 Moto' : null
   const guestsLabel = req.guests_count === 1 ? '1 rider' : `${req.guests_count} riders`
   const isGuest = !isHost
-
-  function openNav() {
-    if (!hostLoc) return
-    const q = encodeURIComponent(`${hostLoc.city}, ${hostLoc.country}`)
-    Linking.openURL(`https://maps.google.com/?q=${q}`)
-  }
 
   return (
     <View style={rc.card}>
@@ -118,20 +133,34 @@ function RequestCard({
         <View style={[rc.privacyBlock, { backgroundColor: C.accentSoft, borderColor: C.accentBorder }]}>
           <Text style={rc.privacyIcon}>🔒</Text>
           <Text style={[rc.privacyText, { color: C.textMuted }]}>
-            Approx. area for now — exact spot unlocks the moment they accept.
+            Approx. area for now. The host sends the exact meeting point in chat when you agree.
           </Text>
         </View>
       )}
       {isGuest && req.status === 'ACCEPTED' && (
         <View style={[rc.privacyBlock, { backgroundColor: C.successSoft, borderColor: C.successBorder }]}>
-          <Text style={rc.privacyIcon}>🔓</Text>
+          <Text style={rc.privacyIcon}>📍</Text>
           <View style={{ flex: 1, gap: 4 }}>
-            <Text style={[rc.privacyText, { color: C.success, fontWeight: '700' }]}>ADDRESS UNLOCKED</Text>
-            {hostLoc && (
-              <Text style={[rc.privacyText, { color: C.textMuted }]}>{hostLoc.city}, {hostLoc.country}</Text>
-            )}
-            <TouchableOpacity style={rc.navBtn} onPress={openNav}>
-              <Text style={rc.navBtnText}>🧭 Navigate</Text>
+            <Text style={[rc.privacyText, { color: C.success, fontWeight: '700' }]}>REQUEST ACCEPTED</Text>
+            <Text style={[rc.privacyText, { color: C.textMuted }]}>
+              The exact spot is shared by the host in chat, so both sides know the stay is confirmed.
+            </Text>
+          </View>
+        </View>
+      )}
+      {isHost && req.status === 'ACCEPTED' && onSendCoordinates && (
+        <View style={[rc.privacyBlock, { backgroundColor: C.accentSoft, borderColor: C.accentBorder }]}>
+          <Text style={rc.privacyIcon}>📍</Text>
+          <View style={{ flex: 1, gap: 6 }}>
+            <Text style={[rc.privacyText, { color: C.textMuted }]}>
+              Send the exact meeting point when you are ready to share it.
+            </Text>
+            <TouchableOpacity
+              style={[rc.shareBtn, sendingCoordinates && rc.shareBtnDisabled]}
+              onPress={() => onSendCoordinates(req)}
+              disabled={sendingCoordinates}
+            >
+              <Text style={rc.shareBtnText}>{sendingCoordinates ? 'Sending...' : 'Send coordinates'}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -212,8 +241,9 @@ function makeRc(C: ThemeColors) { return StyleSheet.create({
   privacyBlock: { flexDirection: 'row', gap: 8, borderRadius: 12, borderWidth: 1, padding: 10, alignItems: 'flex-start' },
   privacyIcon:  { fontSize: 18, marginTop: 1 },
   privacyText:  { fontSize: 13, lineHeight: 19, flex: 1 },
-  navBtn:       { alignSelf: 'flex-start', marginTop: 6, backgroundColor: C.success, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 7 },
-  navBtnText:   { color: C.white, fontWeight: '700', fontSize: 13 },
+  shareBtn:     { alignSelf: 'flex-start', marginTop: 2, backgroundColor: C.accent, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 8 },
+  shareBtnDisabled: { opacity: 0.65 },
+  shareBtnText: { color: C.white, fontWeight: '700', fontSize: 13 },
   actions: { flexDirection: 'row', gap: 8, paddingTop: 4 },
   acceptBtn: { flex: 1, backgroundColor: C.success, borderRadius: 100, padding: 13, alignItems: 'center' },
   acceptTxt: { color: C.white, fontWeight: '700', fontSize: 13 },
@@ -234,7 +264,7 @@ export default function RequestsScreen() {
   const [loading, setLoading] = useState(true)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [seenConvIds, setSeenConvIds] = useState<Set<string>>(new Set())
-  const [hostLocMap, setHostLocMap] = useState<Record<string, HostLoc>>({})
+  const [sendingCoordsFor, setSendingCoordsFor] = useState<string | null>(null)
   const [myReview, setMyReview] = useState<{ rating: number; body: string } | null>(null)
   const [reviewStars, setReviewStars] = useState(0)
   const [reviewBody, setReviewBody] = useState('')
@@ -344,7 +374,7 @@ export default function RequestsScreen() {
         id, conversation_id, sender_id, body, photo_url, request_id, created_at,
         request:stay_requests!request_id(
           id, arrival_date, departure_date, arrival_time,
-          guests_count, guest_vehicle, status, photo_url, host_id, guest_id
+          guests_count, guest_vehicle, status, photo_url, host_id, guest_id, location_id
         )
       `)
       .eq('conversation_id', conv.id)
@@ -360,24 +390,6 @@ export default function RequestsScreen() {
 
     const normalized = msgData.map((m: any) => normalizeMsg({ ...m, sender: { full_name: senderMap[m.sender_id] ?? null } }))
     setMessages(normalized)
-
-    // Fetch host locations for ACCEPTED requests (to unlock the address)
-    const acceptedHostIds = [...new Set(
-      normalized
-        .filter(m => m.request?.status === 'ACCEPTED' && m.request.host_id)
-        .map(m => m.request!.host_id)
-    )]
-    if (acceptedHostIds.length > 0) {
-      const { data: locs } = await supabase
-        .from('host_locations')
-        .select('user_id, location_city, location_country')
-        .in('user_id', acceptedHostIds)
-      if (locs) {
-        const map: Record<string, HostLoc> = {}
-        locs.forEach((l: any) => { map[l.user_id] = { city: l.location_city, country: l.location_country } })
-        setHostLocMap(prev => ({ ...prev, ...map }))
-      }
-    }
 
     // Fetch my existing review for this stay
     const acceptedReq = normalized.find(m => m.request?.status === 'ACCEPTED')?.request
@@ -440,7 +452,7 @@ export default function RequestsScreen() {
             id, conversation_id, sender_id, body, photo_url, request_id, created_at,
             request:stay_requests!request_id(
               id, arrival_date, departure_date, arrival_time,
-              guests_count, guest_vehicle, status, photo_url, host_id, guest_id
+              guests_count, guest_vehicle, status, photo_url, host_id, guest_id, location_id
             )
           `)
           .eq('id', payload.new.id)
@@ -478,6 +490,56 @@ export default function RequestsScreen() {
     setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100)
   }
 
+  async function sendCoordinates(req: RequestData) {
+    if (!selected || !currentUser || currentUser.id !== req.host_id) return
+    setSendingCoordsFor(req.id)
+
+    let loc: any = null
+    if (req.location_id) {
+      const { data } = await supabase
+        .from('host_locations')
+        .select('location_lat, location_lng, location_city, location_country')
+        .eq('id', req.location_id)
+        .eq('user_id', req.host_id)
+        .maybeSingle()
+      loc = data
+    }
+    if (!loc) {
+      const { data } = await supabase
+        .from('host_locations')
+        .select('location_lat, location_lng, location_city, location_country')
+        .eq('user_id', req.host_id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+      loc = data
+    }
+
+    if (loc?.location_lat && loc?.location_lng) {
+      const coords = `${Number(loc.location_lat).toFixed(6)}, ${Number(loc.location_lng).toFixed(6)}`
+      const place = [loc.location_city, loc.location_country].filter(Boolean).join(', ')
+      const body = [
+        'Exact meeting point:',
+        coords,
+        Platform.OS === 'web' ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(coords)}` : null,
+        place || null,
+      ].filter(Boolean).join('\n')
+
+      await supabase.from('messages').insert({
+        conversation_id: selected.id,
+        sender_id: currentUser.id,
+        body,
+      })
+      await supabase
+        .from('conversations')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', selected.id)
+      setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100)
+    }
+
+    setSendingCoordsFor(null)
+  }
+
   async function respondToRequest(requestId: string, status: 'ACCEPTED' | 'REJECTED') {
     await supabase.from('stay_requests').update({ status }).eq('id', requestId)
     supabase.functions.invoke('notify-request', {
@@ -487,7 +549,7 @@ export default function RequestsScreen() {
     // Auto-message in chat
     if (selected && currentUser) {
       const autoBody = status === 'ACCEPTED'
-        ? '✅ Accepted! Looking forward to having you, reach out with details. 🏍🚴'
+        ? "Accepted. I'll send the exact meeting point here when we're set."
         : "Unfortunately it won't work this time. Have a great ride! 🤞"
       await supabase.from('messages').insert({
         conversation_id: selected.id,
@@ -578,6 +640,7 @@ export default function RequestsScreen() {
           renderItem={({ item: m }) => {
             const isMine = m.sender_id === currentUser?.id
             const isHost = m.request ? currentUser?.id === m.request.host_id : false
+            const navCoords = extractCoords(m.body)
 
             if (m.request_id && m.request) {
               return (
@@ -586,8 +649,9 @@ export default function RequestsScreen() {
                     req={m.request}
                     body={m.body}
                     isHost={isHost}
-                    hostLoc={hostLocMap[m.request.host_id] ?? null}
                     onRespond={respondToRequest}
+                    onSendCoordinates={sendCoordinates}
+                    sendingCoordinates={sendingCoordsFor === m.request.id}
                   />
                 </View>
               )
@@ -596,7 +660,15 @@ export default function RequestsScreen() {
             return (
               <View style={[styles.msgRow, isMine ? styles.msgRowRight : styles.msgRowLeft]}>
                 <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}>
-                  {m.body ? <Text style={[styles.bubbleText, isMine && styles.bubbleTextMine]}>{m.body}</Text> : null}
+                  {m.body ? <Text selectable style={[styles.bubbleText, isMine && styles.bubbleTextMine]}>{m.body}</Text> : null}
+                  {navCoords ? (
+                    <TouchableOpacity
+                      style={[styles.navAction, isMine && styles.navActionMine]}
+                      onPress={() => openNavigation(navCoords.lat, navCoords.lng)}
+                    >
+                      <Text style={[styles.navActionText, isMine && styles.navActionTextMine]}>Open navigation</Text>
+                    </TouchableOpacity>
+                  ) : null}
                   {m.photo_url ? (
                     <Image source={{ uri: m.photo_url }} style={styles.bubblePhoto} resizeMode="cover" />
                   ) : null}
@@ -711,7 +783,8 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   header: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16,
+    paddingHorizontal: 20, paddingTop: 52, paddingBottom: 14,
+    backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border,
   },
   title: { color: C.text, fontSize: 24, fontWeight: '900', letterSpacing: 1, flex: 1 },
   titleAccent: { color: C.accent },
@@ -756,6 +829,22 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   bubbleOther: { backgroundColor: C.surface },
   bubbleText: { color: C.text, fontSize: 14, lineHeight: 21 },
   bubbleTextMine: { color: C.white },
+  navAction: {
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    borderRadius: 100,
+    borderWidth: 1,
+    borderColor: C.accent,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: C.accentSoft,
+  },
+  navActionMine: {
+    borderColor: 'rgba(255,255,255,0.55)',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  navActionText: { color: C.accent, fontSize: 12, fontWeight: '800' },
+  navActionTextMine: { color: C.white },
   bubblePhoto: { width: 220, height: 160, borderRadius: 14 },
   bubbleTime: { color: C.textDim, fontSize: 10, alignSelf: 'flex-end' },
   bubbleTimeMine: { color: 'rgba(255,255,255,0.55)' },

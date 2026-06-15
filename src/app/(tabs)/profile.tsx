@@ -373,7 +373,7 @@ export default function ProfileScreen() {
 function makeStyles(C: ThemeColors) { return StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   content: { paddingBottom: 40 },
-  headerRow:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8, backgroundColor: C.bg },
+  headerRow:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 52, paddingBottom: 14, backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border },
   headerTitle:  { color: C.text, fontSize: 24, fontWeight: '900', letterSpacing: 1, flex: 1 },
   headerAccent: { color: C.accent },
 
