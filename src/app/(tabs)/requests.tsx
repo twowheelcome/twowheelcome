@@ -227,7 +227,6 @@ export default function RequestsScreen() {
   const C = useTheme()
   const styles = useMemo(() => makeStyles(C), [C])
   const [convs, setConvs] = useState<ConvRow[]>([])
-  const [activeTab, setActiveTab] = useState<'requests' | 'chats'>('chats')
   const [selected, setSelected] = useState<ConvRow | null>(null)
   const [messages, setMessages] = useState<MsgRow[]>([])
   const [text, setText] = useState('')
@@ -641,21 +640,6 @@ export default function RequestsScreen() {
         <UserChip />
       </View>
 
-      {/* Tab switcher */}
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={[styles.tabBarBtn, activeTab === 'requests' && styles.tabBarBtnActive]}
-          onPress={() => setActiveTab('requests')}
-        >
-          <Text style={[styles.tabBarBtnText, activeTab === 'requests' && styles.tabBarBtnTextActive]}>My Requests</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabBarBtn, activeTab === 'chats' && styles.tabBarBtnActive]}
-          onPress={() => setActiveTab('chats')}
-        >
-          <Text style={[styles.tabBarBtnText, activeTab === 'chats' && styles.tabBarBtnTextActive]}>Chats</Text>
-        </TouchableOpacity>
-      </View>
 
       {loading ? (
         <View style={styles.center}>
@@ -670,7 +654,6 @@ export default function RequestsScreen() {
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
           {convs
-            .filter(c => activeTab === 'requests' ? c.hasRequest : true)
             .map(conv => {
               const name = conv.other.full_name || 'Rider'
               const isUnread = !!conv.lastMsgSenderId

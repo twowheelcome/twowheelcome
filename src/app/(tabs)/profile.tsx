@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
 import { useTheme, useThemePreference, type ThemeColors } from '../../lib/ThemeContext'
 import { SafetyBlock } from '../../components/SafetyBlock'
+import { UserChip } from '../../components/UserChip'
 
 export default function ProfileScreen() {
   const C = useTheme()
@@ -127,11 +128,17 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Header */}
+      <View style={styles.headerRow}>
+        <Text style={styles.headerTitle}><Text style={styles.headerAccent}>TWO</Text>WHEEL<Text style={styles.headerAccent}>COME</Text></Text>
+        <UserChip />
+      </View>
+
       {/* Hero section */}
       <View style={styles.hero}>
         <LinearGradient
-          colors={['#1A2E1E', '#2A1C10', C.bg]}
-          locations={[0, 0.6, 1]}
+          colors={[C.surface, C.bg]}
+          locations={[0, 1]}
           style={styles.heroBg}
         />
         {Platform.OS === 'web' ? (
@@ -366,6 +373,9 @@ export default function ProfileScreen() {
 function makeStyles(C: ThemeColors) { return StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   content: { paddingBottom: 40 },
+  headerRow:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8, backgroundColor: C.bg },
+  headerTitle:  { color: C.text, fontSize: 24, fontWeight: '900', letterSpacing: 1, flex: 1 },
+  headerAccent: { color: C.accent },
 
   hero: {
     height: 180,

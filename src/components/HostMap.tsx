@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { useFocusEffect } from 'expo-router'
+import { useCallback } from 'react'
 import { SAFETY, SPEED } from '../lib/theme'
 import { useTheme } from '../lib/ThemeContext'
 
@@ -265,6 +267,12 @@ export default function HostMap({
       markersRef.current = []; circlesRef.current = []; overlayLayersRef.current = []
     }
   }, [])
+
+  useFocusEffect(useCallback(() => {
+    if (mapInstanceRef.current) {
+      setTimeout(() => mapInstanceRef.current?.invalidateSize(), 100)
+    }
+  }, []))
 
   useEffect(() => {
     if (!mapInstanceRef.current) return

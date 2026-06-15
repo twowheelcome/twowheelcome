@@ -439,7 +439,7 @@ export default function MapScreen() {
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.hostsTitle}>TWC</Text>
+            <Text style={styles.hostsTitle}><Text style={styles.hostsTitleAccent}>TWO</Text>WHEEL<Text style={styles.hostsTitleAccent}>COME</Text></Text>
           </View>
           <View style={styles.headerRight}>
             <View style={styles.tabPills}>
@@ -721,7 +721,8 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   header:           { paddingHorizontal: 20, paddingTop: 52, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.surface },
   headerRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerRight:      { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  hostsTitle:       { color: C.text, fontSize: 26, fontFamily: 'Rye_400Regular', letterSpacing: 0.5 },
+  hostsTitle:       { color: C.text, fontSize: 22, fontWeight: '900', letterSpacing: 0.5 },
+  hostsTitleAccent: { color: C.accent },
   tabPills:         { flexDirection: 'row', backgroundColor: C.elevated, borderRadius: 100, padding: 3, borderWidth: 1, borderColor: C.border },
   tabPill:          { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 100 },
   tabPillActive:    { backgroundColor: C.accent },
