@@ -92,10 +92,10 @@ export default function MapScreen() {
 
     const userIds = [...new Set(data.map((h: any) => h.user_id))]
     const [{ data: profilesData }, { data: reviewsData }, { data: lastReviewsData }] = await Promise.all([
-      supabase.from('profiles').select('id, full_name, avatar_url, bio, bike').in('id', userIds),
+      supabase.from('profiles').select('id, full_name, avatar_url, bio, bike_model').in('id', userIds),
       supabase.from('reviews').select('reviewee_id, rating').in('reviewee_id', userIds),
       supabase.from('reviews')
-        .select('reviewee_id, rating, body, reviewer:profiles!reviewer_id(full_name)')
+        .select('reviewee_id, rating, body, reviewer_id')
         .in('reviewee_id', userIds)
         .order('created_at', { ascending: false }),
     ])
@@ -113,7 +113,7 @@ export default function MapScreen() {
     const lastReviewMap: Record<string, { rating: number; body: string | null; reviewer_name: string | null }> = {}
     lastReviewsData?.forEach((r: any) => {
       if (!lastReviewMap[r.reviewee_id]) {
-        lastReviewMap[r.reviewee_id] = { rating: r.rating, body: r.body, reviewer_name: r.reviewer?.full_name ?? null }
+        lastReviewMap[r.reviewee_id] = { rating: r.rating, body: r.body, reviewer_name: null }
       }
     })
 
@@ -696,7 +696,7 @@ export default function MapScreen() {
                   {host.last_review && (
                     <View style={styles.lastReview}>
                       <Text style={styles.lastReviewStars}>{'★'.repeat(host.last_review.rating)}{'☆'.repeat(5 - host.last_review.rating)}</Text>
-                      {host.last_review.body ? <Text style={styles.lastReviewBody}>"{host.last_review.body}"</Text> : null}
+                      {host.last_review.body ? <Text style={styles.lastReviewBody}>“{host.last_review.body}”</Text> : null}
                       {host.last_review.reviewer_name ? <Text style={styles.lastReviewAuthor}>— {host.last_review.reviewer_name}</Text> : null}
                     </View>
                   )}

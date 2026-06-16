@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native'
 import { useLocalSearchParams, router } from 'expo-router'
 import { supabase } from '../../lib/supabase'
@@ -33,17 +33,12 @@ export default function PublicHostProfile() {
   const [reviewCount, setReviewCount] = useState(0)
   const [reviews, setReviews] = useState<any[]>([])
 
-  useEffect(() => {
-    if (!id) return
-    load(id)
-  }, [id])
-
-  async function load(userId: string) {
+  const load = useCallback(async (userId: string) => {
     const [{ data: prof }, { data: locs }, { data: revs }] = await Promise.all([
-      supabase.from('profiles').select('id, full_name, bio, bike, avatar_url').eq('id', userId).maybeSingle(),
+      supabase.from('profiles').select('id, full_name, bio, bike_model, avatar_url').eq('id', userId).maybeSingle(),
       supabase.from('host_locations').select('*').eq('user_id', userId).limit(1).maybeSingle(),
       supabase.from('reviews')
-        .select('rating, body, reviewer:profiles!reviewer_id(full_name)')
+        .select('rating, body, reviewer_id')
         .eq('reviewee_id', userId)
         .order('created_at', { ascending: false })
         .limit(5),
@@ -55,14 +50,25 @@ export default function PublicHostProfile() {
     setLocation(locs)
 
     if (revs?.length) {
+      const reviewerIds = [...new Set(revs.map((r: any) => r.reviewer_id).filter(Boolean))]
+      const { data: reviewerProfiles } = await supabase
+        .from('profiles').select('id, full_name').in('id', reviewerIds)
+      const reviewerMap: Record<string, string> = {}
+      reviewerProfiles?.forEach((p: any) => { reviewerMap[p.id] = p.full_name })
+
       const sum = revs.reduce((acc: number, r: any) => acc + r.rating, 0)
       setAvgRating(sum / revs.length)
       setReviewCount(revs.length)
-      setReviews(revs)
+      setReviews(revs.map((r: any) => ({ ...r, reviewer_name: reviewerMap[r.reviewer_id] || null })))
     }
 
     setLoading(false)
-  }
+  }, [])
+
+  useEffect(() => {
+    if (!id) return
+    void Promise.resolve().then(() => load(id))
+  }, [id, load])
 
   if (loading) {
     return (
@@ -82,7 +88,7 @@ export default function PublicHostProfile() {
         <View style={styles.center}>
           <Text style={styles.notFoundEmoji}>🏍</Text>
           <Text style={styles.notFoundTitle}>Rider not found</Text>
-          <Text style={styles.notFoundSub}>This profile doesn't exist or is no longer active.</Text>
+          <Text style={styles.notFoundSub}>This profile does not exist or is no longer active.</Text>
           <TouchableOpacity style={styles.ctaBtn} onPress={() => router.replace('/')}>
             <Text style={styles.ctaBtnText}>Go to app</Text>
           </TouchableOpacity>
@@ -108,11 +114,10 @@ export default function PublicHostProfile() {
             <Text style={styles.name}>{profile.full_name || 'Anonymous Rider'}</Text>
             {avgRating != null && (
               <Text style={styles.rating}>
-                {'★'.repeat(Math.round(avgRating))}{'☆'.repeat(5 - Math.round(avgRating))}{' '}
-                {avgRating.toFixed(1)} · {reviewCount} {reviewCount === 1 ? 'stay' : 'stays'}
+                {`${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} ${avgRating.toFixed(1)} · ${reviewCount} ${reviewCount === 1 ? 'stay' : 'stays'}`}
               </Text>
             )}
-            {profile.bike && <Text style={styles.meta}>🏍 {profile.bike}</Text>}
+            {profile.bike_model && <Text style={styles.meta}>🏍 {profile.bike_model}</Text>}
             {location.location_city && (
               <Text style={styles.meta}>📍 {location.location_city}, {location.location_country}</Text>
             )}
@@ -163,9 +168,9 @@ export default function PublicHostProfile() {
             <Text style={styles.sectionLabel}>Reviews from riders</Text>
             {reviews.map((r: any, i: number) => (
               <View key={i} style={styles.reviewCard}>
-                <Text style={styles.reviewStars}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</Text>
-                {r.body && <Text style={styles.reviewBody}>"{r.body}"</Text>}
-                {r.reviewer?.full_name && <Text style={styles.reviewAuthor}>— {r.reviewer.full_name}</Text>}
+                <Text style={styles.reviewStars}>{`${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}`}</Text>
+                {r.body ? <Text style={styles.reviewBody}>{`”${r.body}”`}</Text> : null}
+                {r.reviewer_name ? <Text style={styles.reviewAuthor}>{`— ${r.reviewer_name}`}</Text> : null}
               </View>
             ))}
           </View>
