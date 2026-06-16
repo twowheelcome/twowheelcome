@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react'
-import { Stack } from 'expo-router'
+import { router, Stack } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import * as Notifications from 'expo-notifications'
-import { router } from 'expo-router'
 import { ThemeProvider, useTheme } from '../lib/ThemeContext'
 import { supabase } from '../lib/supabase'
 import { registerPushToken } from '../lib/pushNotifications'
@@ -46,7 +45,7 @@ export default function RootLayout() {
 
     // Sync full_name from auth metadata to profiles on first login
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
         const user = session.user
         const metaName = user.user_metadata?.full_name as string | undefined
         if (metaName) {

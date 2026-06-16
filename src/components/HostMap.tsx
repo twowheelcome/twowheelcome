@@ -67,9 +67,7 @@ export default function HostMap({
       const isBuddy = buddyRef.current.includes(host.id)
       const pinColor = isBuddy ? C.buddy : C.accent
       const size = isBuddy ? 44 : 38
-      const firstName = (host.profiles?.full_name || 'Rider').split(' ')[0]
-
-      // Fuzz circle for non-buddy hosts
+	      // Fuzz circle for non-buddy hosts
       if (!isBuddy) {
         const circle = L.circle([host.location_lat, host.location_lng], {
           radius: 500,
@@ -84,7 +82,7 @@ export default function HostMap({
 
       const avatarInner = host.profiles?.avatar_url
         ? `<img src="${host.profiles.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
-        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:${isBuddy ? 17 : 15}px;font-weight:800;color:#fff;">${(host.profiles?.full_name || 'R')[0].toUpperCase()}</div>`
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:${isBuddy ? 17 : 15}px;font-weight:800;color:#fff;">${host.profiles?.full_name ? host.profiles.full_name[0].toUpperCase() : '?'}</div>`
 
       const buddyStar = isBuddy ? `<div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:13px;line-height:1;z-index:1;">⭐</div>` : ''
 
@@ -158,7 +156,9 @@ export default function HostMap({
       if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null }
       markersRef.current = []; circlesRef.current = []; overlayLayersRef.current = []
     }
-  }, [])
+	  // Leaflet owns the mounted map instance; this effect should run once and then use refs for live values.
+	  // eslint-disable-next-line react-hooks/exhaustive-deps
+	  }, [])
 
   useFocusEffect(useCallback(() => {
     if (mapInstanceRef.current) {
@@ -169,7 +169,9 @@ export default function HostMap({
   useEffect(() => {
     if (!mapInstanceRef.current) return
     import('leaflet').then(mod => addMarkers(mod.default, hosts))
-  }, [hosts, buddyIds])
+	  // Repaint markers when host inputs change; addMarkers reads the latest theme and callbacks through component scope.
+	  // eslint-disable-next-line react-hooks/exhaustive-deps
+	  }, [hosts, buddyIds])
 
   function setupTileLayers(L: any, map: any, isSatellite: boolean) {
     if (tileLayerRef.current) tileLayerRef.current.remove()
