@@ -51,6 +51,8 @@ export default function TabsLayout() {
   const C = useTheme()
   const [hasUnread, setHasUnread] = useState(unreadStore.get())
 
+  useEffect(() => unreadStore.subscribe(setHasUnread), [])
+
   useEffect(() => {
     // Check unread immediately on mount (so dot shows right after login)
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -65,8 +67,6 @@ export default function TabsLayout() {
 
     return () => subscription.unsubscribe()
   }, [])
-
-  useEffect(() => unreadStore.subscribe(setHasUnread), [])
 
   return (
     <Tabs

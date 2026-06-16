@@ -11,6 +11,7 @@ export const unreadStore = {
   },
   subscribe(l: Listener) {
     _listeners.add(l)
+    l(_value)
     return () => { _listeners.delete(l) }
   },
 }

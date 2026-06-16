@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native'
 import { supabase } from '../lib/supabase'
 import { router } from 'expo-router'
@@ -41,6 +41,7 @@ const PRICING = [
 ]
 
 interface Location {
+  id?: string
   pin: Pin | null
   parkings: string[]
   sleepTypes: string[]
@@ -70,14 +71,7 @@ export default function BecomeHostScreen() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [LocationPicker, setLocationPicker] = useState<any>(null)
 
-  useEffect(() => {
-    import('../components/LocationPicker').then(m => setLocationPicker(() => m.default))
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) { setCurrentUser(user); loadExisting(user.id) }
-    })
-  }, [])
-
-  async function loadExisting(userId: string) {
+  const loadExisting = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from('host_locations')
       .select('*')
@@ -85,6 +79,7 @@ export default function BecomeHostScreen() {
       .order('created_at', { ascending: true })
     if (data && data.length > 0) {
       setLocations(data.map(d => ({
+        id: d.id,
         pin: { lat: d.location_lat, lng: d.location_lng, city: d.location_city, country: d.location_country },
         parkings: d.parkings?.length ? d.parkings : (d.parking ? [d.parking] : []),
         sleepTypes: d.sleep_types || [],
@@ -94,7 +89,14 @@ export default function BecomeHostScreen() {
         notes: d.notes || '',
       })))
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    import('../components/LocationPicker').then(m => setLocationPicker(() => m.default))
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) { setCurrentUser(user); loadExisting(user.id) }
+    })
+  }, [loadExisting])
 
   function updateLocation(index: number, patch: Partial<Location>) {
     setLocations(prev => prev.map((loc, i) => i === index ? { ...loc, ...patch } : loc))
@@ -117,21 +119,45 @@ export default function BecomeHostScreen() {
       return
     }
     if (!currentUser) {
-      setSaveError("You're not logged in — please sign in and try again.")
+      setSaveError('You are not logged in — please sign in and try again.')
       return
     }
     setSaving(true)
     try {
-      // Delete old locations and save new ones
-      const { error: delError } = await supabase
+      const validLocations = locations.filter(l => l.pin)
+      const { data: existingRows, error: existingError } = await supabase
         .from('host_locations')
-        .delete()
+        .select('id')
         .eq('user_id', currentUser.id)
-      if (delError) { setSaveError(delError.message); return }
+      if (existingError) { setSaveError(existingError.message); return }
+      const existingIds = new Set(existingRows?.map((l: any) => l.id) || [])
+      const keptIds = new Set(validLocations.map(l => l.id).filter(Boolean) as string[])
+      const removedIds = [...existingIds].filter(id => !keptIds.has(id))
 
-      const rows = locations
-        .filter(l => l.pin)
+      if (removedIds.length > 0) {
+        const { data: linkedRequests, error: linkedError } = await supabase
+          .from('stay_requests')
+          .select('location_id')
+          .in('location_id', removedIds)
+
+        if (linkedError) { setSaveError(linkedError.message); return }
+        const blockedIds = new Set((linkedRequests || []).map((r: any) => r.location_id).filter(Boolean))
+        if (blockedIds.size > 0) {
+          setSaveError('This location already has stay requests, so it cannot be removed. You can edit it instead.')
+          return
+        }
+
+        const { error: delError } = await supabase
+          .from('host_locations')
+          .delete()
+          .eq('user_id', currentUser.id)
+          .in('id', removedIds)
+        if (delError) { setSaveError(delError.message); return }
+      }
+
+      const rows = validLocations
         .map(l => ({
+          ...(l.id ? { id: l.id } : {}),
           user_id: currentUser.id,
           location_lat: l.pin!.lat,
           location_lng: l.pin!.lng,
@@ -147,7 +173,7 @@ export default function BecomeHostScreen() {
           notes: l.notes.trim(),
         }))
 
-      const { error } = await supabase.from('host_locations').insert(rows)
+      const { error } = await supabase.from('host_locations').upsert(rows, { onConflict: 'id' })
       if (error) {
         setSaveError(error.message)
       } else {
@@ -304,7 +330,7 @@ export default function BecomeHostScreen() {
 
       {saveOk ? (
         <View style={styles.successBox}>
-          <Text style={styles.successText}>🎉 You're on the map! Your listing is visible to all riders.</Text>
+          <Text style={styles.successText}>🎉 You are on the map! Your listing is visible to all riders.</Text>
           <TouchableOpacity onPress={() => router.replace('/(tabs)/map')} style={styles.backBtn}>
             <Text style={styles.backBtnText}>← Back to map</Text>
           </TouchableOpacity>

@@ -4,7 +4,6 @@ import {
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { useFocusEffect, useLocalSearchParams } from 'expo-router'
-import { Feather } from '@expo/vector-icons'
 import { supabase } from '../../lib/supabase'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { unreadStore } from '../../lib/unreadStore'
@@ -25,6 +24,7 @@ type ConvRow = {
   lastMsgSenderId: string | null
   lastMsgIsRequest: boolean
   hasRequest: boolean
+  requestStatus: string | null
 }
 
 type RequestData = {
@@ -54,6 +54,9 @@ type MsgRow = {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+const ACCEPTED_AUTO_BODY = "Accepted. I'll send the exact meeting point here when we are set."
+const ACCEPTED_AUTO_BODY_LEGACY = "Accepted. I'll send the exact meeting point here when we're set."
 
 function makeStatus(C: ThemeColors): Record<string, { label: string; color: string; bg: string }> {
   return {
@@ -89,6 +92,17 @@ function extractCoords(body: string | null): { lat: number; lng: number } | null
   return { lat, lng }
 }
 
+function isAcceptedAutoMessage(body: string | null): boolean {
+  if (!body) return false
+  return body === ACCEPTED_AUTO_BODY
+    || body === ACCEPTED_AUTO_BODY_LEGACY
+    || body.toLowerCase().startsWith('accepted.')
+}
+
+function isExactPointMessage(body: string | null): boolean {
+  return !!body?.startsWith('Exact meeting point:')
+}
+
 async function openNavigation(lat: number, lng: number) {
   const label = encodeURIComponent('Twowheelcome meeting point')
   const coords = `${lat},${lng}`
@@ -103,14 +117,12 @@ async function openNavigation(lat: number, lng: number) {
 // ── RequestCard ───────────────────────────────────────────────────────────
 
 function RequestCard({
-  req, body, isHost, onRespond, onSendCoordinates, sendingCoordinates,
+  req, body, isHost, onRespond,
 }: {
   req: RequestData
   body: string | null
   isHost: boolean
   onRespond: (id: string, status: 'ACCEPTED' | 'REJECTED') => void
-  onSendCoordinates?: (req: RequestData) => void
-  sendingCoordinates?: boolean
 }) {
   const C = useTheme()
   const rc = useMemo(() => makeRc(C), [C])
@@ -149,24 +161,6 @@ function RequestCard({
           </View>
         </View>
       )}
-      {isHost && req.status === 'ACCEPTED' && onSendCoordinates && (
-        <View style={[rc.privacyBlock, { backgroundColor: C.accentSoft, borderColor: C.accentBorder }]}>
-          <Text style={rc.privacyIcon}>📍</Text>
-          <View style={{ flex: 1, gap: 6 }}>
-            <Text style={[rc.privacyText, { color: C.textMuted }]}>
-              Send the exact meeting point when you are ready to share it.
-            </Text>
-            <TouchableOpacity
-              style={[rc.shareBtn, sendingCoordinates && rc.shareBtnDisabled]}
-              onPress={() => onSendCoordinates(req)}
-              disabled={sendingCoordinates}
-            >
-              <Text style={rc.shareBtnText}>{sendingCoordinates ? 'Sending...' : 'Send coordinates'}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
       {/* Details */}
       <View style={rc.details}>
         <View style={rc.detailRow}>
@@ -192,7 +186,7 @@ function RequestCard({
       {/* Message text */}
       {body ? (
         <View style={rc.msgBlock}>
-          <Text style={rc.msgText}>"{body}"</Text>
+          <Text style={rc.msgText}>“{body}”</Text>
         </View>
       ) : null}
 
@@ -242,9 +236,6 @@ function makeRc(C: ThemeColors) { return StyleSheet.create({
   privacyBlock: { flexDirection: 'row', gap: 8, borderRadius: 12, borderWidth: 1, padding: 10, alignItems: 'flex-start' },
   privacyIcon:  { fontSize: 18, marginTop: 1 },
   privacyText:  { fontSize: 13, lineHeight: 19, flex: 1 },
-  shareBtn:     { alignSelf: 'flex-start', marginTop: 2, backgroundColor: C.accent, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 8 },
-  shareBtnDisabled: { opacity: 0.65 },
-  shareBtnText: { color: C.white, fontWeight: '700', fontSize: 13 },
   actions: { flexDirection: 'row', gap: 8, paddingTop: 4 },
   acceptBtn: { flex: 1, backgroundColor: C.success, borderRadius: 100, padding: 13, alignItems: 'center' },
   acceptTxt: { color: C.white, fontWeight: '700', fontSize: 13 },
@@ -298,11 +289,15 @@ export default function RequestsScreen() {
         openConv(conv)
       }
     }
+    // openConv depends on live chat state; this effect is intentionally driven by route + loaded conversations.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [convs, openConvParam])
 
   // Reload convs when navigating back from chat
   useEffect(() => {
     if (!selected && currentUser) loadConvs(currentUser.id)
+    // currentUser is stable after auth load; selected is the event that should refresh the list here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected])
 
   // Sync unread indicator to tab bar
@@ -326,10 +321,14 @@ export default function RequestsScreen() {
     const convIds = convData.map((c: any) => c.id)
     const otherIds = convData.map((c: any) => c.user_a === userId ? c.user_b : c.user_a)
 
-    const [{ data: profiles }, { data: lastMsgs }] = await Promise.all([
+    const [{ data: profiles }, { data: lastMsgs }, { data: requestRows }] = await Promise.all([
       supabase.from('profiles').select('id, full_name, avatar_url').in('id', otherIds),
       supabase.from('messages')
         .select('conversation_id, body, sender_id, request_id, created_at')
+        .in('conversation_id', convIds)
+        .order('created_at', { ascending: false }),
+      supabase.from('stay_requests')
+        .select('conversation_id, status, created_at')
         .in('conversation_id', convIds)
         .order('created_at', { ascending: false }),
     ])
@@ -339,11 +338,18 @@ export default function RequestsScreen() {
 
     const lastMsgMap: Record<string, { body: string | null; sender_id: string; request_id: string | null }> = {}
     const hasRequestMap: Record<string, boolean> = {}
+    const requestStatusMap: Record<string, string> = {}
     lastMsgs?.forEach((m: any) => {
       if (!lastMsgMap[m.conversation_id]) {
         lastMsgMap[m.conversation_id] = { body: m.body, sender_id: m.sender_id, request_id: m.request_id }
       }
       if (m.request_id) hasRequestMap[m.conversation_id] = true
+    })
+    requestRows?.forEach((r: any) => {
+      if (r.conversation_id && !requestStatusMap[r.conversation_id]) {
+        requestStatusMap[r.conversation_id] = r.status
+      }
+      if (r.conversation_id) hasRequestMap[r.conversation_id] = true
     })
 
     setConvs(convData.map((c: any) => {
@@ -360,6 +366,7 @@ export default function RequestsScreen() {
         lastMsgSenderId: last?.sender_id ?? null,
         lastMsgIsRequest: !!last?.request_id,
         hasRequest: !!hasRequestMap[c.id],
+        requestStatus: requestStatusMap[c.id] ?? null,
       }
     }))
     setLoading(false)
@@ -466,6 +473,22 @@ export default function RequestsScreen() {
         })
         setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100)
       })
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'stay_requests',
+      }, (payload) => {
+        const updated = payload.new as Partial<RequestData> & { id?: string; conversation_id?: string }
+        if (!updated.id) return
+        setMessages(prev => prev.map(m =>
+          m.request?.id === updated.id
+            ? { ...m, request: { ...m.request, ...updated } as RequestData }
+            : m
+        ))
+        setConvs(prev => prev.map(c =>
+          c.id === convId || c.id === updated.conversation_id
+            ? { ...c, requestStatus: updated.status ?? c.requestStatus, hasRequest: true }
+            : c
+        ))
+      })
       .subscribe()
   }
 
@@ -526,11 +549,12 @@ export default function RequestsScreen() {
         place || null,
       ].filter(Boolean).join('\n')
 
-      await supabase.from('messages').insert({
-        conversation_id: selected.id,
-        sender_id: currentUser.id,
-        body,
-      })
+	      await supabase.from('messages').insert({
+	        conversation_id: selected.id,
+	        sender_id: currentUser.id,
+	        body,
+	        request_id: req.id,
+	      })
       await supabase
         .from('conversations')
         .update({ last_message_at: new Date().toISOString() })
@@ -542,7 +566,8 @@ export default function RequestsScreen() {
   }
 
   async function respondToRequest(requestId: string, status: 'ACCEPTED' | 'REJECTED') {
-    await supabase.from('stay_requests').update({ status }).eq('id', requestId)
+    const { error } = await supabase.from('stay_requests').update({ status }).eq('id', requestId)
+    if (error) return
     supabase.functions.invoke('notify-request', {
       body: { request_id: requestId, event: status === 'ACCEPTED' ? 'accepted' : 'rejected' },
     }).catch(() => {})
@@ -550,13 +575,14 @@ export default function RequestsScreen() {
     // Auto-message in chat
     if (selected && currentUser) {
       const autoBody = status === 'ACCEPTED'
-        ? "Accepted. I'll send the exact meeting point here when we're set."
+        ? ACCEPTED_AUTO_BODY
         : "Unfortunately it won't work this time. Have a great ride! 🤞"
-      await supabase.from('messages').insert({
-        conversation_id: selected.id,
-        sender_id: currentUser.id,
-        body: autoBody,
-      })
+	      await supabase.from('messages').insert({
+	        conversation_id: selected.id,
+	        sender_id: currentUser.id,
+	        body: autoBody,
+	        request_id: requestId,
+	      })
       await supabase
         .from('conversations')
         .update({ last_message_at: new Date().toISOString() })
@@ -567,6 +593,9 @@ export default function RequestsScreen() {
       m.request?.id === requestId
         ? { ...m, request: { ...m.request!, status } }
         : m
+    ))
+    setConvs(prev => prev.map(c =>
+      c.id === selected?.id ? { ...c, requestStatus: status, hasRequest: true } : c
     ))
   }
 
@@ -600,19 +629,22 @@ export default function RequestsScreen() {
           keyExtractor={m => m.id}
           contentContainerStyle={styles.msgList}
           onLayout={() => flatRef.current?.scrollToEnd({ animated: false })}
-          ListFooterComponent={(() => {
-            const acceptedReq = messages.find(m => m.request?.status === 'ACCEPTED')?.request
-            if (!acceptedReq) return null
-            if (myReview) return (
-              <View style={styles.reviewDone}>
-                <Text style={styles.reviewDoneText}>
+	          ListFooterComponent={(() => {
+	            const acceptedReq = messages.find(m => m.request?.status === 'ACCEPTED')?.request
+	            if (!acceptedReq) return null
+	            const isReviewingGuest = currentUser?.id === acceptedReq.host_id
+	            if (myReview) return (
+	              <View style={styles.reviewDone}>
+	                <Text style={styles.reviewDoneText}>
                   {'⭐'.repeat(myReview.rating)}{'☆'.repeat(5 - myReview.rating)}{'  '}Your review submitted
                 </Text>
               </View>
             )
-            return (
-              <View style={styles.reviewCard}>
-                <Text style={styles.reviewTitle}>⭐ RATE THIS STAY</Text>
+	            return (
+	              <View style={styles.reviewCard}>
+	                <Text style={styles.reviewTitle}>
+	                  {isReviewingGuest ? '⭐ RATE THIS GUEST' : '⭐ RATE THIS STAY'}
+	                </Text>
                 <View style={styles.reviewStars}>
                   {[1,2,3,4,5].map(n => (
                     <TouchableOpacity key={n} onPress={() => setReviewStars(n)} hitSlop={8}>
@@ -620,9 +652,9 @@ export default function RequestsScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
-                <TextInput
-                  style={styles.reviewInput}
-                  placeholder="Say something... (optional)"
+	                <TextInput
+	                  style={styles.reviewInput}
+	                  placeholder={isReviewingGuest ? 'How was this guest? (optional)' : 'How was this stay? (optional)'}
                   placeholderTextColor={C.placeholder}
                   value={reviewBody}
                   onChangeText={setReviewBody}
@@ -638,12 +670,33 @@ export default function RequestsScreen() {
               </View>
             )
           })()}
-          renderItem={({ item: m }) => {
-            const isMine = m.sender_id === currentUser?.id
-            const isHost = m.request ? currentUser?.id === m.request.host_id : false
-            const navCoords = extractCoords(m.body)
+	          renderItem={({ item: m }) => {
+	            const isMine = m.sender_id === currentUser?.id
+	            const isHost = m.request ? currentUser?.id === m.request.host_id : false
+	            const navCoords = extractCoords(m.body)
+	            const acceptedAuto = isAcceptedAutoMessage(m.body)
+	            const acceptedReq = m.request?.status === 'ACCEPTED' && currentUser?.id === m.request.host_id
+	              ? m.request
+	              : [...messages]
+	                .filter(msg =>
+	                  msg.request?.status === 'ACCEPTED'
+	                  && currentUser?.id === msg.request.host_id
+	                  && new Date(msg.created_at).getTime() <= new Date(m.created_at).getTime()
+	                )
+	                .map(msg => msg.request!)
+	                .pop()
+	            const hasSentCoordinatesAfterThisMessage = messages.some(msg =>
+	              msg.sender_id === currentUser?.id
+	              && isExactPointMessage(msg.body)
+	              && new Date(msg.created_at).getTime() > new Date(m.created_at).getTime()
+	            )
+	            const showCoordinateAction = !!acceptedReq
+	              && isMine
+	              && currentUser?.id === acceptedReq.host_id
+	              && acceptedAuto
+	              && !hasSentCoordinatesAfterThisMessage
 
-            if (m.request_id && m.request) {
+	            if (m.request_id && m.request && !acceptedAuto && !isExactPointMessage(m.body)) {
               return (
                 <View style={[styles.msgRow, isMine ? styles.msgRowRight : styles.msgRowLeft]}>
                   <RequestCard
@@ -651,8 +704,6 @@ export default function RequestsScreen() {
                     body={m.body}
                     isHost={isHost}
                     onRespond={respondToRequest}
-                    onSendCoordinates={sendCoordinates}
-                    sendingCoordinates={sendingCoordsFor === m.request.id}
                   />
                 </View>
               )
@@ -668,6 +719,17 @@ export default function RequestsScreen() {
                       onPress={() => openNavigation(navCoords.lat, navCoords.lng)}
                     >
                       <Text style={[styles.navActionText, isMine && styles.navActionTextMine]}>Open navigation</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  {showCoordinateAction ? (
+                    <TouchableOpacity
+                      style={[styles.navAction, styles.navActionMine, sendingCoordsFor === acceptedReq.id && styles.coordinateActionDisabled]}
+                      onPress={() => sendCoordinates(acceptedReq)}
+                      disabled={sendingCoordsFor === acceptedReq.id}
+                    >
+                      <Text style={[styles.navActionText, styles.navActionTextMine]}>
+                        {sendingCoordsFor === acceptedReq.id ? 'Sending...' : 'Send coordinates'}
+                      </Text>
                     </TouchableOpacity>
                   ) : null}
                   {m.photo_url ? (
@@ -760,7 +822,7 @@ export default function RequestsScreen() {
                     </View>
                     {conv.hasRequest && (
                       <View style={styles.convStatusBadge}>
-                        <Text style={styles.convStatusText}>Pending</Text>
+                        <Text style={styles.convStatusText}>{makeStatus(C)[conv.requestStatus || 'PENDING']?.label || 'Pending'}</Text>
                       </View>
                     )}
                   </View>
@@ -839,6 +901,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.55)',
     backgroundColor: 'rgba(255,255,255,0.14)',
   },
+  coordinateActionDisabled: { opacity: 0.65 },
   navActionText: { color: C.accent, fontSize: 12, fontWeight: '800' },
   navActionTextMine: { color: C.white },
   bubblePhoto: { width: 220, height: 160, borderRadius: 14 },

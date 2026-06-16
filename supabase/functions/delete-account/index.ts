@@ -28,9 +28,10 @@ Deno.serve(async req => {
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } })
 
   try {
-    // Delete in dependency order
-    await admin.from('reviews').delete().or(`reviewer_id.eq.${userId},reviewee_id.eq.${userId}`)
-    await admin.from('stay_requests').delete().or(`guest_id.eq.${userId},host_id.eq.${userId}`)
+    async function must(label: string, query: PromiseLike<{ error: { message?: string } | null }>) {
+      const { error } = await query
+      if (error) throw new Error(`${label}: ${error.message || 'failed'}`)
+    }
 
     // Find conversations this user is part of
     const { data: convs } = await admin
@@ -38,14 +39,22 @@ Deno.serve(async req => {
       .select('id')
       .or(`user_a.eq.${userId},user_b.eq.${userId}`)
 
+    // Delete in dependency order. Messages reference both conversations and stay_requests.
     if (convs?.length) {
       const convIds = convs.map((c: any) => c.id)
-      await admin.from('messages').delete().in('conversation_id', convIds)
-      await admin.from('conversations').delete().in('id', convIds)
+      await must('delete messages', admin.from('messages').delete().in('conversation_id', convIds))
     }
 
-    await admin.from('host_locations').delete().eq('user_id', userId)
-    await admin.from('profiles').delete().eq('id', userId)
+    await must('delete reviews', admin.from('reviews').delete().or(`reviewer_id.eq.${userId},reviewee_id.eq.${userId}`))
+    await must('delete stay_requests', admin.from('stay_requests').delete().or(`guest_id.eq.${userId},host_id.eq.${userId}`))
+
+    if (convs?.length) {
+      const convIds = convs.map((c: any) => c.id)
+      await must('delete conversations', admin.from('conversations').delete().in('id', convIds))
+    }
+
+    await must('delete host_locations', admin.from('host_locations').delete().eq('user_id', userId))
+    await must('delete profiles', admin.from('profiles').delete().eq('id', userId))
 
     // Delete auth user (also clears auth.users row)
     const { error: deleteErr } = await admin.auth.admin.deleteUser(userId)

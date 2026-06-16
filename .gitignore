@@ -5,9 +5,11 @@ node_modules/
 
 # Expo
 .expo/
+.codex/
 dist/
 web-build/
 expo-env.d.ts
+supabase/.temp/
 
 # Native
 .kotlin/

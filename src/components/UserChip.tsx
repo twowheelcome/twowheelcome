@@ -23,7 +23,7 @@ export function UserChip() {
   const [name, setName] = useState<string | null>(_name ?? null)
 
   useEffect(() => {
-    if (_name !== undefined) { setName(_name); return }
+    if (_name !== undefined) return
     _listeners.add(setName)
     loadName()
     return () => { _listeners.delete(setName) }

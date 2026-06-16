@@ -16,18 +16,18 @@ function Onboarding({ C, onDone }: { C: ThemeColors; onDone: () => void }) {
   const slides = [
     {
       image: require('../../assets/images/bike.png'),
-      title: 'Hotels solve where you sleep.',
-      body: 'Twowheelcome helps you find where your bike can sleep safely too.',
+      title: 'Where will your bike sleep tonight?',
+      body: 'Find riders who can offer a safe spot for your bike and a place for you to rest.',
     },
     {
       image: require('../../assets/images/roof.png'),
       title: 'Bike safety comes first.',
-      body: 'Every host shows the parking situation before anything else: locked garage, covered parking, fenced yard, or street.',
+      body: 'See the parking situation before anything else: locked garage, covered parking, fenced yard, or street.',
     },
     {
       image: require('../../assets/images/kruh.png'),
       title: 'From riders to riders.',
-      body: 'A place to rest, a safe spot for the bike, and someone who understands why both matter.',
+      body: 'A safe night for your bike and you, shared by someone who understands why both matter.',
     },
   ]
   const current = slides[step]

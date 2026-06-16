@@ -107,10 +107,13 @@ export default function ProfileScreen() {
   }
 
   async function saveBike() {
+    if (!user) return
     setSavingBike(true)
-    await supabase.from('profiles').upsert({ id: user.id, bike_model: bikeModel.trim() })
-    setProfile((p: any) => ({ ...p, bike_model: bikeModel.trim() }))
+    setAvatarError(null)
+    const { error } = await supabase.from('profiles').upsert({ id: user.id, bike_model: bikeModel.trim() })
     setSavingBike(false)
+    if (error) { setAvatarError(error.message); return }
+    setProfile((p: any) => ({ ...p, bike_model: bikeModel.trim() }))
     setEditingBike(false)
   }
 
@@ -354,7 +357,7 @@ export default function ProfileScreen() {
                   <Text style={styles.reviewItemName}>{rev.reviewer_name || 'Rider'}</Text>
                   <Text style={styles.reviewItemStars}>{'⭐'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}</Text>
                 </View>
-                {rev.body ? <Text style={styles.reviewItemBody}>"{rev.body}"</Text> : null}
+                {rev.body ? <Text style={styles.reviewItemBody}>“{rev.body}”</Text> : null}
               </View>
             ))}
           </View>

@@ -59,13 +59,16 @@ export default function LocationPicker({ pin, onChange }: Props) {
   const mapInstanceRef = useRef<any>(null)
   const markerRef = useRef<any>(null)
   const pinRef = useRef<Pin | null>(pin)
-  pinRef.current = pin
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
   const [locating, setLocating] = useState(false)
   const searchTimeout = useRef<any>(null)
+
+  useEffect(() => {
+    pinRef.current = pin
+  }, [pin])
 
   function handleSearchInput(value: string) {
     setQuery(value)
@@ -178,7 +181,9 @@ export default function LocationPicker({ pin, onChange }: Props) {
       }
       markerRef.current = null
     }
-  }, [])
+	  // Leaflet owns this map after mount; callbacks use the current closure for the active picker instance.
+	  // eslint-disable-next-line react-hooks/exhaustive-deps
+	  }, [])
 
   // sync pin from outside (e.g. loaded from DB)
   useEffect(() => {
@@ -188,7 +193,9 @@ export default function LocationPicker({ pin, onChange }: Props) {
       setMarker(mod.default, pin.lat, pin.lng, label)
       mapInstanceRef.current.setView([pin.lat, pin.lng], 12)
     })
-  }, [pin?.lat, pin?.lng])
+	  // Only coordinate changes should move the external pin; labels are recalculated from the latest pin object.
+	  // eslint-disable-next-line react-hooks/exhaustive-deps
+	  }, [pin?.lat, pin?.lng])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
