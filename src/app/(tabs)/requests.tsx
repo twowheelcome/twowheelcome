@@ -39,6 +39,21 @@ type RequestData = {
   host_id: string
   guest_id: string
   location_id: string | null
+  location: RequestLocation | null
+}
+
+type RequestLocation = {
+  id: string
+  location_city: string | null
+  location_country: string | null
+  parking: string | null
+  parkings: string[] | null
+  sleep_types: string[] | null
+  amenities: string[] | null
+  pricing: string | null
+  pricings: string[] | null
+  max_guests: number | null
+  notes: string | null
 }
 
 type MsgRow = {
@@ -57,6 +72,48 @@ type MsgRow = {
 
 const ACCEPTED_AUTO_BODY = "Accepted. I'll send the exact meeting point here when we are set."
 const ACCEPTED_AUTO_BODY_LEGACY = "Accepted. I'll send the exact meeting point here when we're set."
+
+const REQUEST_SELECT = `
+  id, arrival_date, departure_date, arrival_time,
+  guests_count, guest_vehicle, status, photo_url, host_id, guest_id, location_id,
+  location:host_locations!location_id(
+    id, location_city, location_country, parking, parkings,
+    sleep_types, amenities, pricing, pricings, max_guests, notes
+  )
+`
+
+const PARKING_LABELS: Record<string, string> = {
+  garage_locked: 'Locked garage',
+  carport: 'Covered parking',
+  yard: 'Fenced yard',
+  street: 'Street parking',
+}
+
+const SLEEP_LABELS: Record<string, string> = {
+  tent: 'Tent space',
+  roof: 'Roof over head',
+  room: 'Private room',
+}
+
+const AMENITY_LABELS: Record<string, string> = {
+  shower: 'Shower',
+  toilet: 'Toilet',
+  kitchen: 'Kitchen',
+  laundry: 'Laundry',
+  electricity: 'Electricity',
+  wifi: 'WiFi',
+  pub_nearby: 'Pub nearby',
+  breakfast: 'Breakfast',
+  dinner: 'Dinner',
+  local_routes: 'Local routes',
+  group_ride: 'Group ride',
+}
+
+const PRICING_LABELS: Record<string, string> = {
+  free: 'Free',
+  tip: 'Tip welcome',
+  fixed: 'Paid',
+}
 
 function makeStatus(C: ThemeColors): Record<string, { label: string; color: string; bg: string }> {
   return {
@@ -103,6 +160,31 @@ function isExactPointMessage(body: string | null): boolean {
   return !!body?.startsWith('Exact meeting point:')
 }
 
+function labelList(values: string[] | null | undefined, labels: Record<string, string>, fallback?: string | null): string {
+  const source = values?.length ? values : (fallback ? [fallback] : [])
+  return source.map(v => labels[v] || v).join(' · ')
+}
+
+function summarizeLocation(loc: Partial<RequestLocation> | null | undefined): string[] {
+  if (!loc) return []
+  const place = [loc.location_city, loc.location_country].filter(Boolean).join(', ')
+  const parking = labelList(loc.parkings, PARKING_LABELS, loc.parking)
+  const sleep = labelList(loc.sleep_types, SLEEP_LABELS)
+  const amenities = labelList(loc.amenities, AMENITY_LABELS)
+  const pricing = labelList(loc.pricings, PRICING_LABELS, loc.pricing)
+  return [
+    place ? `Place: ${place}` : null,
+    parking ? `Bike: ${parking}` : null,
+    sleep ? `Sleep: ${sleep}` : null,
+    amenities ? `Services: ${amenities}` : null,
+    pricing ? `Return: ${pricing}` : null,
+  ].filter(Boolean) as string[]
+}
+
+function hasStayEnded(req: RequestData): boolean {
+  return req.departure_date <= new Date().toISOString().split('T')[0]
+}
+
 async function openNavigation(lat: number, lng: number) {
   const label = encodeURIComponent('Twowheelcome meeting point')
   const coords = `${lat},${lng}`
@@ -117,12 +199,13 @@ async function openNavigation(lat: number, lng: number) {
 // ── RequestCard ───────────────────────────────────────────────────────────
 
 function RequestCard({
-  req, body, isHost, onRespond,
+  req, body, isHost, onRespond, responding,
 }: {
   req: RequestData
   body: string | null
   isHost: boolean
   onRespond: (id: string, status: 'ACCEPTED' | 'REJECTED') => void
+  responding?: boolean
 }) {
   const C = useTheme()
   const rc = useMemo(() => makeRc(C), [C])
@@ -131,6 +214,12 @@ function RequestCard({
   const vehicle = req.guest_vehicle === 'moto' ? '🏍 Moto' : null
   const guestsLabel = req.guests_count === 1 ? '1 rider' : `${req.guests_count} riders`
   const isGuest = !isHost
+  const loc = req.location
+  const place = [loc?.location_city, loc?.location_country].filter(Boolean).join(', ')
+  const parking = labelList(loc?.parkings, PARKING_LABELS, loc?.parking)
+  const sleep = labelList(loc?.sleep_types, SLEEP_LABELS)
+  const amenities = labelList(loc?.amenities, AMENITY_LABELS)
+  const pricing = labelList(loc?.pricings, PRICING_LABELS, loc?.pricing)
 
   return (
     <View style={rc.card}>
@@ -163,6 +252,17 @@ function RequestCard({
       )}
       {/* Details */}
       <View style={rc.details}>
+        {loc ? (
+          <View style={rc.locationRecap}>
+            <Text style={rc.recapTitle}>AGREED PLACE</Text>
+            {place ? <Text style={rc.recapLine}>📍 {place}</Text> : null}
+            {parking ? <Text style={rc.recapLine}>🏍 {parking}</Text> : null}
+            {sleep ? <Text style={rc.recapLine}>🛏 {sleep}</Text> : null}
+            {amenities ? <Text style={rc.recapLine}>🔧 {amenities}</Text> : null}
+            {pricing ? <Text style={rc.recapLine}>💰 {pricing}</Text> : null}
+            {loc.notes ? <Text style={rc.recapNotes}>{loc.notes}</Text> : null}
+          </View>
+        ) : null}
         <View style={rc.detailRow}>
           <Text style={rc.detailIcon}>📅</Text>
           <Text style={rc.detailText}>
@@ -198,11 +298,19 @@ function RequestCard({
       {/* Host actions */}
       {isHost && req.status === 'PENDING' && (
         <View style={rc.actions}>
-          <TouchableOpacity style={rc.acceptBtn} onPress={() => onRespond(req.id, 'ACCEPTED')}>
-            <Text style={rc.acceptTxt}>✓ ACCEPT</Text>
+          <TouchableOpacity
+            style={[rc.acceptBtn, responding && rc.actionDisabled]}
+            onPress={() => onRespond(req.id, 'ACCEPTED')}
+            disabled={responding}
+          >
+            <Text style={rc.acceptTxt}>{responding ? '...' : '✓ ACCEPT'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={rc.rejectBtn} onPress={() => onRespond(req.id, 'REJECTED')}>
-            <Text style={rc.rejectTxt}>✕ DECLINE</Text>
+          <TouchableOpacity
+            style={[rc.rejectBtn, responding && rc.actionDisabled]}
+            onPress={() => onRespond(req.id, 'REJECTED')}
+            disabled={responding}
+          >
+            <Text style={rc.rejectTxt}>{responding ? '...' : '✕ DECLINE'}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -223,6 +331,10 @@ function makeRc(C: ThemeColors) { return StyleSheet.create({
   },
   statusText: { fontSize: 12, fontWeight: '700' },
   details: { gap: 6 },
+  locationRecap: { backgroundColor: C.elevated, borderRadius: 12, borderWidth: 1, borderColor: C.border, padding: 10, gap: 4 },
+  recapTitle: { color: C.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
+  recapLine: { color: C.text, fontSize: 12, lineHeight: 18 },
+  recapNotes: { color: C.textMuted, fontSize: 12, lineHeight: 18, marginTop: 2 },
   detailRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   detailIcon: { fontSize: 13, lineHeight: 20 },
   detailText: { color: C.text, fontSize: 13, lineHeight: 20, flex: 1 },
@@ -237,6 +349,7 @@ function makeRc(C: ThemeColors) { return StyleSheet.create({
   privacyIcon:  { fontSize: 18, marginTop: 1 },
   privacyText:  { fontSize: 13, lineHeight: 19, flex: 1 },
   actions: { flexDirection: 'row', gap: 8, paddingTop: 4 },
+  actionDisabled: { opacity: 0.6 },
   acceptBtn: { flex: 1, backgroundColor: C.success, borderRadius: 100, padding: 13, alignItems: 'center' },
   acceptTxt: { color: C.white, fontWeight: '700', fontSize: 13 },
   rejectBtn: { flex: 1, borderRadius: 100, padding: 13, alignItems: 'center', borderWidth: 1, borderColor: C.error },
@@ -261,6 +374,7 @@ export default function RequestsScreen() {
   const [reviewStars, setReviewStars] = useState(0)
   const [reviewBody, setReviewBody] = useState('')
   const [submittingReview, setSubmittingReview] = useState(false)
+  const [respondingFor, setRespondingFor] = useState<string | null>(null)
   const flatRef = useRef<FlatList<MsgRow>>(null)
   const channelRef = useRef<any>(null)
   const autoOpenedRef = useRef<string | null>(null)
@@ -379,12 +493,9 @@ export default function RequestsScreen() {
     const { data: msgData } = await supabase
       .from('messages')
       .select(`
-        id, conversation_id, sender_id, body, photo_url, request_id, created_at,
-        request:stay_requests!request_id(
-          id, arrival_date, departure_date, arrival_time,
-          guests_count, guest_vehicle, status, photo_url, host_id, guest_id, location_id
-        )
-      `)
+	        id, conversation_id, sender_id, body, photo_url, request_id, created_at,
+	        request:stay_requests!request_id(${REQUEST_SELECT})
+	      `)
       .eq('conversation_id', conv.id)
       .order('created_at', { ascending: true })
 
@@ -399,8 +510,8 @@ export default function RequestsScreen() {
     const normalized = msgData.map((m: any) => normalizeMsg({ ...m, sender: { full_name: senderMap[m.sender_id] ?? null } }))
     setMessages(normalized)
 
-    // Fetch my existing review for this stay
-    const acceptedReq = normalized.find(m => m.request?.status === 'ACCEPTED')?.request
+	    // Fetch my existing review only after the stay can be reviewed.
+	    const acceptedReq = normalized.find(m => m.request?.status === 'ACCEPTED' && hasStayEnded(m.request))?.request
     setMyReview(null); setReviewStars(0); setReviewBody('')
     if (acceptedReq && currentUser) {
       const { data: rev } = await supabase
@@ -417,7 +528,7 @@ export default function RequestsScreen() {
   }
 
   async function submitReview() {
-    const req = messages.find(m => m.request?.status === 'ACCEPTED')?.request
+    const req = messages.find(m => m.request?.status === 'ACCEPTED' && hasStayEnded(m.request))?.request
     if (!req || !currentUser || !reviewStars) return
     const revieweeId = currentUser.id === req.host_id ? req.guest_id : req.host_id
     setSubmittingReview(true)
@@ -457,12 +568,9 @@ export default function RequestsScreen() {
         const { data } = await supabase
           .from('messages')
           .select(`
-            id, conversation_id, sender_id, body, photo_url, request_id, created_at,
-            request:stay_requests!request_id(
-              id, arrival_date, departure_date, arrival_time,
-              guests_count, guest_vehicle, status, photo_url, host_id, guest_id, location_id
-            )
-          `)
+	            id, conversation_id, sender_id, body, photo_url, request_id, created_at,
+	            request:stay_requests!request_id(${REQUEST_SELECT})
+	          `)
           .eq('id', payload.new.id)
           .single()
         if (!data) return
@@ -522,7 +630,7 @@ export default function RequestsScreen() {
     if (req.location_id) {
       const { data } = await supabase
         .from('host_locations')
-        .select('location_lat, location_lng, location_city, location_country')
+        .select('location_lat, location_lng, location_city, location_country, parking, parkings, sleep_types, amenities, pricing, pricings, max_guests, notes')
         .eq('id', req.location_id)
         .eq('user_id', req.host_id)
         .maybeSingle()
@@ -531,7 +639,7 @@ export default function RequestsScreen() {
     if (!loc) {
       const { data } = await supabase
         .from('host_locations')
-        .select('location_lat, location_lng, location_city, location_country')
+        .select('location_lat, location_lng, location_city, location_country, parking, parkings, sleep_types, amenities, pricing, pricings, max_guests, notes')
         .eq('user_id', req.host_id)
         .order('created_at', { ascending: true })
         .limit(1)
@@ -542,19 +650,34 @@ export default function RequestsScreen() {
     if (loc?.location_lat && loc?.location_lng) {
       const coords = `${Number(loc.location_lat).toFixed(6)}, ${Number(loc.location_lng).toFixed(6)}`
       const place = [loc.location_city, loc.location_country].filter(Boolean).join(', ')
+      const recap = summarizeLocation(loc)
       const body = [
         'Exact meeting point:',
         coords,
         Platform.OS === 'web' ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(coords)}` : null,
         place || null,
+        recap.length ? '' : null,
+        recap.length ? 'Agreed stay recap:' : null,
+        ...recap,
       ].filter(Boolean).join('\n')
 
-	      await supabase.from('messages').insert({
-	        conversation_id: selected.id,
-	        sender_id: currentUser.id,
-	        body,
-	        request_id: req.id,
-	      })
+      const { data: inserted } = await supabase.from('messages').insert({
+        conversation_id: selected.id,
+        sender_id: currentUser.id,
+        body,
+        request_id: req.id,
+      })
+        .select(`
+          id, conversation_id, sender_id, body, photo_url, request_id, created_at,
+          request:stay_requests!request_id(${REQUEST_SELECT})
+        `)
+        .single()
+      if (inserted) {
+        setMessages(prev => prev.find(m => m.id === inserted.id)
+          ? prev
+          : [...prev, normalizeMsg({ ...inserted, sender: { full_name: null } })]
+        )
+      }
       await supabase
         .from('conversations')
         .update({ last_message_at: new Date().toISOString() })
@@ -566,8 +689,16 @@ export default function RequestsScreen() {
   }
 
   async function respondToRequest(requestId: string, status: 'ACCEPTED' | 'REJECTED') {
+    if (respondingFor) return
+    const currentReq = messages.find(m => m.request?.id === requestId)?.request
+    setRespondingFor(requestId)
     const { error } = await supabase.from('stay_requests').update({ status }).eq('id', requestId)
-    if (error) return
+    if (error) { setRespondingFor(null); return }
+    setMessages(prev => prev.map(m =>
+      m.request?.id === requestId
+        ? { ...m, request: { ...m.request!, status } }
+        : m
+    ))
     supabase.functions.invoke('notify-request', {
       body: { request_id: requestId, event: status === 'ACCEPTED' ? 'accepted' : 'rejected' },
     }).catch(() => {})
@@ -577,26 +708,42 @@ export default function RequestsScreen() {
       const autoBody = status === 'ACCEPTED'
         ? ACCEPTED_AUTO_BODY
         : "Unfortunately it won't work this time. Have a great ride! 🤞"
-	      await supabase.from('messages').insert({
-	        conversation_id: selected.id,
-	        sender_id: currentUser.id,
-	        body: autoBody,
-	        request_id: requestId,
-	      })
+      const { data: inserted } = await supabase.from('messages').insert({
+        conversation_id: selected.id,
+        sender_id: currentUser.id,
+        body: autoBody,
+        request_id: requestId,
+      })
+        .select(`
+          id, conversation_id, sender_id, body, photo_url, request_id, created_at,
+          request:stay_requests!request_id(${REQUEST_SELECT})
+        `)
+        .single()
+      const normalizedInserted = inserted
+        ? normalizeMsg({ ...inserted, sender: { full_name: null } })
+        : {
+          id: `local-${requestId}-${Date.now()}`,
+          conversation_id: selected.id,
+          sender_id: currentUser.id,
+          sender_name: null,
+          body: autoBody,
+          photo_url: null,
+          request_id: requestId,
+          request: currentReq ? { ...currentReq, status } : null,
+          created_at: new Date().toISOString(),
+        }
+      setMessages(prev => prev.find(m => m.id === normalizedInserted.id) ? prev : [...prev, normalizedInserted])
       await supabase
         .from('conversations')
         .update({ last_message_at: new Date().toISOString() })
         .eq('id', selected.id)
     }
 
-    setMessages(prev => prev.map(m =>
-      m.request?.id === requestId
-        ? { ...m, request: { ...m.request!, status } }
-        : m
-    ))
     setConvs(prev => prev.map(c =>
       c.id === selected?.id ? { ...c, requestStatus: status, hasRequest: true } : c
     ))
+    setRespondingFor(null)
+    setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100)
   }
 
   // ── Chat view ────────────────────────────────────────────────────────────
@@ -630,7 +777,7 @@ export default function RequestsScreen() {
           contentContainerStyle={styles.msgList}
           onLayout={() => flatRef.current?.scrollToEnd({ animated: false })}
 	          ListFooterComponent={(() => {
-	            const acceptedReq = messages.find(m => m.request?.status === 'ACCEPTED')?.request
+	            const acceptedReq = messages.find(m => m.request?.status === 'ACCEPTED' && hasStayEnded(m.request))?.request
 	            if (!acceptedReq) return null
 	            const isReviewingGuest = currentUser?.id === acceptedReq.host_id
 	            if (myReview) return (
@@ -688,6 +835,7 @@ export default function RequestsScreen() {
 	            const hasSentCoordinatesAfterThisMessage = messages.some(msg =>
 	              msg.sender_id === currentUser?.id
 	              && isExactPointMessage(msg.body)
+	              && (!msg.request_id || msg.request_id === acceptedReq?.id)
 	              && new Date(msg.created_at).getTime() > new Date(m.created_at).getTime()
 	            )
 	            const showCoordinateAction = !!acceptedReq
@@ -702,9 +850,10 @@ export default function RequestsScreen() {
                   <RequestCard
                     req={m.request}
                     body={m.body}
-                    isHost={isHost}
-                    onRespond={respondToRequest}
-                  />
+	                    isHost={isHost}
+	                    onRespond={respondToRequest}
+	                    responding={respondingFor === m.request.id}
+	                  />
                 </View>
               )
             }
