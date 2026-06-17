@@ -4,6 +4,25 @@ import L from 'leaflet'
 import 'leaflet.markercluster'  // side-effect: patches the same L with markerClusterGroup
 import { useTheme } from '../lib/ThemeContext'
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function safeImageUrl(value?: string | null): string | null {
+  if (!value) return null
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' || url.protocol === 'http:' ? escapeHtml(url.href) : null
+  } catch {
+    return null
+  }
+}
+
 let savedMapView: { center: [number, number]; zoom: number } | null = null
 
 interface Host {
@@ -83,9 +102,11 @@ export default function HostMap({
       }).addTo(map)
       circlesRef.current.push(circle)
 
-      const avatarInner = host.profiles?.avatar_url
-        ? `<img src="${host.profiles.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
-        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;">${host.profiles?.full_name ? host.profiles.full_name[0].toUpperCase() : '?'}</div>`
+      const avatarUrl = safeImageUrl(host.profiles?.avatar_url)
+      const initial = escapeHtml(host.profiles?.full_name?.[0]?.toUpperCase() || '?')
+      const avatarInner = avatarUrl
+        ? `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;">${initial}</div>`
 
       const totalH = size + 8  // circle + arrow
       const markerHtml = `

@@ -33,24 +33,54 @@ Deno.serve(async req => {
       if (error) throw new Error(`${label}: ${error.message || 'failed'}`)
     }
 
+    async function removeStorageFolder(bucket: string, folder: string) {
+      const { data, error } = await admin.storage.from(bucket).list(folder, { limit: 1000 })
+      if (error && !/not found/i.test(error.message)) throw new Error(`list ${bucket}: ${error.message}`)
+      const paths = (data || []).filter(item => item.name && item.id).map(item => `${folder}/${item.name}`)
+      if (!paths.length) return
+      const { error: removeError } = await admin.storage.from(bucket).remove(paths)
+      if (removeError) throw new Error(`delete ${bucket}: ${removeError.message}`)
+    }
+
     // Find conversations this user is part of
     const { data: convs } = await admin
       .from('conversations')
       .select('id')
       .or(`user_a.eq.${userId},user_b.eq.${userId}`)
 
-    // Delete in dependency order. Messages reference both conversations and stay_requests.
-    if (convs?.length) {
-      const convIds = convs.map((c: any) => c.id)
-      await must('delete messages', admin.from('messages').delete().in('conversation_id', convIds))
+    const { data: requests, error: requestsError } = await admin
+      .from('stay_requests')
+      .select('id')
+      .or(`guest_id.eq.${userId},host_id.eq.${userId}`)
+    if (requestsError) throw new Error(`load stay requests: ${requestsError.message}`)
+    const requestIds = (requests || []).map((request: any) => request.id)
+
+    // Remove personal uploads before their database pointers disappear.
+    await Promise.all([
+      removeStorageFolder('avatars', userId),
+      removeStorageFolder('request-photos', userId),
+    ])
+
+    // Keep the other rider's messages. Remove only this user's messages and
+    // detach surviving messages from requests that are about to be deleted.
+    await must('delete own messages', admin.from('messages').delete().eq('sender_id', userId))
+    if (requestIds.length) {
+      await must('detach request messages', admin.from('messages').update({ request_id: null }).in('request_id', requestIds))
     }
 
     await must('delete reviews', admin.from('reviews').delete().or(`reviewer_id.eq.${userId},reviewee_id.eq.${userId}`))
     await must('delete stay_requests', admin.from('stay_requests').delete().or(`guest_id.eq.${userId},host_id.eq.${userId}`))
 
+    // Anonymize this participant. The remaining rider keeps their side of the
+    // conversation; completely empty conversations are removed.
+    await must('anonymize conversations user_a', admin.from('conversations').update({ user_a: null }).eq('user_a', userId))
+    await must('anonymize conversations user_b', admin.from('conversations').update({ user_b: null }).eq('user_b', userId))
     if (convs?.length) {
       const convIds = convs.map((c: any) => c.id)
-      await must('delete conversations', admin.from('conversations').delete().in('id', convIds))
+      const { data: remaining } = await admin.from('messages').select('conversation_id').in('conversation_id', convIds)
+      const nonEmpty = new Set((remaining || []).map((message: any) => message.conversation_id))
+      const emptyIds = convIds.filter((id: string) => !nonEmpty.has(id))
+      if (emptyIds.length) await must('delete empty conversations', admin.from('conversations').delete().in('id', emptyIds))
     }
 
     await must('delete host_locations', admin.from('host_locations').delete().eq('user_id', userId))

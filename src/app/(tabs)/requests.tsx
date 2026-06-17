@@ -12,12 +12,13 @@ import { AppHeader } from '../../components/AppHeader'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type OtherUser = { id: string; full_name: string | null; avatar_url?: string | null }
+type OtherUser = { id: string | null; full_name: string | null; avatar_url?: string | null }
 
 type ConvRow = {
   id: string
-  user_a: string
-  user_b: string
+  user_a: string | null
+  user_b: string | null
+  locationLabel: string
   last_message_at: string
   other: OtherUser
   lastMsgBody: string | null
@@ -27,6 +28,7 @@ type ConvRow = {
   requestStatus: string | null
   requestHostId: string | null
   requestGuestId: string | null
+  location_id: string
 }
 
 type RequestData = {
@@ -434,7 +436,8 @@ export default function RequestsScreen() {
   const subscribingListRef = useRef(false)   // guard so we never create two channels at once
   const selectedConvIdRef = useRef<string | null>(null)
 
-  const { openConv: openConvParam } = useLocalSearchParams<{ openConv?: string }>()
+  const { openConv: openConvParam, reviewRequest: reviewRequestParam } = useLocalSearchParams<{ openConv?: string; reviewRequest?: string }>()
+  const [reviewRequestId, setReviewRequestId] = useState<string | null>(null)
 
   function clearConversationState() {
     if (listChannelRef.current) {
@@ -451,6 +454,7 @@ export default function RequestsScreen() {
     setMyReview(null)
     setReviewStars(0)
     setReviewBody('')
+    setReviewRequestId(null)
     setSubmittingReview(false)
     setRespondingFor(null)
     autoOpenedRef.current = null
@@ -535,7 +539,6 @@ export default function RequestsScreen() {
       if (nearBottomRef.current) setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 60)
     })()
     return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incomingMsg, selected])
 
   // Auto-open conversation when navigated from map with openConv param
@@ -569,7 +572,7 @@ export default function RequestsScreen() {
     setLoading(true)
     const { data: convData } = await supabase
       .from('conversations')
-      .select('id, user_a, user_b, last_message_at')
+      .select('id, user_a, user_b, location_id, last_message_at')
       .or(`user_a.eq.${userId},user_b.eq.${userId}`)
       .order('last_message_at', { ascending: false })
 
@@ -577,10 +580,14 @@ export default function RequestsScreen() {
     if (!convData || convData.length === 0) { setConvs([]); setLoading(false); return }
 
     const convIds = convData.map((c: any) => c.id)
-    const otherIds = convData.map((c: any) => c.user_a === userId ? c.user_b : c.user_a)
+    const otherIds = convData
+      .map((c: any) => c.user_a === userId ? c.user_b : c.user_a)
+      .filter((id: string | null): id is string => !!id)
+    const locationIds = convData.map((c: any) => c.location_id).filter(Boolean)
 
-    const [{ data: profiles }, { data: lastMsgs }, { data: requestRows }, { data: readRows }] = await Promise.all([
-      supabase.from('profiles').select('id, full_name, avatar_url').in('id', otherIds),
+    const [{ data: profiles }, { data: locations }, { data: lastMsgs }, { data: requestRows }, { data: readRows }] = await Promise.all([
+      otherIds.length ? supabase.from('profiles').select('id, full_name, avatar_url').in('id', otherIds) : Promise.resolve({ data: [] as any[] }),
+      locationIds.length ? supabase.from('host_locations_public').select('id, location_city, location_country').in('id', locationIds) : Promise.resolve({ data: [] as any[] }),
       supabase.from('messages')
         .select('conversation_id, body, sender_id, request_id, created_at')
         .in('conversation_id', convIds)
@@ -607,6 +614,10 @@ export default function RequestsScreen() {
 
     const profileMap: Record<string, { full_name: string | null; avatar_url: string | null }> = {}
     profiles?.forEach((p: any) => { profileMap[p.id] = { full_name: p.full_name, avatar_url: p.avatar_url } })
+    const locationMap: Record<string, string> = {}
+    locations?.forEach((location: any) => {
+      locationMap[location.id] = [location.location_city, location.location_country].filter(Boolean).join(', ')
+    })
 
     const lastMsgMap: Record<string, { body: string | null; sender_id: string; request_id: string | null }> = {}
     const hasRequestMap: Record<string, boolean> = {}
@@ -636,6 +647,8 @@ export default function RequestsScreen() {
         id: c.id,
         user_a: c.user_a,
         user_b: c.user_b,
+        location_id: c.location_id,
+        locationLabel: locationMap[c.location_id] || 'Past location',
         last_message_at: c.last_message_at,
         other: { id: otherId, full_name: prof?.full_name ?? null, avatar_url: prof?.avatar_url ?? null } as OtherUser,
         lastMsgBody: last?.body ?? null,
@@ -768,8 +781,13 @@ export default function RequestsScreen() {
     const normalized = msgData.map((m: any) => normalizeMsg({ ...m, sender: { full_name: senderMap[m.sender_id] ?? null } }))
     setMessages(normalized)
 
-	    // Fetch my existing review only after the stay can be reviewed.
-	    const acceptedReq = normalized.find(m => m.request?.status === 'ACCEPTED' && hasStayEnded(m.request))?.request
+    // Reviews are always tied to a concrete stay, never merely to a chat.
+    const endedRequests = normalized
+      .map(m => m.request)
+      .filter((req): req is RequestData => !!req && req.status === 'ACCEPTED' && hasStayEnded(req))
+    const acceptedReq = endedRequests.find(req => req.id === reviewRequestParam)
+      ?? [...endedRequests].reverse()[0]
+    setReviewRequestId(acceptedReq?.id ?? null)
     setMyReview(null); setReviewStars(0); setReviewBody('')
     if (acceptedReq && currentUser) {
       const { data: rev } = await supabase
@@ -785,7 +803,7 @@ export default function RequestsScreen() {
   }
 
   async function submitReview() {
-    const req = messages.find(m => m.request?.status === 'ACCEPTED' && hasStayEnded(m.request))?.request
+    const req = messages.find(m => m.request?.id === reviewRequestId)?.request
     if (!req || !currentUser || !reviewStars) return
     const userId = currentUser.id
     if (currentUserIdRef.current !== userId) return
@@ -891,23 +909,12 @@ export default function RequestsScreen() {
     if (req.location_id) {
       const { data } = await supabase
         .from('host_locations')
-        .select('location_lat, location_lng, location_city, location_country, parking, parkings, sleep_types, amenities, pricing, pricings, max_guests, notes')
+        .select('location_lat, location_lng, location_city, location_country, parking, parkings, sleep_types, amenities, pricing, pricings, max_guests')
         .eq('id', req.location_id)
         .eq('user_id', req.host_id)
         .maybeSingle()
       loc = data
     }
-    if (!loc) {
-      const { data } = await supabase
-        .from('host_locations')
-        .select('location_lat, location_lng, location_city, location_country, parking, parkings, sleep_types, amenities, pricing, pricings, max_guests, notes')
-        .eq('user_id', req.host_id)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle()
-      loc = data
-    }
-
     if (loc?.location_lat && loc?.location_lng) {
       const coords = `${Number(loc.location_lat).toFixed(6)}, ${Number(loc.location_lng).toFixed(6)}`
       const place = [loc.location_city, loc.location_country].filter(Boolean).join(', ')
@@ -1048,7 +1055,10 @@ export default function RequestsScreen() {
           <View style={styles.chatAvatar}>
             <Text style={styles.chatAvatarText}>{otherName.charAt(0).toUpperCase()}</Text>
           </View>
-          <Text style={styles.chatName}>{otherName}</Text>
+          <View style={styles.chatIdentity}>
+            <Text style={styles.chatName}>{otherName}</Text>
+            <Text style={styles.chatLocation} numberOfLines={1}>{selected.locationLabel}</Text>
+          </View>
           <UserChip />
         </View>
 
@@ -1068,7 +1078,7 @@ export default function RequestsScreen() {
           }}
           scrollEventThrottle={16}
 	          ListFooterComponent={(() => {
-	            const acceptedReq = messages.find(m => m.request?.status === 'ACCEPTED' && hasStayEnded(m.request))?.request
+	            const acceptedReq = messages.find(m => m.request?.id === reviewRequestId)?.request
 	            if (!acceptedReq) return null
 	            const isReviewingGuest = currentUser?.id === acceptedReq.host_id
 	            if (myReview) return (
@@ -1335,6 +1345,7 @@ export default function RequestsScreen() {
                         <Text style={[styles.convName, isUnread && styles.convNameUnread]}>{name}</Text>
                         <Text style={styles.convTime}>{fmtDate(conv.last_message_at)}</Text>
                       </View>
+                      <Text style={styles.convLocation} numberOfLines={1}>📍 {conv.locationLabel}</Text>
                       {preview ? (
                         <Text style={[styles.convPreview, isUnread && styles.convPreviewUnread]} numberOfLines={1}>
                           {preview}
@@ -1374,7 +1385,9 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     borderWidth: 1.5, borderColor: C.border,
   },
   chatAvatarText: { color: C.accent, fontWeight: '800', fontSize: 15 },
-  chatName: { color: C.text, fontSize: 16, fontWeight: '700', flex: 1 },
+  chatIdentity: { flex: 1, paddingHorizontal: 10 },
+  chatName: { color: C.text, fontSize: 16, fontWeight: '700' },
+  chatLocation: { color: C.textDim, fontSize: 11, marginTop: 1 },
 
   // Messages
   msgList: { padding: 16, gap: 8, paddingBottom: 8 },
@@ -1679,6 +1692,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   convNameUnread: { fontWeight: '900' },
   convTime: { color: C.textDim, fontSize: 12 },
   convPreview: { color: C.textDim, fontSize: 13, lineHeight: 18 },
+  convLocation: { color: C.textMuted, fontSize: 11, lineHeight: 16 },
   convPreviewUnread: { color: C.textMuted, fontWeight: '600' },
   convStatusBadge: {
     borderRadius: 100,

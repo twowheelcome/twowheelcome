@@ -46,8 +46,7 @@ export default function PublicHostProfile() {
   }
 
   const load = useCallback(async (userId: string, locationId?: string) => {
-    // Public profile reads the coarse-coordinate view; fall back to the base
-    // table only if the view doesn't exist yet (before the DB migration runs).
+    // Public profiles only read the coarse, privacy-safe view.
     const locFrom = (table: string) => {
       const base = supabase.from(table).select('*').eq('user_id', userId)
       return locationId
@@ -63,10 +62,7 @@ export default function PublicHostProfile() {
         .order('created_at', { ascending: false })
     ])
 
-    let loc = locRes.data
-    if (locRes.error && /does not exist|find the table|42P01|PGRST205/i.test(`${locRes.error.code} ${locRes.error.message}`)) {
-      loc = (await locFrom('host_locations')).data
-    }
+    const loc = locRes.data
 
     if (!prof || !loc) { setNotFound(true); setLoading(false); return }
 
@@ -177,8 +173,8 @@ export default function PublicHostProfile() {
         {parkings.length > 0 && <SafetyBlock parkings={parkings} />}
 
         {/* Bio */}
-        {(location.notes || profile.bio) && (
-          <Text style={styles.bio}>{location.notes || profile.bio}</Text>
+        {profile.bio && (
+          <Text style={styles.bio}>{profile.bio}</Text>
         )}
 
         {/* Sleep */}

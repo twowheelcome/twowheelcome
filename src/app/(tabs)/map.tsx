@@ -95,12 +95,9 @@ export default function MapScreen() {
   })
 
   const fetchHosts = useCallback(async () => {
-    // Read coarse (rounded) coordinates from the public view. Fall back to the
-    // base table only if the view doesn't exist yet (before the DB migration runs).
-    let res = await supabase.from('host_locations_public').select('*')
-    if (res.error && /does not exist|find the table|42P01|PGRST205/i.test(`${res.error.code} ${res.error.message}`)) {
-      res = await supabase.from('host_locations').select('*')
-    }
+    // Public surfaces must only read the coarse, privacy-safe view. Never fall
+    // back to the exact-coordinate owner table.
+    const res = await supabase.from('host_locations_public').select('*')
     const { data, error } = res
     if (error) { console.error(error); setLoadError(true); setLoading(false); return }
     setLoadError(false)
@@ -211,6 +208,14 @@ export default function MapScreen() {
       setSendError('Write the host a message. At least a few words. 😄')
       return
     }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(arrivalDate) || !/^\d{4}-\d{2}-\d{2}$/.test(departureDate) || departureDate < arrivalDate) {
+      setSendError('Choose a valid stay period. Departure cannot be before arrival.')
+      return
+    }
+    if (arrivalTime.trim() && !/^([01]\d|2[0-3]):[0-5]\d$/.test(arrivalTime.trim())) {
+      setSendError('Use a valid arrival time in 24-hour HH:MM format.')
+      return
+    }
     setSendError('')
     sendingRef.current = true
     setSending(true)
@@ -220,7 +225,7 @@ export default function MapScreen() {
         const ext = photoFile.name.split('.').pop() || 'jpg'
         let upErr: unknown = null
         for (let attempt = 0; attempt < 2; attempt++) {
-          const name = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+          const name = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
           const { error } = await supabase.storage.from('request-photos').upload(name, photoFile)
           if (!error) {
             uploadedPhotoUrl = supabase.storage.from('request-photos').getPublicUrl(name).data.publicUrl
@@ -248,6 +253,7 @@ export default function MapScreen() {
         .select('id')
         .eq('user_a', ua)
         .eq('user_b', ub)
+        .eq('location_id', selected.id)
         .maybeSingle()
 
       if (existing) {
@@ -256,7 +262,7 @@ export default function MapScreen() {
       } else {
         const { data: newConv, error: convErr } = await supabase
           .from('conversations')
-          .insert({ user_a: ua, user_b: ub })
+          .insert({ user_a: ua, user_b: ub, location_id: selected.id })
           .select('id')
           .single()
         if (convErr || !newConv) { setSendError(convErr?.message || 'Conversation error'); setSending(false); return }
@@ -706,7 +712,7 @@ export default function MapScreen() {
           />
           {loadError && (
             <View style={styles.loadErrorBanner}>
-              <Text style={styles.loadErrorText}>Couldn't load hosts. Check your connection.</Text>
+              <Text style={styles.loadErrorText}>Could not load hosts. Check your connection.</Text>
               <TouchableOpacity onPress={() => { setLoading(true); void fetchHosts() }}>
                 <Text style={styles.loadErrorRetry}>Retry</Text>
               </TouchableOpacity>
@@ -730,7 +736,7 @@ export default function MapScreen() {
       return (
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>📡</Text>
-          <Text style={styles.emptyTitle}>Couldn't load hosts</Text>
+          <Text style={styles.emptyTitle}>Could not load hosts</Text>
           <Text style={styles.emptyText}>Check your connection and try again.</Text>
           <TouchableOpacity style={[styles.button, { marginTop: 16, paddingHorizontal: 28 }]} onPress={() => { setLoading(true); void fetchHosts() }}>
             <Text style={styles.buttonText}>RETRY</Text>
@@ -784,7 +790,6 @@ export default function MapScreen() {
               </View>
               {selected?.id === host.id && (
                 <View style={styles.detail}>
-                  {host.notes ? <Text style={styles.detailBio}>{host.notes}</Text> : null}
                   <Text style={styles.detailInfo}>👥 Max. {host.max_guests} riders</Text>
                   {host.sleep_types?.length > 0 && (
                     <Text style={styles.detailInfo}>

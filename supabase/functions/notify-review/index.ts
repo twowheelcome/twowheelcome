@@ -99,10 +99,10 @@ Deno.serve(async (req) => {
     const hostName = escapeHtml(hostProfile?.full_name || 'your host')
 
     const webUrl = stay.conversation_id
-      ? APP_URL + '/requests?openConv=' + encodeURIComponent(stay.conversation_id)
+      ? APP_URL + '/requests?openConv=' + encodeURIComponent(stay.conversation_id) + '&reviewRequest=' + encodeURIComponent(stay.id)
       : APP_URL + '/requests'
     const pushUrl = stay.conversation_id
-      ? '/(tabs)/requests?openConv=' + encodeURIComponent(stay.conversation_id)
+      ? '/(tabs)/requests?openConv=' + encodeURIComponent(stay.conversation_id) + '&reviewRequest=' + encodeURIComponent(stay.id)
       : '/(tabs)/requests'
 
     if (!reviewedSet.has(stay.id + ':' + stay.guest_id)) {

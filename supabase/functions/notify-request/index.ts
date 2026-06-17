@@ -87,6 +87,19 @@ Deno.serve(async req => {
     return new Response('Request state does not match notification event', { status: 409, headers: CORS })
   }
 
+  // Claim this one-shot event before sending. The unique key prevents retries
+  // or a malicious caller from spamming the same notification repeatedly.
+  const { error: eventError } = await admin
+    .from('request_notification_events')
+    .insert({ request_id, event })
+  if (eventError?.code === '23505') {
+    return new Response('Already sent', { status: 200, headers: CORS })
+  }
+  if (eventError) {
+    console.error('Notification idempotency error:', eventError)
+    return new Response('Could not reserve notification event', { status: 500, headers: CORS })
+  }
+
   const [{ data: { user: host } }, { data: { user: guest } }] = await Promise.all([
     admin.auth.admin.getUserById(request.host_id),
     admin.auth.admin.getUserById(request.guest_id),

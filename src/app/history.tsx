@@ -95,7 +95,10 @@ export default function HistoryScreen() {
 
   function openConversation(s: Stay) {
     if (!s.conversationId) return
-    router.push({ pathname: '/(tabs)/requests', params: { openConv: s.conversationId } })
+    router.push({
+      pathname: '/(tabs)/requests',
+      params: { openConv: s.conversationId, ...(s.canReview ? { reviewRequest: s.id } : {}) },
+    })
   }
 
   return (

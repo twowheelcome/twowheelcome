@@ -22,11 +22,24 @@ export default function PrivacyScreen() {
           TWOWHEELCOME helps riders find a safe overnight spot for their bike and themselves. We keep privacy simple: public map pins are approximate, and exact meeting points are shared by the host only when both sides agree in chat.
         </Text>
 
+        <Section title="Who controls your data">
+          <Text style={styles.body}>
+            The TWOWHEELCOME operator is the data controller. The operator&apos;s legal name, postal address and country of establishment must be added here before public launch. Privacy requests can be sent to {CONTACT_EMAIL}.
+          </Text>
+        </Section>
+
         <Section title="Data we collect">
           <Bullet>Email address and authentication data, used to create and protect your account.</Bullet>
           <Bullet>Profile details you add, such as name, bike model, avatar and public host profile information.</Bullet>
-          <Bullet>Host listing details, including approximate public location, parking type, sleep options, amenities and notes.</Bullet>
+          <Bullet>Host listing details, including approximate public location, parking type, sleep options and amenities. Private location notes are not published.</Bullet>
           <Bullet>Stay requests, messages, reviews, push tokens and account activity needed to run the service.</Bullet>
+        </Section>
+
+        <Section title="Why we may process it">
+          <Bullet>Contract: to create your account and provide stay requests, conversations and reviews.</Bullet>
+          <Bullet>Legitimate interests: to secure the service, prevent abuse, diagnose failures and protect riders.</Bullet>
+          <Bullet>Consent: for optional device permissions and notifications where the law requires it. You can withdraw consent in device settings.</Bullet>
+          <Bullet>Legal obligation: where records must be retained or disclosed under applicable law.</Bullet>
         </Section>
 
         <Section title="How we use it">
@@ -46,17 +59,29 @@ export default function PrivacyScreen() {
           <Text style={styles.body}>
             We use Supabase for authentication, database, storage and edge functions. We may use Resend or a similar email provider for transactional emails. These providers process data only so TWOWHEELCOME can operate.
           </Text>
+          <Text style={styles.body}>
+            Providers may process data outside your country. Where data leaves the EEA, the operator must verify the configured processing regions and use an approved transfer safeguard, such as the European Commission&apos;s Standard Contractual Clauses.
+          </Text>
+        </Section>
+
+        <Section title="How long we keep it">
+          <Bullet>Account and listing data: while your account is active, then removed when you delete it.</Bullet>
+          <Bullet>Uploaded avatars and request photos: removed with account deletion.</Bullet>
+          <Bullet>Security and diagnostic logs: only as long as needed for security and troubleshooting, normally no more than 90 days.</Bullet>
+          <Bullet>Backups: deleted data may remain in protected rolling backups for up to 30 days before automatic expiry.</Bullet>
+          <Bullet>Data required for a legal claim or obligation may be retained longer, only for that purpose.</Bullet>
         </Section>
 
         <Section title="Your choices">
           <Bullet>You can edit your profile and listing details in the app.</Bullet>
-          <Bullet>You can delete your account from Profile. This removes your account data from the app.</Bullet>
-          <Bullet>You can contact us about access, correction, deletion or other privacy rights at {CONTACT_EMAIL}.</Bullet>
+          <Bullet>You can delete your account from Profile. This removes your profile, listings, requests, reviews, messages you sent and uploaded media. Messages sent by another rider remain as their data, with your identity removed.</Bullet>
+          <Bullet>You may request access, correction, deletion, restriction, objection or a portable copy by emailing {CONTACT_EMAIL}. We may need to verify your identity and normally respond within one month.</Bullet>
+          <Bullet>You may complain to the data protection authority where you live or work. The controller&apos;s lead supervisory authority must be named here once the operator&apos;s country is confirmed.</Bullet>
         </Section>
 
-        <Section title="Legal note">
+        <Section title="Before public launch">
           <Text style={styles.body}>
-            This is a practical privacy summary for the current app. It should be reviewed before public launch, especially if the operator details, email provider, analytics or paid features change.
+            The controller&apos;s legal identity, address, lead supervisory authority, actual provider regions and transfer safeguards still require confirmation and legal review before public launch.
           </Text>
         </Section>
       </ScrollView>
