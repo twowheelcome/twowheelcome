@@ -33,6 +33,17 @@ export default function PublicHostProfile() {
   const [avgRating, setAvgRating] = useState<number | null>(null)
   const [reviewCount, setReviewCount] = useState(0)
   const [reviews, setReviews] = useState<any[]>([])
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setIsLoggedIn(!!session))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setIsLoggedIn(!!session))
+    return () => subscription.unsubscribe()
+  }, [])
+
+  function goToSignup() {
+    router.push({ pathname: '/', params: { signup: '1' } })
+  }
 
   const load = useCallback(async (userId: string) => {
     const [{ data: prof }, { data: locs }, { data: revs }] = await Promise.all([
@@ -125,6 +136,22 @@ export default function PublicHostProfile() {
           </View>
         </View>
 
+        {/* Sign-up CTA — only for logged-out visitors (acquisition surface) */}
+        {isLoggedIn === false && (
+          <View style={styles.joinBanner}>
+            <Text style={styles.joinBannerTitle}>New here? Join the ride.</Text>
+            <Text style={styles.joinBannerText}>
+              twowheelcome connects riders on the road. Find a safe overnight spot for you and your bike — or open your own place to fellow riders. Free, rider to rider.
+            </Text>
+            <TouchableOpacity style={styles.joinBannerBtn} onPress={goToSignup}>
+              <Text style={styles.joinBannerBtnText}>Create your free account</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push({ pathname: '/' })}>
+              <Text style={styles.joinBannerLogin}>Already have an account? Log in</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Bike safety */}
         {parkings.length > 0 && <SafetyBlock parkings={parkings} />}
 
@@ -187,9 +214,12 @@ export default function PublicHostProfile() {
         <Text style={styles.joinSub}>Send a stay request to {profile.full_name?.split(' ')[0] || 'this host'} and agree on the details in chat.</Text>
         <TouchableOpacity
           style={styles.ctaBtn}
-          onPress={() => router.replace({ pathname: '/(tabs)/map', params: { knockHost: profile.id } })}
+          onPress={() => {
+            if (isLoggedIn === false) { goToSignup(); return }
+            router.replace({ pathname: '/(tabs)/map', params: { knockHost: profile.id } })
+          }}
         >
-          <Text style={styles.ctaBtnText}>Knock on the door</Text>
+          <Text style={styles.ctaBtnText}>{isLoggedIn === false ? 'Join to knock on the door' : 'Knock on the door'}</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -210,6 +240,13 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   meta:         { color: C.textMuted, fontSize: 13 },
 
   bio:          { color: C.text, fontSize: 15, lineHeight: 23 },
+
+  joinBanner:        { backgroundColor: C.accentSoft, borderColor: C.accentBorder, borderWidth: 1, borderRadius: 22, padding: 18, gap: 10 },
+  joinBannerTitle:   { color: C.text, fontSize: 18, fontWeight: '900' },
+  joinBannerText:    { color: C.textMuted, fontSize: 14, lineHeight: 21 },
+  joinBannerBtn:     { height: 50, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  joinBannerBtnText: { color: C.white, fontSize: 15, fontWeight: '800', letterSpacing: 0.5 },
+  joinBannerLogin:   { color: C.accent, fontSize: 13, fontWeight: '700', textAlign: 'center' },
 
   section:      { gap: 8 },
   sectionLabel: { color: C.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' },

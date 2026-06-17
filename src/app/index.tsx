@@ -1,6 +1,6 @@
 import { Session } from '@supabase/supabase-js'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView, Platform } from 'react-native'
 import { Feather } from '@expo/vector-icons'
@@ -98,12 +98,18 @@ export default function AuthScreen() {
   const [onboardingSeen, setOnboardingSeen] = useState<boolean | null>(null)
   const [authError, setAuthError] = useState('')
   const [authSuccess, setAuthSuccess] = useState('')
+  const { signup } = useLocalSearchParams<{ signup?: string }>()
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
     supabase.auth.onAuthStateChange((_event, session) => setSession(session))
     AsyncStorage.getItem(ONBOARDING_KEY).then(value => setOnboardingSeen(value === 'true'))
   }, [])
+
+  // Arriving from a shared profile with ?signup=1 → straight to the register form
+  useEffect(() => {
+    if (signup) setMode('register')
+  }, [signup])
 
   useEffect(() => {
     if (session) router.replace('/(tabs)/map')
@@ -157,11 +163,11 @@ export default function AuthScreen() {
     setOnboardingSeen(true)
   }
 
-  if (onboardingSeen === null) {
+  if (onboardingSeen === null && !signup) {
     return <View style={styles.container} />
   }
 
-  if (!onboardingSeen && !session) {
+  if (!onboardingSeen && !session && !signup) {
     return <Onboarding C={C} onDone={finishOnboarding} />
   }
 
