@@ -25,6 +25,8 @@ type ConvRow = {
   lastMsgIsRequest: boolean
   hasRequest: boolean
   requestStatus: string | null
+  requestHostId: string | null
+  requestGuestId: string | null
 }
 
 type RequestData = {
@@ -67,6 +69,8 @@ type MsgRow = {
   request: RequestData | null
   created_at: string
 }
+
+type ConversationFilter = 'all' | 'knocks' | 'hosting'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -115,12 +119,28 @@ const PRICING_LABELS: Record<string, string> = {
   fixed: 'Paid',
 }
 
-function makeStatus(C: ThemeColors): Record<string, { label: string; color: string; bg: string }> {
+function makeStatus(C: ThemeColors): Record<string, { label: string; color: string; bg: string; border?: string }> {
   return {
-    PENDING:  { label: 'Pending',  color: C.text,  bg: C.accent },
-    ACCEPTED: { label: 'Accepted', color: C.white, bg: C.success },
-    REJECTED: { label: 'Rejected', color: C.white, bg: C.error },
+    PENDING:  { label: 'Pending',  color: C.warning, bg: C.warningSoft, border: C.warningBorder },
+    ACCEPTED: { label: 'Accepted', color: C.success, bg: C.successSoft, border: C.successBorder },
+    REJECTED: { label: 'Rejected', color: C.error, bg: C.errorSoft, border: C.errorBorder },
   }
+}
+
+function conversationDirection(conv: ConvRow, userId?: string | null): ConversationFilter {
+  if (!userId || !conv.hasRequest) return 'all'
+  if (conv.requestGuestId === userId) return 'knocks'
+  if (conv.requestHostId === userId) return 'hosting'
+  return 'all'
+}
+
+function conversationStatus(C: ThemeColors, conv: ConvRow, isUnread: boolean, userId?: string | null) {
+  const direction = conversationDirection(conv, userId)
+  const pendingHosting = direction === 'hosting' && (conv.requestStatus ?? 'PENDING') === 'PENDING'
+  if (pendingHosting && isUnread) {
+    return { label: 'New request', color: C.info, bg: C.infoSoft, border: C.infoBorder }
+  }
+  return makeStatus(C)[conv.requestStatus || 'PENDING'] || makeStatus(C).PENDING
 }
 
 // For DATE strings (YYYY-MM-DD) — manual parse to avoid timezone shifts
@@ -375,6 +395,7 @@ export default function RequestsScreen() {
   const [reviewBody, setReviewBody] = useState('')
   const [submittingReview, setSubmittingReview] = useState(false)
   const [respondingFor, setRespondingFor] = useState<string | null>(null)
+  const [activeFilter, setActiveFilter] = useState<ConversationFilter>('all')
   const flatRef = useRef<FlatList<MsgRow>>(null)
   const channelRef = useRef<any>(null)
   const autoOpenedRef = useRef<string | null>(null)
@@ -384,6 +405,7 @@ export default function RequestsScreen() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) { setCurrentUser(user); loadConvs(user.id) }
+      else setLoading(false)
     })
   }, [])
 
@@ -442,7 +464,7 @@ export default function RequestsScreen() {
         .in('conversation_id', convIds)
         .order('created_at', { ascending: false }),
       supabase.from('stay_requests')
-        .select('conversation_id, status, created_at')
+        .select('conversation_id, status, host_id, guest_id, created_at')
         .in('conversation_id', convIds)
         .order('created_at', { ascending: false }),
     ])
@@ -453,6 +475,8 @@ export default function RequestsScreen() {
     const lastMsgMap: Record<string, { body: string | null; sender_id: string; request_id: string | null }> = {}
     const hasRequestMap: Record<string, boolean> = {}
     const requestStatusMap: Record<string, string> = {}
+    const requestHostMap: Record<string, string> = {}
+    const requestGuestMap: Record<string, string> = {}
     lastMsgs?.forEach((m: any) => {
       if (!lastMsgMap[m.conversation_id]) {
         lastMsgMap[m.conversation_id] = { body: m.body, sender_id: m.sender_id, request_id: m.request_id }
@@ -462,6 +486,8 @@ export default function RequestsScreen() {
     requestRows?.forEach((r: any) => {
       if (r.conversation_id && !requestStatusMap[r.conversation_id]) {
         requestStatusMap[r.conversation_id] = r.status
+        requestHostMap[r.conversation_id] = r.host_id
+        requestGuestMap[r.conversation_id] = r.guest_id
       }
       if (r.conversation_id) hasRequestMap[r.conversation_id] = true
     })
@@ -481,6 +507,8 @@ export default function RequestsScreen() {
         lastMsgIsRequest: !!last?.request_id,
         hasRequest: !!hasRequestMap[c.id],
         requestStatus: requestStatusMap[c.id] ?? null,
+        requestHostId: requestHostMap[c.id] ?? null,
+        requestGuestId: requestGuestMap[c.id] ?? null,
       }
     }))
     setLoading(false)
@@ -915,11 +943,14 @@ export default function RequestsScreen() {
   }
 
   // ── Conversations list ────────────────────────────────────────────────────
+  const filteredConvs = convs.filter(conv => {
+    if (activeFilter === 'all') return true
+    return conversationDirection(conv, currentUser?.id) === activeFilter
+  })
 
   return (
     <View style={styles.container}>
       <AppHeader right={<UserChip />} />
-
 
       {loading ? (
         <View style={styles.center}>
@@ -933,7 +964,41 @@ export default function RequestsScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.convList}>
-          {convs
+          <View style={styles.listHeader}>
+            <Text style={styles.listTitle}>Messages</Text>
+            <View style={styles.segmented}>
+              {([
+                ['all', 'All'],
+                ['knocks', 'My knocks'],
+                ['hosting', 'Hosting'],
+              ] as [ConversationFilter, string][]).map(([key, label]) => {
+                const active = activeFilter === key
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.segment, active && styles.segmentActive]}
+                    onPress={() => setActiveFilter(key)}
+                  >
+                    <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          </View>
+
+          {filteredConvs.length === 0 ? (
+            <View style={styles.filteredEmpty}>
+              <Text style={styles.filteredEmptyText}>
+                {activeFilter === 'knocks'
+                  ? 'No knocks sent yet.'
+                  : activeFilter === 'hosting'
+                    ? 'No hosting requests yet.'
+                    : 'No messages yet.'}
+              </Text>
+            </View>
+          ) : filteredConvs
             .map(conv => {
               const name = conv.other.full_name || 'Rider'
               const isUnread = !!conv.lastMsgSenderId
@@ -942,6 +1007,7 @@ export default function RequestsScreen() {
               const preview = conv.lastMsgIsRequest
                 ? '🤞 Stay request'
                 : (conv.lastMsgBody ?? '')
+              const status = conversationStatus(C, conv, isUnread, currentUser?.id)
               return (
                 <TouchableOpacity
                   key={conv.id}
@@ -954,7 +1020,7 @@ export default function RequestsScreen() {
                         <Image source={{ uri: conv.other.avatar_url }} style={styles.convAvatarImg} />
                       ) : (
                         <View style={styles.convAvatar}>
-                          <Text style={styles.convAvatarText}>{name.charAt(0).toUpperCase()}</Text>
+                          <Text style={styles.convAvatarText}>{name.split(' ').map(part => part.charAt(0)).join('').slice(0, 2).toUpperCase()}</Text>
                         </View>
                       )}
                       {isUnread && <View style={styles.unreadDot} />}
@@ -971,8 +1037,8 @@ export default function RequestsScreen() {
                       ) : null}
                     </View>
                     {conv.hasRequest && (
-                      <View style={styles.convStatusBadge}>
-                        <Text style={styles.convStatusText}>{makeStatus(C)[conv.requestStatus || 'PENDING']?.label || 'Pending'}</Text>
+                      <View style={[styles.convStatusBadge, { backgroundColor: status.bg, borderColor: status.border }]}>
+                        <Text style={[styles.convStatusText, { color: status.color }]}>{status.label}</Text>
                       </View>
                     )}
                   </View>
@@ -996,25 +1062,6 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   },
   title: { color: C.text, fontSize: 24, fontWeight: '900', letterSpacing: 1, flex: 1 },
   titleAccent: { color: C.accent },
-  tabBar: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    gap: 8,
-    backgroundColor: C.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: C.border,
-  },
-  tabBarBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 100,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  tabBarBtnActive: { backgroundColor: C.accent, borderColor: C.accent },
-  tabBarBtnText: { color: C.textDim, fontSize: 13, fontWeight: '600' },
-  tabBarBtnTextActive: { color: C.white, fontWeight: '700' },
   back: { color: C.accent, fontSize: 24, fontWeight: '700', paddingRight: 4 },
   chatAvatar: {
     width: 38, height: 38, borderRadius: 19,
@@ -1086,47 +1133,101 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     width: '100%',
     maxWidth: 920,
     alignSelf: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 18,
+    paddingHorizontal: 18,
+    paddingTop: 16,
     paddingBottom: 24,
-    gap: 12,
+    gap: 8,
+  },
+  listHeader: {
+    gap: 14,
+    paddingBottom: 8,
+  },
+  listTitle: {
+    color: C.text,
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: 0,
+  },
+  segmented: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minHeight: 46,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: C.border,
+    backgroundColor: C.surface,
+    padding: 4,
+  },
+  segment: {
+    flex: 1,
+    minHeight: 36,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  segmentActive: {
+    backgroundColor: C.accent,
+  },
+  segmentText: {
+    color: C.textMuted,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0,
+  },
+  segmentTextActive: {
+    color: C.white,
+  },
+  filteredEmpty: {
+    paddingVertical: 32,
+    alignItems: 'center',
+  },
+  filteredEmptyText: {
+    color: C.textDim,
+    fontSize: 13,
+    lineHeight: 20,
   },
   convRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
+    flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 0, paddingVertical: 0,
   },
   convCard: {
     flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: C.surface, borderRadius: 22,
-    paddingHorizontal: 16, paddingVertical: 15,
-    borderWidth: 1, borderColor: C.border,
+    minHeight: 78,
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: C.border,
   },
   convAvatarWrap: { position: 'relative' },
   convAvatar: {
-    width: 48, height: 48, borderRadius: 24,
-    backgroundColor: C.elevated, alignItems: 'center', justifyContent: 'center',
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center',
   },
   convAvatarImg: {
-    width: 48, height: 48, borderRadius: 24,
+    width: 52, height: 52, borderRadius: 26,
   },
-  convAvatarText: { color: C.accent, fontWeight: '800', fontSize: 17 },
+  convAvatarText: { color: C.white, fontWeight: '900', fontSize: 17 },
   unreadDot: {
-    position: 'absolute', top: 0, right: 0,
+    position: 'absolute', top: 1, right: 1,
     width: 12, height: 12, borderRadius: 6,
     backgroundColor: C.accent, borderWidth: 2, borderColor: C.bg,
   },
-  convInfo: { flex: 1, gap: 3 },
+  convInfo: { flex: 1, gap: 4, minWidth: 0 },
   convTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  convName: { color: C.text, fontWeight: '600', fontSize: 15 },
-  convNameUnread: { fontWeight: '800' },
+  convName: { color: C.text, fontWeight: '800', fontSize: 16, flex: 1, paddingRight: 8 },
+  convNameUnread: { fontWeight: '900' },
   convTime: { color: C.textDim, fontSize: 12 },
   convPreview: { color: C.textDim, fontSize: 13, lineHeight: 18 },
   convPreviewUnread: { color: C.textMuted, fontWeight: '600' },
   convStatusBadge: {
-    borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4,
-    backgroundColor: C.accent,
+    borderRadius: 100,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderWidth: 1,
+    maxWidth: 104,
   },
-  convStatusText: { color: C.white, fontSize: 11, fontWeight: '700' },
+  convStatusText: { fontSize: 11, fontWeight: '800' },
 
   reviewCard: {
     backgroundColor: C.surface, borderRadius: 20, borderWidth: 1, borderColor: C.buddyBorder,
