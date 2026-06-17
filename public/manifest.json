@@ -1,0 +1,25 @@
+{
+  "name": "TWOWHEELCOME",
+  "short_name": "Twowheelcome",
+  "description": "A safe night for your bike and you — from riders to riders.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F2EBDD",
+  "theme_color": "#F2EBDD",
+  "icons": [
+    {
+      "src": "/logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    }
+  ]
+}

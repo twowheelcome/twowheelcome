@@ -2,7 +2,7 @@ import { Session } from '@supabase/supabase-js'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { router } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
-import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView } from 'react-native'
+import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView, Platform } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import { supabase } from '../lib/supabase'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
@@ -139,6 +139,19 @@ export default function AuthScreen() {
     setLoading(false)
   }
 
+  async function handleForgotPassword() {
+    setAuthError(''); setAuthSuccess('')
+    if (!email.trim()) { setAuthError('Enter your email above first, then tap “Forgot your password?”.'); return }
+    setLoading(true)
+    const redirectTo = Platform.OS === 'web' && typeof window !== 'undefined'
+      ? `${window.location.origin}/reset-password`
+      : 'twowheelcome://reset-password'
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo })
+    if (error) setAuthError(error.message)
+    else setAuthSuccess('If that email is registered, a reset link is on its way. Check your inbox.')
+    setLoading(false)
+  }
+
   async function finishOnboarding() {
     await AsyncStorage.setItem(ONBOARDING_KEY, 'true')
     setOnboardingSeen(true)
@@ -244,7 +257,7 @@ export default function AuthScreen() {
         ) : null}
 
         {mode === 'login' && (
-          <TouchableOpacity style={styles.forgotWrap}>
+          <TouchableOpacity style={styles.forgotWrap} onPress={handleForgotPassword} disabled={loading}>
             <Text style={styles.forgotText}>Forgot your password?</Text>
           </TouchableOpacity>
         )}

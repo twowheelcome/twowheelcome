@@ -22,6 +22,10 @@ function defaultArrivalTime() {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+function placeLabel(city?: string | null, country?: string | null): string {
+  return [city, country].filter(Boolean).join(', ') || 'Location on the map'
+}
+
 export default function MapScreen() {
   const { knockHost } = useLocalSearchParams<{ knockHost?: string }>()
   const C = useTheme()
@@ -203,10 +207,21 @@ export default function MapScreen() {
       let uploadedPhotoUrl: string | null = null
       if (photoFile) {
         const ext = photoFile.name.split('.').pop() || 'jpg'
-        const name = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-        const { error: upErr } = await supabase.storage.from('request-photos').upload(name, photoFile)
-        if (!upErr) {
-          uploadedPhotoUrl = supabase.storage.from('request-photos').getPublicUrl(name).data.publicUrl
+        let upErr: unknown = null
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const name = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+          const { error } = await supabase.storage.from('request-photos').upload(name, photoFile)
+          if (!error) {
+            uploadedPhotoUrl = supabase.storage.from('request-photos').getPublicUrl(name).data.publicUrl
+            upErr = null
+            break
+          }
+          upErr = error
+        }
+        if (upErr) {
+          setSendError("Couldn't upload your bike photo. Check your connection and try again — or remove the photo to send without it.")
+          setSending(false)
+          return
         }
       }
 
@@ -302,7 +317,7 @@ export default function MapScreen() {
               </View>
               <View style={styles.cardInfo}>
                 <Text style={styles.cardName}>{selected.profiles?.full_name || 'Anonymous Rider'}</Text>
-                <Text style={styles.cardLocation}>📍 {selected.location_city}, {selected.location_country}</Text>
+                <Text style={styles.cardLocation}>📍 {placeLabel(selected.location_city, selected.location_country)}</Text>
               </View>
             </View>
             <SafetyBlock parkings={selectedParkings} />
@@ -613,7 +628,7 @@ export default function MapScreen() {
                 </View>
                 <View style={{ flex: 1, gap: 3 }}>
                   <Text style={{ color: C.text, fontSize: 18, fontWeight: '900' }}>{selected.profiles?.full_name || 'Anonymous Rider'}</Text>
-                  <Text style={{ color: C.textMuted, fontSize: 13 }}>📍 {selected.location_city}, {selected.location_country}</Text>
+                  <Text style={{ color: C.textMuted, fontSize: 13 }}>📍 {placeLabel(selected.location_city, selected.location_country)}</Text>
                   {selected.avg_rating != null && (
                     <Text style={{ color: C.accent, fontSize: 13, fontWeight: '700' }}>
                       {'★'.repeat(Math.round(selected.avg_rating))}{'☆'.repeat(5 - Math.round(selected.avg_rating))} {selected.avg_rating.toFixed(1)} · {selected.review_count} {selected.review_count === 1 ? 'stay' : 'stays'}
@@ -713,7 +728,7 @@ export default function MapScreen() {
                       <Text style={styles.cardRating}>★ {host.avg_rating.toFixed(1)} <Text style={styles.cardRatingCount}>({host.review_count})</Text></Text>
                     )}
                   </View>
-                  <Text style={styles.cardLocation}>📍 {host.location_city}, {host.location_country}</Text>
+                  <Text style={styles.cardLocation}>📍 {placeLabel(host.location_city, host.location_country)}</Text>
                 </View>
                 {hostPricings.includes('free') && (
                   <View style={[styles.pricePill, { borderColor: C.successBorder, backgroundColor: C.successSoft }]}>

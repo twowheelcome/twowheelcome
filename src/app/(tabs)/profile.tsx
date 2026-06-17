@@ -409,10 +409,10 @@ export default function ProfileScreen() {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/history')}>
             <View style={styles.menuTextWrap}>
               <Text style={styles.menuTitle}>History</Text>
-              <Text style={styles.menuSub}>View history</Text>
+              <Text style={styles.menuSub}>Your past stays</Text>
             </View>
             <View style={styles.menuIcon}>
               <Feather name="clock" size={18} color={C.accent} />
