@@ -1,56 +1,94 @@
-# TWOWHEELCOME — Handoff (2026-06-18)
+# TWOWHEELCOME — Handoff (noční běh, 2026-06-18)
 
-Stav pro navázání v čerstvé session. App běží jako **web** (Expo Router static export → Vercel, doména `www.twowheelcome.com`). Backend Supabase (project ref `igrmxzvnadqckxjachdc`). DB se spravuje migracemi v `supabase/migrations/`; na živou DB je lze pustit přes Supabase **access token** uloženy v macOS Keychain (`security find-generic-password -s "Supabase CLI" -w`) a Management API `POST https://api.supabase.com/v1/projects/<ref>/database/query`.
+Krátké shrnutí pro Petra je úplně dole („Co ráno otestovat"). Tahle část je technická,
+pro navázání v další session.
 
-## Tip pro novou session
-- Reálnou app UI mezi dvěma účty v prohlížeči **nelze spolehlivě reprodukovat** (vstříknutá session nedostává realtime; localhost je v browser MCP blokovaný; heslo do formuláře zadávat nesmím). Ověřuj přes **Node s reálnými přihlášenými klienty** proti živé DB (vytvoř testovací účty přes token, signUp + confirm `email_confirmed_at`, signIn). Testovací data jsou jednorázová, ukliď po sobě.
+App běží jako **web** (Expo Router static export → Vercel, doména `www.twowheelcome.com`).
+Backend **Supabase** (project ref `igrmxzvnadqckxjachdc`). Migrace v `supabase/migrations/`.
+Na živou DB i edge funkce se dostaneš přes **Supabase access token** v macOS Keychain:
+`security find-generic-password -s "Supabase CLI" -w`. SQL na živou DB jde přes Management
+API `POST https://api.supabase.com/v1/projects/<ref>/database/query`. Edge funkce se
+nasazují `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy <fn> --project-ref <ref> --use-api`
+(funguje bez Dockeru).
 
-## Aktuální model (DŮLEŽITÁ ZMĚNA)
-**Konverzace jsou nově vázané na konkrétní místo hostitele** (per-location): jedna konverzace = dvojice jezdců × jedno `host_location`. `conversations.location_id`, štítek místa v seznamu i v hlavičce chatu, recenze vázané na konkrétní pobyt (`reviewRequest` param).
+## Model (důležité)
+**Konverzace jsou vázané na konkrétní místo hostitele** (per-location): jedna konverzace =
+dvojice jezdců × jedno `host_location`. Vynuceno triggery + RLS (`validate_conversation_write`,
+`validate_stay_request_write`, `validate_message_request`). Recenze vázané na konkrétní pobyt.
 
-DB to vynucuje **triggery + RLS**:
-- `validate_conversation_write` — seřazení userů (`user_a < user_b`), místo patří jednomu z účastníků, neměnnost účastníků/místa.
-- `validate_stay_request_write` — INSERT jen PENDING, guest≠host, validní data, místo patří hostiteli, konverzace sedí; UPDATE jen status PENDING→ACCEPTED/REJECTED a **jen hostitelem**.
-- `validate_message_request` — zpráva se request_id musí být ve stejné konverzaci.
+---
 
-## Hotové a ověřené (na živé DB)
-- **Per-místo model funguje end-to-end** (Node, reálné účty): místo → konverzace → žádost → zpráva → host přijme; cizí nemůže přijmout (RLS).
-- **Realtime doručování jede** na novém modelu: host s otevřenou konverzací dostane živě zprávy od guesta (i dvě po sobě). Ověřeno `messages-stream` kanálem.
-- **Bezpečnost (anon test):** žádosti/zprávy/konverzace = prázdno; `profiles.push_token` = 401 (column-level grant); přesné GPS skryté; veřejný profil + přibližná poloha čitelné.
-- **Host_locations „id null" blocker** opraven (klient generuje UUID nové lokaci) — uložení prvního i druhého místa OK i pod novou RLS.
-- **Mapa pro výběr polohy** zvětšena na 400 px.
-- **Chat append fix (render):** příchozí zprávu připojuje `useEffect([incomingMsg, selected])` přes živý stav `selected` (ne přes ref). Realtime + logika ověřené; **vizuálně v reálném UI neověřeno** (viz limit nahoře).
-- **Realtime publication:** `messages` i `stay_requests` v `supabase_realtime` (živý append i živý accept/reject).
+## ✅ Ověřeno NAOSTRO dnes v noci (živá DB, reální přihlášení klienti)
 
-## Migrace — APLIKOVANÉ na živou DB
-- `secure_profiles_storage.sql` — profiles RLS + column-grants (skryt push_token), storage owner-folder politiky.
-- `security_location_conversations.sql` — **TRUNCATE testovacích dat** (konverzace/zprávy/recenze/žádosti, schválené), per-location konverzace, triggery, RLS na conversations/messages/stay_requests/reviews/host_locations, nový view `host_locations_public` (bez `notes`), tabulka `request_notification_events`.
-- `realtime_publication.sql` — messages + stay_requests do publication.
-- (Starší migrace v repu jsou historické; živý stav RLS řídí `security_location_conversations.sql`.)
-- `profiles` a `host_locations` se NETRUNCATEovaly — Petrovy účty i jeho inzeráty zůstaly.
+- **CHAT — hlavní cíl — realtime funguje.** Otestováno dvěma reálnými přihlášenými klienty
+  přes Node, přesně s tím nastavením kanálu jako appka (jeden kanál `messages-stream`, dvě
+  postgres_changes vazby):
+  - **Živé naskočení zprávy** od druhého účastníka v otevřené konverzaci → ✅ PASS.
+  - **Živá změna stavu** (host přijme/odmítne → druhé straně se v otevřeném chatu změní
+    karta) → ✅ PASS.
+  - Spuštěno 4×, prošlo 3×; jediné selhání byl úplně první „studený" běh (první událost se
+    občas ztratí, než se realtime spojení plně ustaví). V appce je spojení trvale otevřené
+    a seznam se navíc obnovuje při přepnutí na záložku, takže je vůči tomu odolná.
+  - Regresní test je v repu: `node scripts/chat-realtime-autotest.mjs` (potřebuje token,
+    sám si vytvoří i smaže testovací účty). Manuální verze pro dva reálné účty:
+    `scripts/chat-realtime-test.mjs`.
+  - Pozn.: samotné React vykreslení nejde ověřit z Node, ale append cesta v kódu je
+    správně (příchozí zprávu připojuje `useEffect([incomingMsg, selected])` přes živý stav
+    otevřené konverzace) a doručení dat je prokázané. Petr ať to přesto proklikne (níže).
 
-## NEAPLIKOVANÉ / TODO pro Petra
-- **Edge funkce NEJSOU nasazené** (chybí Supabase CLI / deploy funkcí). Kód je commitnutý, ale na Supabase běží STARÉ verze:
-  - `notify-request` (nová = idempotence přes `request_notification_events`),
-  - `notify-review` (nová = `reviewRequest` v URL),
-  - `delete-account` (nová = anonymizace odcházejícího účastníka + úklid storage; **stará verze nesedí na nový model** — mazání účtu spoléhej až po nasazení nové).
-  - Nasadit: `supabase functions deploy notify-request notify-review delete-account` (Supabase CLI + login).
-- **Legal stránky** (`privacy.tsx`, `terms.tsx`) — Petr chtěl doplnit firemní/GDPR údaje (správce, adresa, právní základ, retence, dozorový úřad). Neměnit bez jeho podkladů.
-- **Reset hesla** — v Supabase Auth povolit redirect URL `…/reset-password` (jinak odkaz z e-mailu míří jinam).
+- **Klient ↔ DB jsou v souladu.** Zakládání knocku (mapa → konverzace → žádost → zpráva)
+  přesně odpovídá novým triggerům (seřazení `user_a < user_b`, `location_id`, status PENDING).
+- **Živá DB 100% odpovídá migracím v repu** (ověřeno introspekcí): 3 validační triggery,
+  RLS politiky (conversations 3 / messages 2 / stay_requests 3 / reviews 2 / profiles 3 /
+  host_locations 1), `conversation_reads` i `request_notification_events` existují, `buddies`
+  dropnuté, view `host_locations_public`, cron `notify-review-daily` (10:00).
+- **Bezpečnost (anon test):** `host_locations_public` vrací jen zaokrouhlené souřadnice;
+  `profiles.push_token` = „permission denied" (nečitelné); veřejné jméno čitelné.
+- **Build / typy / lint procházejí.** Žádné polotovary, debug logy ani mrtvá tlačítka.
 
-## Chat — co přesně se zkoušelo a co zbývá
-Problém: v otevřené konverzaci nová zpráva nenaskakovala živě (tečka nepřečteno ano). Postupně: (1) RLS realtime token, (2) sjednocení dvou kanálů do jednoho `messages-stream`, (3) pojistka proti duplicitnímu subscribe, (4) **přesun append z refu do `useEffect[incomingMsg, selected]`** (nynější stav). Realtime delivery + handler logika prokázané v Node; samotné React vykreslení v reálné app nešlo reprodukovat.
-**Zbývá ověřit (Petr, dvě reálné session na NOVÉM modelu):** otevřít stejnou per-místo konverzaci na obou, poslat zprávu → musí naskočit živě + odscrollovat dolů; a živý accept/reject (host přijme → guestovi se v otevřeném chatu změní stav karty). Pokud i teď NE: další podezřelý je React render/instance — doporučený krok je **debug zápis z handleru do DB tabulky** (čte se přes token), aby se zachytily reálné runtime hodnoty z Petrovy session.
+## ✅ Opraveno / nasazeno dnes v noci
 
-## Co musí Petr proklikat pod dvěma účty
-1. Chat: živý append nové zprávy + scroll dolů + tečka nepřečteno.
-2. Živý accept/reject: hostitel přijme → guest vidí změnu stavu v otevřeném chatu.
-3. Become a host: uložit první místo, přidat druhé (id-blocker), použitelnost větší mapy.
-4. Knock: zaklepat na konkrétní místo → konverzace vázaná na to místo, štítek místa sedí.
-5. Recenze: po přijatém ukončeném pobytu výzva k hodnocení vázaná na ten pobyt.
-6. Mazání účtu — až po nasazení nové edge funkce.
+- **Edge funkce NASAZENÉ** (předtím byly podle starého handoffu nenasazené). Nasadil jsem
+  aktuální commitnutý kód všech tří: `delete-account`, `notify-request`, `notify-review`.
+  Tím odpadlo riziko, že stará `delete-account` nesedí na nový model.
+  - ⚠️ Mazání účtu jsem **neinvokoval** (je destruktivní). Petr ať otestuje smazání účtu
+    s jednorázovým účtem.
+- **NOVÝ FIX — profil se nově zakládá automaticky při registraci.** Našel jsem reálný
+  nedostatek: na `auth.users` nebyl žádný trigger, takže nový uživatel s potvrzením e-mailu
+  končil **bez profilu a bez jména** (jméno z registrace se ztratilo). 2 z 12 účtů profil
+  neměly. Přidal jsem migraci `add_profile_autocreate.sql` (trigger `on_auth_user_created`
+  + backfill), **aplikoval na živou DB** a ověřil: registrace „Jan Novák" → profil se jménem
+  vznikne sám. Po backfillu má profil všech 12 účtů. (Commitnuto.)
 
-## Kde přesně pokračovat
-1. Nasadit edge funkce (viz TODO).
-2. Po Petrově testu chatu: jestli živý append jede → hotovo; jestli ne → DB-debug capture z handleru + analýza render/instance.
-3. Doplnit legal údaje (čeká na Petra).
+## Body ze zadání
+1. Soulad klient ↔ DB (priorita č. 1): ✅ v pořádku.
+2. host_locations „id null" blocker: ✅ vyřešeno dřív (klient generuje UUID).
+3. Mapa při zakládání místa moc malá: ✅ zvětšená na 400 px přes šířku.
+4. Chat živé naskočení + scroll: ✅ realtime ověřen naostro (viz výše).
+
+---
+
+## ⚠️ JEDINÝ otevřený launch blocker (musí vyřešit Petr — není to kód)
+**Potvrzování e-mailu je zapnuté → bez funkčního odesílání e-mailů (SMTP) se nový uživatel
+nepřihlásí.** Při registraci appka říká „Check your email to confirm your account". Když SMTP
+není nastavené, e-mail nedorazí. Možnosti (rozhodnutí na Petrovi):
+- **A) Nastavit SMTP** v Supabase (Auth → Emails) — doporučeno; fungují i resety hesla.
+- **B) Dočasně vypnout potvrzování e-mailu** (Auth → Providers → Email → „Confirm email" off)
+  — lidé se přihlásí hned, ale bez ověření e-mailu.
+- Související: v Auth povolit redirect URL `…/reset-password` (jinak reset míří jinam).
+
+## Menší TODO (nízká priorita)
+- **Legal stránky** (`privacy.tsx`, `terms.tsx`) — doplnit firemní/GDPR údaje (čeká na Petrovy
+  podklady; neměnit bez nich).
+- Jeden nepotvrzený testovací účet `nighttest_…@example.com` zůstal z mého prvního zkoušení
+  (neškodný, nejde se s ním přihlásit) — případně smazat v Supabase → Auth → Users.
+
+## Co ráno otestovat pod dvěma účty
+1. **Chat:** otevřít stejnou konverzaci na dvou účtech, napsat z jednoho → u druhého musí
+   zpráva naskočit živě a okno odscrollovat dolů; tečka „nepřečteno" svítí a po otevření zhasne.
+2. **Accept/reject živě:** host přijme/odmítne → druhé straně se v otevřeném chatu změní stav.
+3. **Become a host:** uložit první místo, přidat druhé, pohodlně napíchnout bod na (větší) mapě.
+4. **Knock:** zaklepat na konkrétní místo → konverzace vázaná na to místo, štítek místa sedí.
+5. **Jméno:** nový registrovaný uživatel má po přihlášení rovnou své jméno (ne „Rider").
+6. **Recenze:** po přijatém ukončeném pobytu výzva k hodnocení vázaná na ten pobyt.
+7. **Mazání účtu** (jednorázovým účtem) — funkce je nově nasazená.
