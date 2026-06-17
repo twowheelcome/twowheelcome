@@ -44,6 +44,7 @@ export default function MapScreen() {
   const fileInputRef = useRef<any>(null)
   const handledKnockHostRef = useRef<string | null>(null)
   const currentUserIdRef = useRef<string | null>(null)
+  const sendingRef = useRef(false)
   const [arrivalChip, setArrivalChip] = useState<'tonight' | 'tomorrow' | 'other'>('tonight')
   const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().split('T')[0])
   const [departureDate, setDepartureDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0])
@@ -198,6 +199,7 @@ export default function MapScreen() {
   }
 
   async function sendRequest() {
+    if (sendingRef.current) return  // guard against a double-tap creating two requests
     if (!currentUser || !selected) return
     const userId = currentUser.id
     if (currentUserIdRef.current !== userId) {
@@ -209,6 +211,7 @@ export default function MapScreen() {
       return
     }
     setSendError('')
+    sendingRef.current = true
     setSending(true)
     try {
       let uploadedPhotoUrl: string | null = null
@@ -300,6 +303,7 @@ export default function MapScreen() {
     } catch (e: any) {
       setSendError(e?.message || 'Unexpected error')
     } finally {
+      sendingRef.current = false
       setSending(false)
     }
   }

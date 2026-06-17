@@ -404,6 +404,8 @@ export default function RequestsScreen() {
   const autoOpenedRef = useRef<string | null>(null)
   const currentUserIdRef = useRef<string | null>(null)
   const loadUserIdRef = useRef<string | null>(null)
+  const respondingRef = useRef(false)   // guard against double-tap accept/decline
+  const sendingMsgRef = useRef(false)   // guard against double-tap send message
 
   const { openConv: openConvParam } = useLocalSearchParams<{ openConv?: string }>()
 
@@ -717,9 +719,11 @@ export default function RequestsScreen() {
   }, [])
 
   async function sendMessage() {
+    if (sendingMsgRef.current) return  // guard against a double-tap sending twice
     if (!text.trim() || !selected || !currentUser) return
     const userId = currentUser.id
     if (currentUserIdRef.current !== userId || (selected.user_a !== userId && selected.user_b !== userId)) return
+    sendingMsgRef.current = true
     setSending(true)
     const body = text.trim()
     const conversationId = selected.id
@@ -736,10 +740,12 @@ export default function RequestsScreen() {
       .single()
     if (error) {
       setText(body)
+      sendingMsgRef.current = false
       setSending(false)
       return
     }
     if (currentUserIdRef.current !== userId) {
+      sendingMsgRef.current = false
       setSending(false)
       return
     }
@@ -756,6 +762,7 @@ export default function RequestsScreen() {
       .from('conversations')
       .update({ last_message_at: new Date().toISOString() })
       .eq('id', conversationId)
+    sendingMsgRef.current = false
     setSending(false)
     // Sending always jumps to the bottom to show your own message.
     nearBottomRef.current = true
@@ -844,14 +851,15 @@ export default function RequestsScreen() {
   }
 
   async function respondToRequest(requestId: string, status: 'ACCEPTED' | 'REJECTED') {
-    if (respondingFor) return
+    if (respondingRef.current || respondingFor) return
     if (!currentUser || currentUserIdRef.current !== currentUser.id) return
     const userId = currentUser.id
     if (selected && selected.user_a !== userId && selected.user_b !== userId) return
     const currentReq = messages.find(m => m.request?.id === requestId)?.request
+    respondingRef.current = true
     setRespondingFor(requestId)
     const { error } = await supabase.from('stay_requests').update({ status }).eq('id', requestId)
-    if (error) { setRespondingFor(null); return }
+    if (error) { respondingRef.current = false; setRespondingFor(null); return }
     setMessages(prev => prev.map(m =>
       m.request?.id === requestId
         ? { ...m, request: { ...m.request!, status } }
@@ -900,6 +908,7 @@ export default function RequestsScreen() {
     setConvs(prev => prev.map(c =>
       c.id === selected?.id ? { ...c, requestStatus: status, hasRequest: true } : c
     ))
+    respondingRef.current = false
     setRespondingFor(null)
     setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100)
   }

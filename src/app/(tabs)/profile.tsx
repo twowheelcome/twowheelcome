@@ -7,7 +7,7 @@ import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { SafetyBlock } from '../../components/SafetyBlock'
-import { UserChip } from '../../components/UserChip'
+import { UserChip, refreshUserChip } from '../../components/UserChip'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 
 export default function ProfileScreen() {
@@ -97,6 +97,7 @@ export default function ProfileScreen() {
     if (error) { setAvatarError(error.message); return }
     setProfile((p: any) => ({ ...p, full_name: nameInput.trim() }))
     setEditingName(false)
+    refreshUserChip()
   }
 
   async function pickAvatar() {
@@ -133,6 +134,7 @@ export default function ProfileScreen() {
       const { error: dbErr } = await supabase.from('profiles').upsert({ id: user.id, avatar_url: url })
       if (dbErr) { setAvatarError(dbErr.message); return }
       setProfile((p: any) => ({ ...p, avatar_url: url }))
+      refreshUserChip()
     } catch (e: unknown) {
       setAvatarError(e instanceof Error ? e.message : 'Upload failed')
     } finally {

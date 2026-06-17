@@ -27,15 +27,20 @@ function publish(next: Partial<ChipState>) {
   _listeners.forEach(l => l(_state))
 }
 
-async function loadProfile(authUser?: AuthUserLike | null) {
+async function loadProfile(authUser?: AuthUserLike | null, force = false) {
   const currentUser = authUser ?? (await supabase.auth.getUser()).data.user
   if (!currentUser) { publish({ loggedIn: false, profile: null }); return }
-  if (_state.profile?.userId === currentUser.id) { publish({ loggedIn: true }); return }
+  if (!force && _state.profile?.userId === currentUser.id) { publish({ loggedIn: true }); return }
 
-  publish({ loggedIn: true, profile: null })
+  if (!_state.profile) publish({ loggedIn: true, profile: null })
   const { data } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', currentUser.id).single()
   const name = data?.full_name || currentUser.email?.split('@')[0] || 'Rider'
   publish({ loggedIn: true, profile: { userId: currentUser.id, name, avatarUrl: data?.avatar_url ?? null } })
+}
+
+// Call after the user edits their own profile (name/avatar) so the chip updates immediately.
+export function refreshUserChip() {
+  void loadProfile(undefined, true)
 }
 
 export function UserChip() {

@@ -130,9 +130,9 @@ export default function BecomeHostScreen() {
   async function save() {
     setSaveError('')
     setSaveOk(false)
-    const primary = locations[0]
-    if (!primary.pin) {
-      setSaveError('Click on the map at location #1 and select a position.')
+    const missingIdx = locations.findIndex(l => !l.pin)
+    if (missingIdx >= 0) {
+      setSaveError(`Location #${missingIdx + 1} has no pin yet — tap the map to set its position, or remove that location before saving.`)
       return
     }
     if (!currentUser) {
@@ -159,13 +159,14 @@ export default function BecomeHostScreen() {
       if (removedIds.length > 0) {
         const { data: linkedRequests, error: linkedError } = await supabase
           .from('stay_requests')
-          .select('location_id')
+          .select('location_id, status')
           .in('location_id', removedIds)
+          .in('status', ['PENDING', 'ACCEPTED'])
 
         if (linkedError) { setSaveError(linkedError.message); return }
         const blockedIds = new Set((linkedRequests || []).map((r: any) => r.location_id).filter(Boolean))
         if (blockedIds.size > 0) {
-          setSaveError('This location already has stay requests, so it cannot be removed. You can edit it instead.')
+          setSaveError('This location has active (pending or accepted) requests, so it cannot be removed yet. You can edit it instead.')
           return
         }
 
