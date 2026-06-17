@@ -83,8 +83,8 @@ dorazí (a nespadne do spamu). To je jediné, co z Node ověřit nejde.
 ## Menší TODO (nízká priorita)
 - **Legal stránky** (`privacy.tsx`, `terms.tsx`) — doplnit firemní/GDPR údaje (čeká na Petrovy
   podklady; neměnit bez nich).
-- Jeden nepotvrzený testovací účet `nighttest_…@example.com` zůstal z mého prvního zkoušení
-  (neškodný, nejde se s ním přihlásit) — případně smazat v Supabase → Auth → Users.
+- V DB je **8 testovacích účtů `@example.com`** z dřívějška (ne moje — moje noční testovací
+  data jsem uklidil). Před spuštěním je můžeš smazat v Supabase → Auth → Users.
 
 ## Co ráno otestovat pod dvěma účty
 1. **Chat:** otevřít stejnou konverzaci na dvou účtech, napsat z jednoho → u druhého musí
