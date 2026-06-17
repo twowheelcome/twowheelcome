@@ -8,8 +8,11 @@ import { useTheme } from '../lib/ThemeContext'
 type UserChipData = { userId: string; name: string; avatarUrl: string | null }
 type AuthUserLike = { id: string; email?: string | null }
 
-let _profile: UserChipData | null | undefined = undefined
-const _listeners = new Set<(profile: UserChipData | null) => void>()
+// loggedIn: null = unknown/loading, false = confirmed logged out, true = logged in
+type ChipState = { loggedIn: boolean | null; profile: UserChipData | null }
+
+let _state: ChipState = { loggedIn: null, profile: null }
+const _listeners = new Set<(state: ChipState) => void>()
 
 function getInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -19,44 +22,60 @@ function getInitials(name: string) {
   return initials.toUpperCase()
 }
 
-function publish(profile: UserChipData | null) {
-  _profile = profile
-  _listeners.forEach(l => l(profile))
+function publish(next: Partial<ChipState>) {
+  _state = { ..._state, ...next }
+  _listeners.forEach(l => l(_state))
 }
 
 async function loadProfile(authUser?: AuthUserLike | null) {
   const currentUser = authUser ?? (await supabase.auth.getUser()).data.user
-  if (!currentUser) { publish(null); return }
-  if (_profile?.userId === currentUser.id) return
+  if (!currentUser) { publish({ loggedIn: false, profile: null }); return }
+  if (_state.profile?.userId === currentUser.id) { publish({ loggedIn: true }); return }
 
-  publish(null)
+  publish({ loggedIn: true, profile: null })
   const { data } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', currentUser.id).single()
   const name = data?.full_name || currentUser.email?.split('@')[0] || 'Rider'
-  publish({ userId: currentUser.id, name, avatarUrl: data?.avatar_url ?? null })
+  publish({ loggedIn: true, profile: { userId: currentUser.id, name, avatarUrl: data?.avatar_url ?? null } })
 }
 
 export function UserChip() {
   const C = useTheme()
-  const [profile, setProfile] = useState<UserChipData | null>(_profile ?? null)
+  const [state, setState] = useState<ChipState>(_state)
 
   useEffect(() => {
-    _listeners.add(setProfile)
+    _listeners.add(setState)
     loadProfile()
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         loadProfile(session.user)
       } else {
-        publish(null)
+        publish({ loggedIn: false, profile: null })
       }
     })
     return () => {
-      _listeners.delete(setProfile)
+      _listeners.delete(setState)
       subscription.unsubscribe()
     }
   }, [])
 
-  if (!profile) return null
-  const initials = getInitials(profile.name)
+  // Logged out → always offer a way in. Never strand a visitor without a login entry.
+  if (state.loggedIn === false) {
+    return (
+      <TouchableOpacity
+        style={{ paddingHorizontal: 16, height: 40, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' }}
+        onPress={() => router.push('/')}
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Log in or sign up"
+      >
+        <Text style={{ color: C.white, fontSize: 13, fontWeight: '800', letterSpacing: 0.5 }}>Log in</Text>
+      </TouchableOpacity>
+    )
+  }
+
+  // Unknown/loading, or logged in but profile not fetched yet → render nothing (avoids a Login flash)
+  if (!state.profile) return null
+  const initials = getInitials(state.profile.name)
 
   return (
     <TouchableOpacity
@@ -66,8 +85,8 @@ export function UserChip() {
       accessibilityRole="button"
       accessibilityLabel="Open profile"
     >
-      {profile.avatarUrl ? (
-        <Image source={{ uri: profile.avatarUrl }} style={{ width: 40, height: 40 }} resizeMode="cover" />
+      {state.profile.avatarUrl ? (
+        <Image source={{ uri: state.profile.avatarUrl }} style={{ width: 40, height: 40 }} resizeMode="cover" />
       ) : (
         <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ color: C.white, fontSize: 12, fontWeight: '900' }}>{initials}</Text>
