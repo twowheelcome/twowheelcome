@@ -6,6 +6,7 @@ import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { SafetyBlock } from '../../components/SafetyBlock'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
+import { getBuddyState, sendBuddyRequest, acceptBuddy, type BuddyState } from '../../lib/buddies'
 
 const AMENITY_ICONS: Record<string, string> = {
   shower: '🚿', toilet: '🚽', kitchen: '🍳', laundry: '👕',
@@ -34,12 +35,34 @@ export default function PublicHostProfile() {
   const [reviewCount, setReviewCount] = useState(0)
   const [reviews, setReviews] = useState<any[]>([])
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+  const [myId, setMyId] = useState<string | null>(null)
+  const [buddyState, setBuddyState] = useState<BuddyState | null>(null)
+  const [buddyBusy, setBuddyBusy] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setIsLoggedIn(!!session))
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setIsLoggedIn(!!session))
+    supabase.auth.getSession().then(({ data: { session } }) => { setIsLoggedIn(!!session); setMyId(session?.user?.id ?? null) })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => { setIsLoggedIn(!!session); setMyId(session?.user?.id ?? null) })
     return () => subscription.unsubscribe()
   }, [])
+
+  // Load buddy relationship between me and this profile (only when viewing someone else).
+  useEffect(() => {
+    if (!myId || !id || myId === id) { setBuddyState(null); return }
+    getBuddyState(myId, id).then(setBuddyState)
+  }, [myId, id])
+
+  async function handleBuddyPress() {
+    if (!myId || !id || buddyBusy) return
+    setBuddyBusy(true)
+    if (buddyState === 'none') {
+      const { error } = await sendBuddyRequest(myId, id)
+      if (!error) setBuddyState('requested')
+    } else if (buddyState === 'incoming') {
+      const { error } = await acceptBuddy(myId, id)
+      if (!error) setBuddyState('buddies')
+    }
+    setBuddyBusy(false)
+  }
 
   function goToSignup() {
     router.push({ pathname: '/', params: { signup: '1' } })
@@ -148,6 +171,23 @@ export default function PublicHostProfile() {
           </View>
         </View>
 
+        {/* Buddy button — only when logged in and viewing someone else */}
+        {myId && id !== myId && buddyState && (
+          <TouchableOpacity
+            style={[styles.buddyBtn, buddyState === 'buddies' && styles.buddyBtnActive, buddyState === 'requested' && styles.buddyBtnMuted]}
+            onPress={handleBuddyPress}
+            disabled={buddyBusy || buddyState === 'requested' || buddyState === 'buddies'}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.buddyBtnText, buddyState === 'buddies' && styles.buddyBtnTextActive]}>
+              {buddyState === 'none' && '+ Add as buddy'}
+              {buddyState === 'requested' && 'Buddy request sent'}
+              {buddyState === 'incoming' && 'Accept buddy request'}
+              {buddyState === 'buddies' && '⭐ Buddies'}
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {/* Sign-up CTA — only for logged-out visitors (acquisition surface) */}
         {isLoggedIn === false && (
           <View style={styles.joinBanner}>
@@ -252,6 +292,12 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   meta:         { color: C.textMuted, fontSize: 13 },
 
   bio:          { color: C.text, fontSize: 15, lineHeight: 23 },
+
+  buddyBtn:          { borderWidth: 1, borderColor: C.buddyBorder, backgroundColor: C.buddySoft, borderRadius: 100, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  buddyBtnActive:    { backgroundColor: C.buddy, borderColor: C.buddy },
+  buddyBtnMuted:     { opacity: 0.7 },
+  buddyBtnText:      { color: C.buddy, fontSize: 14, fontWeight: '800', letterSpacing: 0.5 },
+  buddyBtnTextActive:{ color: C.white },
 
   joinBanner:        { backgroundColor: C.accentSoft, borderColor: C.accentBorder, borderWidth: 1, borderRadius: 22, padding: 18, gap: 10 },
   joinBannerTitle:   { color: C.text, fontSize: 18, fontWeight: '900' },

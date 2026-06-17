@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Platform, Modal } from 'react-native'
 import { supabase } from '../../lib/supabase'
-import { router, useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
 import { AppHeader } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
+import { getBuddyUserIds } from '../../lib/buddies'
 
 
 // Deterministic ~500m offset from host ID so markers don't jump on refresh
@@ -58,6 +59,7 @@ export default function MapScreen() {
   const [filterMinGuests, setFilterMinGuests] = useState(0)
   const [filterPricings, setFilterPricings] = useState<string[]>([])
   const [satelliteMap, setSatelliteMap] = useState(false)
+  const [buddyUserIds, setBuddyUserIds] = useState<Set<string>>(new Set())
 
   const activeCount = filterParkings.length + filterSleep.length + filterAmenities.length + (filterMinGuests > 0 ? 1 : 0) + filterPricings.length
 
@@ -92,6 +94,20 @@ export default function MapScreen() {
     }
     return true
   })
+
+  // Location ids whose owner is an accepted buddy — rendered as gold pins.
+  const buddyLocationIds = useMemo(
+    () => hosts.filter(h => buddyUserIds.has(h.user_id)).map(h => h.id),
+    [hosts, buddyUserIds]
+  )
+
+  // Refresh buddies when returning to the map (newly accepted buddies turn gold).
+  useFocusEffect(
+    useCallback(() => {
+      const uid = currentUserIdRef.current
+      if (uid) getBuddyUserIds(uid).then(ids => setBuddyUserIds(new Set(ids)))
+    }, [])
+  )
 
 
   const fetchHosts = useCallback(async () => {
@@ -153,6 +169,7 @@ export default function MapScreen() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       currentUserIdRef.current = user?.id ?? null
       setCurrentUser(user)
+      if (user) getBuddyUserIds(user.id).then(ids => setBuddyUserIds(new Set(ids)))
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const nextUser = session?.user ?? null
@@ -160,6 +177,8 @@ export default function MapScreen() {
       if (currentUserIdRef.current === nextUserId) return
       currentUserIdRef.current = nextUserId
       setCurrentUser(nextUser)
+      if (nextUser) getBuddyUserIds(nextUser.id).then(ids => setBuddyUserIds(new Set(ids)))
+      else setBuddyUserIds(new Set())
       setSelected(null)
       setShowHostProfile(false)
       setRequesting(false)
@@ -688,7 +707,7 @@ export default function MapScreen() {
           <HostMap
             hosts={filteredHosts}
             onHostSelect={(host: any) => { setSelected(host); setShowHostProfile(true) }}
-            buddyIds={[]}
+            buddyIds={buddyLocationIds}
             satellite={satelliteMap}
             onSatelliteToggle={() => setSatelliteMap(v => !v)}
           />

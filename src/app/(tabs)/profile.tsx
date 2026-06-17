@@ -8,6 +8,7 @@ import { router } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { SafetyBlock } from '../../components/SafetyBlock'
 import { UserChip, refreshUserChip } from '../../components/UserChip'
+import { getIncomingRequests, acceptBuddy } from '../../lib/buddies'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 
 export default function ProfileScreen() {
@@ -27,6 +28,7 @@ export default function ProfileScreen() {
   const [avatarError, setAvatarError] = useState<string | null>(null)
   const [reviews, setReviews] = useState<{ rating: number; body: string | null; reviewer_name: string | null; created_at: string }[]>([])
   const [pendingReviews, setPendingReviews] = useState(0)
+  const [incomingBuddies, setIncomingBuddies] = useState<{ id: string; name: string }[]>([])
   const [showQR, setShowQR] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -60,6 +62,7 @@ export default function ProfileScreen() {
     setAvatarError(null)
     setReviews([])
     setPendingReviews(0)
+    setIncomingBuddies([])
     setShowQR(false)
     setShowDeleteConfirm(false)
     setDeleting(false)
@@ -103,7 +106,25 @@ export default function ProfileScreen() {
     const reviewedSet = new Set((myRevs || []).map((r2: any) => r2.stay_request_id))
     setPendingReviews((endedStays || []).filter((s: any) => !reviewedSet.has(s.id)).length)
 
+    // Incoming buddy requests
+    const incoming = await getIncomingRequests(resolvedUser.id)
+    if (userIdRef.current !== resolvedUser.id) return
+    if (incoming.length) {
+      const { data: bp } = await supabase.from('profiles').select('id, full_name').in('id', incoming)
+      const nameMap: Record<string, string> = {}
+      bp?.forEach((p: any) => { nameMap[p.id] = p.full_name })
+      setIncomingBuddies(incoming.map(rid => ({ id: rid, name: nameMap[rid] || 'Rider' })))
+    } else {
+      setIncomingBuddies([])
+    }
+
     setLoading(false)
+  }
+
+  async function acceptBuddyRequest(requesterId: string) {
+    if (!user) return
+    const { error } = await acceptBuddy(user.id, requesterId)
+    if (!error) setIncomingBuddies(prev => prev.filter(b => b.id !== requesterId))
   }
 
   async function saveName() {
@@ -426,6 +447,21 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         )}
 
+        {/* Incoming buddy requests */}
+        {incomingBuddies.length > 0 && (
+          <View style={styles.buddyReqGroup}>
+            <Text style={styles.buddyReqHeading}>BUDDY REQUESTS</Text>
+            {incomingBuddies.map(b => (
+              <View key={b.id} style={styles.buddyReqRow}>
+                <Text style={styles.buddyReqName} numberOfLines={1}>{b.name} wants to be your buddy</Text>
+                <TouchableOpacity style={styles.buddyReqAccept} onPress={() => acceptBuddyRequest(b.id)} activeOpacity={0.85}>
+                  <Text style={styles.buddyReqAcceptText}>Accept</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Menu items */}
         <View style={styles.menuGroup}>
           <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/become-host')}>
@@ -608,6 +644,12 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   reviewPrompt: { backgroundColor: C.buddySoft, borderColor: C.buddyBorder, borderWidth: 1, borderRadius: 16, padding: 16, marginBottom: 12, gap: 3 },
   reviewPromptText: { color: C.text, fontSize: 15, fontWeight: '800' },
   reviewPromptSub: { color: C.textMuted, fontSize: 13 },
+  buddyReqGroup: { borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 14, marginBottom: 12, gap: 10 },
+  buddyReqHeading: { color: C.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
+  buddyReqRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  buddyReqName: { color: C.text, fontSize: 14, flex: 1, minWidth: 0 },
+  buddyReqAccept: { backgroundColor: C.buddy, borderRadius: 100, paddingHorizontal: 16, paddingVertical: 8, flexShrink: 0 },
+  buddyReqAcceptText: { color: C.white, fontWeight: '800', fontSize: 13 },
   menuGroup: { gap: 10 },
   menuItem: {
     backgroundColor: C.surface,
