@@ -424,7 +424,6 @@ export default function RequestsScreen() {
   const nearBottomRef = useRef(true)   // is the user near the bottom of the thread?
   const autoStickRef = useRef(true)    // keep pinning to bottom as content lays out
   const openingRef = useRef(false)     // briefly true right after opening a conversation
-  const channelRef = useRef<any>(null)
   const autoOpenedRef = useRef<string | null>(null)
   const currentUserIdRef = useRef<string | null>(null)
   const loadUserIdRef = useRef<string | null>(null)
@@ -436,10 +435,6 @@ export default function RequestsScreen() {
   const { openConv: openConvParam } = useLocalSearchParams<{ openConv?: string }>()
 
   function clearConversationState() {
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current)
-      channelRef.current = null
-    }
     if (listChannelRef.current) {
       supabase.removeChannel(listChannelRef.current)
       listChannelRef.current = null
@@ -638,18 +633,23 @@ export default function RequestsScreen() {
 
   // Live-update the conversation LIST: any new message (in any of my conversations)
   // moves it to the top, refreshes the preview, and lights up the unread dot.
+  // ONE realtime channel for the whole screen: it updates the conversation list
+  // (move to top, preview, unread dot) AND appends to the currently-open thread.
+  // A single postgres_changes binding on `messages` avoids the conflict that arose
+  // when a list-level and a conversation-level subscription both bound the table.
   async function subscribeToList(userId: string) {
     if (listChannelRef.current) { supabase.removeChannel(listChannelRef.current); listChannelRef.current = null }
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.access_token) await supabase.realtime.setAuth(session.access_token)
-    const channel = supabase.channel('conv-list')
+    const channel = supabase.channel('messages-stream')
     listChannelRef.current = channel
     channel
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload) => {
         if (currentUserIdRef.current !== userId) return
         const m = payload.new as any
         const convId = m.conversation_id
-        if (selectedConvIdRef.current === convId) void markRead(convId, m.created_at)
+
+        // (1) Conversation list: move to top, refresh preview, light the unread dot.
         let isNew = false
         setConvs(prev => {
           const idx = prev.findIndex(c => c.id === convId)
@@ -665,14 +665,47 @@ export default function RequestsScreen() {
           return [updated, ...prev.filter((_, i) => i !== idx)]
         })
         if (isNew && currentUserIdRef.current === userId) void loadConvs(userId)
+
+        // (2) Open conversation: append the new message live + scroll, and mark read.
+        if (selectedConvIdRef.current === convId) {
+          void markRead(convId, m.created_at)
+          const { data } = await supabase
+            .from('messages')
+            .select(`
+              id, conversation_id, sender_id, body, photo_url, request_id, created_at,
+              request:stay_requests!request_id(${REQUEST_SELECT})
+            `)
+            .eq('id', m.id)
+            .single()
+          if (data) {
+            const { data: sp } = await supabase.from('profiles').select('full_name').eq('id', data.sender_id).single()
+            setMessages(prev => prev.find(x => x.id === data.id)
+              ? prev
+              : [...prev, normalizeMsg({ ...data, sender: { full_name: sp?.full_name ?? null } })])
+            if (nearBottomRef.current) setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 60)
+          }
+        }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'stay_requests' }, (payload) => {
         if (currentUserIdRef.current !== userId) return
-        const r = payload.new as any
-        if (!r.conversation_id) return
-        setConvs(prev => prev.map(c => c.id === r.conversation_id ? { ...c, requestStatus: r.status ?? c.requestStatus, hasRequest: true } : c))
+        const r = payload.new as Partial<RequestData> & { id?: string; conversation_id?: string }
+        if (r.id) {
+          setMessages(prev => prev.map(msg =>
+            msg.request?.id === r.id ? { ...msg, request: { ...msg.request, ...r } as RequestData } : msg))
+        }
+        if (r.conversation_id) {
+          setConvs(prev => prev.map(c =>
+            c.id === r.conversation_id ? { ...c, requestStatus: r.status ?? c.requestStatus, hasRequest: true } : c))
+        }
       })
-      .subscribe()
+      .subscribe((status) => {
+        // Recover from a dropped/failed channel so live updates resume on their own.
+        if ((status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') && listChannelRef.current === channel) {
+          setTimeout(() => {
+            if (listChannelRef.current === channel && currentUserIdRef.current === userId) void subscribeToList(userId)
+          }, 2000)
+        }
+      })
   }
 
   async function openConv(conv: ConvRow) {
@@ -698,7 +731,7 @@ export default function RequestsScreen() {
       .order('created_at', { ascending: true })
 
     if (currentUserIdRef.current !== userId) return
-    if (!msgData || msgData.length === 0) { setMessages([]); subscribeToConv(conv.id); return }
+    if (!msgData || msgData.length === 0) { setMessages([]); return }
 
     const senderIds = [...new Set(msgData.map((m: any) => m.sender_id))]
     const { data: senderProfiles } = await supabase
@@ -723,7 +756,6 @@ export default function RequestsScreen() {
       if (rev) { setMyReview({ rating: rev.rating, body: rev.body ?? '' }); setReviewStars(rev.rating) }
     }
 
-    subscribeToConv(conv.id)
     setTimeout(() => flatRef.current?.scrollToEnd({ animated: false }), 100)
   }
 
@@ -759,66 +791,6 @@ export default function RequestsScreen() {
     }
   }
 
-  async function subscribeToConv(convId: string) {
-    if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null }
-
-    // Realtime must carry the logged-in user's token — otherwise RLS filters out
-    // the change payloads and new messages only show up after a manual refresh.
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.access_token) await supabase.realtime.setAuth(session.access_token)
-
-    const channel = supabase.channel(`conv:${convId}`)
-    channelRef.current = channel
-    channel
-      .on('postgres_changes', {
-        event: 'INSERT', schema: 'public', table: 'messages',
-        filter: `conversation_id=eq.${convId}`,
-      }, async (payload) => {
-        const { data } = await supabase
-          .from('messages')
-          .select(`
-	            id, conversation_id, sender_id, body, photo_url, request_id, created_at,
-	            request:stay_requests!request_id(${REQUEST_SELECT})
-	          `)
-          .eq('id', payload.new.id)
-          .single()
-        if (!data) return
-        const { data: sp } = await supabase.from('profiles').select('full_name').eq('id', data.sender_id).single()
-        setMessages(prev => {
-          if (prev.find(m => m.id === data.id)) return prev
-          return [...prev, normalizeMsg({ ...data, sender: { full_name: sp?.full_name ?? null } })]
-        })
-        // Only follow the new message down if the user is already at the bottom;
-        // don't yank them away from history they're reading.
-        if (nearBottomRef.current) setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 60)
-      })
-      .on('postgres_changes', {
-        event: 'UPDATE', schema: 'public', table: 'stay_requests',
-      }, (payload) => {
-        const updated = payload.new as Partial<RequestData> & { id?: string; conversation_id?: string }
-        if (!updated.id) return
-        setMessages(prev => prev.map(m =>
-          m.request?.id === updated.id
-            ? { ...m, request: { ...m.request, ...updated } as RequestData }
-            : m
-        ))
-        setConvs(prev => prev.map(c =>
-          c.id === convId || c.id === updated.conversation_id
-            ? { ...c, requestStatus: updated.status ?? c.requestStatus, hasRequest: true }
-            : c
-        ))
-      })
-      .subscribe((status) => {
-        // Recover from a dropped/failed channel so live updates resume on their own.
-        if ((status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') && channelRef.current === channel) {
-          setTimeout(() => { if (channelRef.current === channel) void subscribeToConv(convId) }, 2000)
-        }
-      })
-  }
-
-  useEffect(() => {
-    return () => { if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null } }
-  }, [])
 
   async function sendMessage() {
     if (sendingMsgRef.current) return  // guard against a double-tap sending twice
@@ -1045,7 +1017,6 @@ export default function RequestsScreen() {
             setSelected(null)
             selectedConvIdRef.current = null
             setMyReview(null); setReviewStars(0); setReviewBody('')
-            if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null }
           }}>
             <Text style={styles.back}>←</Text>
           </TouchableOpacity>
