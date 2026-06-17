@@ -399,14 +399,65 @@ export default function RequestsScreen() {
   const flatRef = useRef<FlatList<MsgRow>>(null)
   const channelRef = useRef<any>(null)
   const autoOpenedRef = useRef<string | null>(null)
+  const currentUserIdRef = useRef<string | null>(null)
+  const loadUserIdRef = useRef<string | null>(null)
 
   const { openConv: openConvParam } = useLocalSearchParams<{ openConv?: string }>()
 
+  function clearConversationState() {
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current)
+      channelRef.current = null
+    }
+    setSelected(null)
+    setMessages([])
+    setText('')
+    setSending(false)
+    setSeenConvIds(new Set())
+    setSendingCoordsFor(null)
+    setMyReview(null)
+    setReviewStars(0)
+    setReviewBody('')
+    setSubmittingReview(false)
+    setRespondingFor(null)
+    autoOpenedRef.current = null
+  }
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) { setCurrentUser(user); loadConvs(user.id) }
-      else setLoading(false)
+      currentUserIdRef.current = user?.id ?? null
+      if (user) {
+        setCurrentUser(user)
+        loadConvs(user.id)
+      } else {
+        clearConversationState()
+        setCurrentUser(null)
+        setConvs([])
+        unreadStore.set(false)
+        setLoading(false)
+      }
     })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const nextUser = session?.user ?? null
+      const nextUserId = nextUser?.id ?? null
+      if (currentUserIdRef.current === nextUserId) return
+
+      currentUserIdRef.current = nextUserId
+      clearConversationState()
+      setConvs([])
+      unreadStore.set(false)
+
+      if (nextUser) {
+        setCurrentUser(nextUser)
+        loadConvs(nextUser.id)
+      } else {
+        setCurrentUser(null)
+        setLoading(false)
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   // Refresh convs every time the tab gets focus
@@ -445,6 +496,7 @@ export default function RequestsScreen() {
   }, [convs, currentUser, seenConvIds])
 
   async function loadConvs(userId: string) {
+    loadUserIdRef.current = userId
     setLoading(true)
     const { data: convData } = await supabase
       .from('conversations')
@@ -452,6 +504,7 @@ export default function RequestsScreen() {
       .or(`user_a.eq.${userId},user_b.eq.${userId}`)
       .order('last_message_at', { ascending: false })
 
+    if (loadUserIdRef.current !== userId || currentUserIdRef.current !== userId) return
     if (!convData || convData.length === 0) { setConvs([]); setLoading(false); return }
 
     const convIds = convData.map((c: any) => c.id)
@@ -468,6 +521,8 @@ export default function RequestsScreen() {
         .in('conversation_id', convIds)
         .order('created_at', { ascending: false }),
     ])
+
+    if (loadUserIdRef.current !== userId || currentUserIdRef.current !== userId) return
 
     const profileMap: Record<string, { full_name: string | null; avatar_url: string | null }> = {}
     profiles?.forEach((p: any) => { profileMap[p.id] = { full_name: p.full_name, avatar_url: p.avatar_url } })
@@ -515,6 +570,8 @@ export default function RequestsScreen() {
   }
 
   async function openConv(conv: ConvRow) {
+    const userId = currentUserIdRef.current
+    if (!userId || (conv.user_a !== userId && conv.user_b !== userId)) return
     setSelected(conv)
     setSeenConvIds(prev => new Set([...prev, conv.id]))
     setMessages([])
@@ -527,11 +584,13 @@ export default function RequestsScreen() {
       .eq('conversation_id', conv.id)
       .order('created_at', { ascending: true })
 
+    if (currentUserIdRef.current !== userId) return
     if (!msgData || msgData.length === 0) { setMessages([]); subscribeToConv(conv.id); return }
 
     const senderIds = [...new Set(msgData.map((m: any) => m.sender_id))]
     const { data: senderProfiles } = await supabase
       .from('profiles').select('id, full_name').in('id', senderIds)
+    if (currentUserIdRef.current !== userId) return
     const senderMap: Record<string, string | null> = {}
     senderProfiles?.forEach((p: any) => { senderMap[p.id] = p.full_name })
 
@@ -558,11 +617,13 @@ export default function RequestsScreen() {
   async function submitReview() {
     const req = messages.find(m => m.request?.status === 'ACCEPTED' && hasStayEnded(m.request))?.request
     if (!req || !currentUser || !reviewStars) return
-    const revieweeId = currentUser.id === req.host_id ? req.guest_id : req.host_id
+    const userId = currentUser.id
+    if (currentUserIdRef.current !== userId) return
+    const revieweeId = userId === req.host_id ? req.guest_id : req.host_id
     setSubmittingReview(true)
     const { error } = await supabase.from('reviews').insert({
       stay_request_id: req.id,
-      reviewer_id: currentUser.id,
+      reviewer_id: userId,
       reviewee_id: revieweeId,
       rating: reviewStars,
       body: reviewBody.trim() || null,
@@ -634,12 +695,14 @@ export default function RequestsScreen() {
 
   async function sendMessage() {
     if (!text.trim() || !selected || !currentUser) return
+    const userId = currentUser.id
+    if (currentUserIdRef.current !== userId || (selected.user_a !== userId && selected.user_b !== userId)) return
     setSending(true)
     const body = text.trim()
     setText('')
     await supabase.from('messages').insert({
       conversation_id: selected.id,
-      sender_id: currentUser.id,
+      sender_id: userId,
       body,
     })
     await supabase
@@ -652,6 +715,8 @@ export default function RequestsScreen() {
 
   async function sendCoordinates(req: RequestData) {
     if (!selected || !currentUser || currentUser.id !== req.host_id) return
+    const userId = currentUser.id
+    if (currentUserIdRef.current !== userId || (selected.user_a !== userId && selected.user_b !== userId)) return
     setSendingCoordsFor(req.id)
 
     let loc: any = null
@@ -691,7 +756,7 @@ export default function RequestsScreen() {
 
       const { data: inserted } = await supabase.from('messages').insert({
         conversation_id: selected.id,
-        sender_id: currentUser.id,
+        sender_id: userId,
         body,
         request_id: req.id,
       })
@@ -718,6 +783,9 @@ export default function RequestsScreen() {
 
   async function respondToRequest(requestId: string, status: 'ACCEPTED' | 'REJECTED') {
     if (respondingFor) return
+    if (!currentUser || currentUserIdRef.current !== currentUser.id) return
+    const userId = currentUser.id
+    if (selected && selected.user_a !== userId && selected.user_b !== userId) return
     const currentReq = messages.find(m => m.request?.id === requestId)?.request
     setRespondingFor(requestId)
     const { error } = await supabase.from('stay_requests').update({ status }).eq('id', requestId)
@@ -738,7 +806,7 @@ export default function RequestsScreen() {
         : "Unfortunately it won't work this time. Have a great ride! 🤞"
       const { data: inserted } = await supabase.from('messages').insert({
         conversation_id: selected.id,
-        sender_id: currentUser.id,
+        sender_id: userId,
         body: autoBody,
         request_id: requestId,
       })

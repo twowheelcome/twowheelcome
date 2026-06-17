@@ -5,7 +5,8 @@ import { supabase } from '../lib/supabase'
 import { useTheme } from '../lib/ThemeContext'
 
 // Module-level cache so all instances share one fetch
-type UserChipData = { name: string; avatarUrl: string | null }
+type UserChipData = { userId: string; name: string; avatarUrl: string | null }
+type AuthUserLike = { id: string; email?: string | null }
 
 let _profile: UserChipData | null | undefined = undefined
 const _listeners = new Set<(profile: UserChipData | null) => void>()
@@ -18,15 +19,20 @@ function getInitials(name: string) {
   return initials.toUpperCase()
 }
 
-async function loadName() {
-  if (_profile !== undefined) return
-  _profile = null
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
-  const { data } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).single()
-  const name = data?.full_name || user.email?.split('@')[0] || 'Rider'
-  _profile = { name, avatarUrl: data?.avatar_url ?? null }
-  _listeners.forEach(l => l(_profile!))
+function publish(profile: UserChipData | null) {
+  _profile = profile
+  _listeners.forEach(l => l(profile))
+}
+
+async function loadProfile(authUser?: AuthUserLike | null) {
+  const currentUser = authUser ?? (await supabase.auth.getUser()).data.user
+  if (!currentUser) { publish(null); return }
+  if (_profile?.userId === currentUser.id) return
+
+  publish(null)
+  const { data } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', currentUser.id).single()
+  const name = data?.full_name || currentUser.email?.split('@')[0] || 'Rider'
+  publish({ userId: currentUser.id, name, avatarUrl: data?.avatar_url ?? null })
 }
 
 export function UserChip() {
@@ -34,10 +40,19 @@ export function UserChip() {
   const [profile, setProfile] = useState<UserChipData | null>(_profile ?? null)
 
   useEffect(() => {
-    if (_profile !== undefined) return
     _listeners.add(setProfile)
-    loadName()
-    return () => { _listeners.delete(setProfile) }
+    loadProfile()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        loadProfile(session.user)
+      } else {
+        publish(null)
+      }
+    })
+    return () => {
+      _listeners.delete(setProfile)
+      subscription.unsubscribe()
+    }
   }, [])
 
   if (!profile) return null

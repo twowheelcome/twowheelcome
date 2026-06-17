@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Image, Platform, Modal } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
@@ -30,18 +30,52 @@ export default function ProfileScreen() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const userIdRef = useRef<string | null>(null)
 
-  useEffect(() => { loadAll() }, [])
+  useEffect(() => {
+    loadAll()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const nextUserId = session?.user?.id ?? null
+      if (userIdRef.current === nextUserId) return
+      resetLocalState()
+      if (session?.user) loadAll(session.user)
+      else router.replace('/')
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
-  async function loadAll() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.replace('/'); return }
-    setUser(user)
+  function resetLocalState() {
+    userIdRef.current = null
+    setUser(null)
+    setProfile(null)
+    setHostLocations([])
+    setEditingName(false)
+    setNameInput('')
+    setSavingName(false)
+    setUploadingAvatar(false)
+    setBikeModel('')
+    setEditingBike(false)
+    setSavingBike(false)
+    setAvatarError(null)
+    setReviews([])
+    setShowQR(false)
+    setShowDeleteConfirm(false)
+    setDeleting(false)
+    setDeleteError('')
+    setLoading(true)
+  }
+
+  async function loadAll(authUser?: any) {
+    const resolvedUser = authUser ?? (await supabase.auth.getUser()).data.user
+    if (!resolvedUser) { router.replace('/'); return }
+    userIdRef.current = resolvedUser.id
+    setUser(resolvedUser)
     const [p, h, r] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', user.id).single(),
-      supabase.from('host_locations').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
-      supabase.from('reviews').select('rating, body, created_at, reviewer:profiles!reviewer_id(full_name)').eq('reviewee_id', user.id).order('created_at', { ascending: false }),
+      supabase.from('profiles').select('*').eq('id', resolvedUser.id).single(),
+      supabase.from('host_locations').select('*').eq('user_id', resolvedUser.id).order('created_at', { ascending: true }),
+      supabase.from('reviews').select('rating, body, created_at, reviewer:profiles!reviewer_id(full_name)').eq('reviewee_id', resolvedUser.id).order('created_at', { ascending: false }),
     ])
+    if (userIdRef.current !== resolvedUser.id) return
     setProfile(p.data)
     setHostLocations(h.data || [])
     setNameInput(p.data?.full_name || '')

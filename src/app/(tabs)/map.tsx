@@ -39,6 +39,7 @@ export default function MapScreen() {
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const fileInputRef = useRef<any>(null)
   const handledKnockHostRef = useRef<string | null>(null)
+  const currentUserIdRef = useRef<string | null>(null)
   const [arrivalChip, setArrivalChip] = useState<'tonight' | 'tomorrow' | 'other'>('tonight')
   const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().split('T')[0])
   const [departureDate, setDepartureDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0])
@@ -138,10 +139,30 @@ export default function MapScreen() {
 
   useEffect(() => {
     void Promise.resolve().then(fetchHosts)
-    supabase.auth.getUser().then(({ data: { user } }) => setCurrentUser(user))
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      currentUserIdRef.current = user?.id ?? null
+      setCurrentUser(user)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const nextUser = session?.user ?? null
+      const nextUserId = nextUser?.id ?? null
+      if (currentUserIdRef.current === nextUserId) return
+      currentUserIdRef.current = nextUserId
+      setCurrentUser(nextUser)
+      setSelected(null)
+      setShowHostProfile(false)
+      setRequesting(false)
+      setMessage('')
+      setSending(false)
+      setSendError('')
+      setSendSuccess(false)
+      setPhotoFile(null)
+      handledKnockHostRef.current = null
+    })
     if (Platform.OS === 'web') {
       import('../../components/HostMap').then(m => setHostMap(() => m.default))
     }
+    return () => subscription.unsubscribe()
   }, [fetchHosts])
 
   useEffect(() => {
@@ -167,6 +188,11 @@ export default function MapScreen() {
 
   async function sendRequest() {
     if (!currentUser || !selected) return
+    const userId = currentUser.id
+    if (currentUserIdRef.current !== userId) {
+      setSendError('Your session changed. Please start the request again.')
+      return
+    }
     if (!message.trim()) {
       setSendError('Write the host a message. At least a few words. 😄')
       return
@@ -184,7 +210,12 @@ export default function MapScreen() {
         }
       }
 
-      const [ua, ub] = [currentUser.id, selected.user_id].sort()
+      if (currentUserIdRef.current !== userId) {
+        setSendError('Your session changed. Please start the request again.')
+        setSending(false)
+        return
+      }
+      const [ua, ub] = [userId, selected.user_id].sort()
       let convId: string
       const { data: existing } = await supabase
         .from('conversations')
@@ -209,7 +240,7 @@ export default function MapScreen() {
       const { data: reqData, error: reqErr } = await supabase
         .from('stay_requests')
         .insert({
-          guest_id: currentUser.id,
+          guest_id: userId,
           host_id: selected.user_id,
           location_id: selected.id,
           status: 'PENDING',
@@ -227,7 +258,7 @@ export default function MapScreen() {
 
       await supabase.from('messages').insert({
         conversation_id: convId,
-        sender_id: currentUser.id,
+        sender_id: userId,
         body: message.trim(),
         request_id: reqData.id,
       })

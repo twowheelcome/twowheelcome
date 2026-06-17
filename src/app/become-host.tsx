@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native'
 import { supabase } from '../lib/supabase'
 import { router } from 'expo-router'
@@ -70,6 +70,7 @@ export default function BecomeHostScreen() {
   const [saveOk, setSaveOk] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [LocationPicker, setLocationPicker] = useState<any>(null)
+  const currentUserIdRef = useRef<string | null>(null)
 
   const loadExisting = useCallback(async (userId: string) => {
     const { data } = await supabase
@@ -77,6 +78,7 @@ export default function BecomeHostScreen() {
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: true })
+    if (currentUserIdRef.current !== userId) return
     if (data && data.length > 0) {
       setLocations(data.map(d => ({
         id: d.id,
@@ -94,8 +96,23 @@ export default function BecomeHostScreen() {
   useEffect(() => {
     import('../components/LocationPicker').then(m => setLocationPicker(() => m.default))
     supabase.auth.getUser().then(({ data: { user } }) => {
+      currentUserIdRef.current = user?.id ?? null
       if (user) { setCurrentUser(user); loadExisting(user.id) }
     })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const nextUser = session?.user ?? null
+      const nextUserId = nextUser?.id ?? null
+      if (currentUserIdRef.current === nextUserId) return
+      currentUserIdRef.current = nextUserId
+      setCurrentUser(nextUser)
+      setLocations([emptyLocation()])
+      setSaveError('')
+      setSaveOk(false)
+      setSaving(false)
+      if (nextUser) loadExisting(nextUser.id)
+      else router.replace('/')
+    })
+    return () => subscription.unsubscribe()
   }, [loadExisting])
 
   function updateLocation(index: number, patch: Partial<Location>) {
@@ -122,13 +139,18 @@ export default function BecomeHostScreen() {
       setSaveError('You are not logged in — please sign in and try again.')
       return
     }
+    const userId = currentUser.id
+    if (currentUserIdRef.current !== userId) {
+      setSaveError('Your session changed. Please reopen this screen and try again.')
+      return
+    }
     setSaving(true)
     try {
       const validLocations = locations.filter(l => l.pin)
       const { data: existingRows, error: existingError } = await supabase
         .from('host_locations')
         .select('id')
-        .eq('user_id', currentUser.id)
+        .eq('user_id', userId)
       if (existingError) { setSaveError(existingError.message); return }
       const existingIds = new Set(existingRows?.map((l: any) => l.id) || [])
       const keptIds = new Set(validLocations.map(l => l.id).filter(Boolean) as string[])
@@ -150,7 +172,7 @@ export default function BecomeHostScreen() {
         const { error: delError } = await supabase
           .from('host_locations')
           .delete()
-          .eq('user_id', currentUser.id)
+          .eq('user_id', userId)
           .in('id', removedIds)
         if (delError) { setSaveError(delError.message); return }
       }
@@ -158,7 +180,7 @@ export default function BecomeHostScreen() {
       const rows = validLocations
         .map(l => ({
           ...(l.id ? { id: l.id } : {}),
-          user_id: currentUser.id,
+          user_id: userId,
           location_lat: l.pin!.lat,
           location_lng: l.pin!.lng,
           location_city: l.pin!.city || '',

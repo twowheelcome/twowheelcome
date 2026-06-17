@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Tabs } from 'expo-router'
 import { Platform, View } from 'react-native'
 import { Feather } from '@expo/vector-icons'
@@ -27,7 +27,7 @@ async function checkUnread(userId: string) {
     .select('id, user_a, user_b')
     .or(`user_a.eq.${userId},user_b.eq.${userId}`)
 
-  if (!convData?.length) { unreadStore.set(false); return }
+  if (!convData?.length) return false
 
   const convIds = convData.map((c: any) => c.id)
   const { data: lastMsgs } = await supabase
@@ -44,25 +44,36 @@ async function checkUnread(userId: string) {
     seen.add(msg.conversation_id)
     if (msg.sender_id !== userId) { anyUnread = true; break }
   }
-  unreadStore.set(anyUnread)
+  return anyUnread
 }
 
 export default function TabsLayout() {
   const C = useTheme()
   const [hasUnread, setHasUnread] = useState(unreadStore.get())
+  const authUserIdRef = useRef<string | null>(null)
 
   useEffect(() => unreadStore.subscribe(setHasUnread), [])
 
   useEffect(() => {
     // Check unread immediately on mount (so dot shows right after login)
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) checkUnread(user.id)
+      authUserIdRef.current = user?.id ?? null
+      if (user) checkUnread(user.id).then((anyUnread) => {
+        if (authUserIdRef.current === user.id) unreadStore.set(anyUnread)
+      })
+      else unreadStore.set(false)
     })
 
     // Re-check when auth state changes (login/logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) checkUnread(session.user.id)
-      else unreadStore.set(false)
+      const userId = session?.user?.id ?? null
+      authUserIdRef.current = userId
+      unreadStore.set(false)
+      if (userId) {
+        checkUnread(userId).then((anyUnread) => {
+          if (authUserIdRef.current === userId) unreadStore.set(anyUnread)
+        })
+      }
     })
 
     return () => subscription.unsubscribe()
