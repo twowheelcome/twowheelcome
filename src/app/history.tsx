@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { supabase } from '../lib/supabase'
@@ -91,7 +91,6 @@ export default function HistoryScreen() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { load() }, [load])
   useFocusEffect(useCallback(() => { load() }, [load]))
 
   function openConversation(s: Stay) {

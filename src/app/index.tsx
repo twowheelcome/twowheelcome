@@ -93,23 +93,19 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [loading, setLoading] = useState(false)
-  const [mode, setMode] = useState<'login' | 'register'>('login')
   const [session, setSession] = useState<Session | null>(null)
   const [onboardingSeen, setOnboardingSeen] = useState<boolean | null>(null)
   const [authError, setAuthError] = useState('')
   const [authSuccess, setAuthSuccess] = useState('')
   const { signup } = useLocalSearchParams<{ signup?: string }>()
+  const [mode, setMode] = useState<'login' | 'register'>(signup ? 'register' : 'login')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
-    supabase.auth.onAuthStateChange((_event, session) => setSession(session))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session))
     AsyncStorage.getItem(ONBOARDING_KEY).then(value => setOnboardingSeen(value === 'true'))
+    return () => subscription.unsubscribe()
   }, [])
-
-  // Arriving from a shared profile with ?signup=1 → straight to the register form
-  useEffect(() => {
-    if (signup) setMode('register')
-  }, [signup])
 
   useEffect(() => {
     if (session) router.replace('/(tabs)/map')
