@@ -7,6 +7,12 @@
 
 ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 
+-- Remove older, looser policies created earlier in the dashboard. The old
+-- "insert own reviews" only checked reviewer_id = self and would OR with (and
+-- bypass) the strict participant/ended-stay check below.
+DROP POLICY IF EXISTS "insert own reviews" ON reviews;
+DROP POLICY IF EXISTS "reviews are public" ON reviews;
+
 -- READ: public (ratings and reviews are shown to everyone, incl. logged-out).
 DROP POLICY IF EXISTS "rev_select" ON reviews;
 CREATE POLICY "rev_select" ON reviews FOR SELECT USING (true);

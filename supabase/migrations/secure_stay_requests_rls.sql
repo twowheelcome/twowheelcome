@@ -8,6 +8,14 @@
 
 ALTER TABLE stay_requests ENABLE ROW LEVEL SECURITY;
 
+-- Remove older, looser policies created earlier in the dashboard. Postgres ORs
+-- all permissive policies together, so leaving the old "anyone can insert"
+-- policy would bypass the strict ones below.
+DROP POLICY IF EXISTS "Kdokoliv může vložit žádost" ON stay_requests;
+DROP POLICY IF EXISTS "Host vytváří žádosti" ON stay_requests;
+DROP POLICY IF EXISTS "Vidí vlastní žádosti" ON stay_requests;
+DROP POLICY IF EXISTS "Účastníci upravují žádosti" ON stay_requests;
+
 -- READ: only the guest or the host of the request.
 DROP POLICY IF EXISTS "sr_select" ON stay_requests;
 CREATE POLICY "sr_select" ON stay_requests FOR SELECT
