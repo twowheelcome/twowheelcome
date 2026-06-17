@@ -8,13 +8,13 @@ import { supabase } from '../../lib/supabase'
 
 function TabIcon({ name, color, dot, C }: { name: React.ComponentProps<typeof Feather>['name']; color: string | import('react-native').ColorValue; dot?: boolean; C: ReturnType<typeof useTheme> }) {
   return (
-    <View style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
-      <Feather name={name} size={22} color={color} />
+    <View style={{ width: 34, height: 30, alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
+      <Feather name={name} size={24} color={color} />
       {dot && (
         <View style={{
-          position: 'absolute', top: 0, right: -2,
-          width: 9, height: 9, borderRadius: 5,
-          backgroundColor: C.accent, borderWidth: 2, borderColor: C.bg,
+          position: 'absolute', top: -5, right: -7,
+          width: 18, height: 18, borderRadius: 9,
+          backgroundColor: C.accent, borderWidth: 3, borderColor: C.bg,
         }} />
       )}
     </View>

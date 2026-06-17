@@ -11,7 +11,7 @@ export function AppWordmark({ compact = false }: { compact?: boolean }) {
   return (
     <View style={styles.brand}>
       <Image source={mark} style={[styles.mark, compact && styles.markCompact]} resizeMode="contain" />
-      <Text style={[styles.wordmark, compact && styles.wordmarkCompact]}>
+      <Text style={[styles.wordmark, compact && styles.wordmarkCompact]} numberOfLines={1}>
         <Text style={styles.wordmarkAccent}>TWO</Text>WHEEL<Text style={styles.wordmarkAccent}>COME</Text>
       </Text>
     </View>
@@ -31,14 +31,16 @@ export function HeaderBackButton({ onPress = () => router.back() }: { onPress?: 
 export function AppHeader({ left, right, children, onLogoPress }: { left?: ReactNode; right?: ReactNode; children?: ReactNode; onLogoPress?: () => void }) {
   const C = useTheme()
   const styles = makeStyles(C)
+  const compactLogo = !!left && !!right
   const content = children ?? (
     <TouchableOpacity
       onPress={onLogoPress ?? (() => router.push('/(tabs)/map'))}
       activeOpacity={0.75}
       accessibilityRole="button"
       accessibilityLabel="Go to map"
+      style={styles.logoButton}
     >
-      <AppWordmark />
+      <AppWordmark compact={compactLogo} />
     </TouchableOpacity>
   )
   return (
@@ -78,6 +80,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   headerCenter: {
     flex: 1,
     flexShrink: 1,
+    minWidth: 0,
   },
   headerRight: {
     flexDirection: 'row',
@@ -106,6 +109,13 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     flexShrink: 1,
+    minWidth: 0,
+  },
+  logoButton: {
+    alignSelf: 'flex-start',
+    flexShrink: 1,
+    minWidth: 0,
+    maxWidth: '100%',
   },
   mark: {
     width: 34,
@@ -120,6 +130,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     fontSize: 22,
     fontWeight: '900',
     letterSpacing: 0,
+    flexShrink: 1,
   },
   wordmarkCompact: {
     fontSize: 19,

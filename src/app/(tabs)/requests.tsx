@@ -965,7 +965,6 @@ export default function RequestsScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.convList}>
           <View style={styles.listHeader}>
-            <Text style={styles.listTitle}>Messages</Text>
             <View style={styles.segmented}>
               {([
                 ['all', 'All'],
@@ -1139,14 +1138,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     gap: 8,
   },
   listHeader: {
-    gap: 14,
     paddingBottom: 8,
-  },
-  listTitle: {
-    color: C.text,
-    fontSize: 24,
-    fontWeight: '900',
-    letterSpacing: 0,
   },
   segmented: {
     flexDirection: 'row',

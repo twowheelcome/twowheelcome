@@ -1,47 +1,63 @@
 import { useEffect, useState } from 'react'
-import { Text, TouchableOpacity, View } from 'react-native'
+import { Image, Text, TouchableOpacity, View } from 'react-native'
 import { router } from 'expo-router'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../lib/ThemeContext'
 
 // Module-level cache so all instances share one fetch
-let _name: string | null | undefined = undefined
-const _listeners = new Set<(n: string | null) => void>()
+type UserChipData = { name: string; avatarUrl: string | null }
+
+let _profile: UserChipData | null | undefined = undefined
+const _listeners = new Set<(profile: UserChipData | null) => void>()
+
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  const initials = parts.length > 1
+    ? `${parts[0][0]}${parts[parts.length - 1][0]}`
+    : name.slice(0, 2)
+  return initials.toUpperCase()
+}
 
 async function loadName() {
-  if (_name !== undefined) return
-  _name = null
+  if (_profile !== undefined) return
+  _profile = null
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
-  const { data } = await supabase.from('profiles').select('full_name').eq('id', user.id).single()
-  _name = data?.full_name || user.email?.split('@')[0] || null
-  _listeners.forEach(l => l(_name!))
+  const { data } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', user.id).single()
+  const name = data?.full_name || user.email?.split('@')[0] || 'Rider'
+  _profile = { name, avatarUrl: data?.avatar_url ?? null }
+  _listeners.forEach(l => l(_profile!))
 }
 
 export function UserChip() {
   const C = useTheme()
-  const [name, setName] = useState<string | null>(_name ?? null)
+  const [profile, setProfile] = useState<UserChipData | null>(_profile ?? null)
 
   useEffect(() => {
-    if (_name !== undefined) return
-    _listeners.add(setName)
+    if (_profile !== undefined) return
+    _listeners.add(setProfile)
     loadName()
-    return () => { _listeners.delete(setName) }
+    return () => { _listeners.delete(setProfile) }
   }, [])
 
-  if (!name) return null
-  const initial = name.charAt(0).toUpperCase()
+  if (!profile) return null
+  const initials = getInitials(profile.name)
 
   return (
     <TouchableOpacity
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: C.elevated, borderRadius: 20, paddingVertical: 5, paddingLeft: 5, paddingRight: 11, borderWidth: 1, borderColor: C.border }}
+      style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.elevated, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}
       onPress={() => router.push('/(tabs)/profile')}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel="Open profile"
     >
-      <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: C.white, fontSize: 12, fontWeight: '800' }}>{initial}</Text>
-      </View>
-      <Text style={{ color: C.text, fontSize: 13, fontWeight: '600', maxWidth: 100 }} numberOfLines={1}>{name}</Text>
+      {profile.avatarUrl ? (
+        <Image source={{ uri: profile.avatarUrl }} style={{ width: 40, height: 40 }} resizeMode="cover" />
+      ) : (
+        <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: C.white, fontSize: 12, fontWeight: '900' }}>{initials}</Text>
+        </View>
+      )}
     </TouchableOpacity>
   )
 }
