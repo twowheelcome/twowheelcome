@@ -430,6 +430,7 @@ export default function RequestsScreen() {
   const respondingRef = useRef(false)   // guard against double-tap accept/decline
   const sendingMsgRef = useRef(false)   // guard against double-tap send message
   const listChannelRef = useRef<any>(null)   // realtime for the whole conversation list
+  const subscribingListRef = useRef(false)   // guard so we never create two channels at once
   const selectedConvIdRef = useRef<string | null>(null)
 
   const { openConv: openConvParam } = useLocalSearchParams<{ openConv?: string }>()
@@ -638,79 +639,83 @@ export default function RequestsScreen() {
   // A single postgres_changes binding on `messages` avoids the conflict that arose
   // when a list-level and a conversation-level subscription both bound the table.
   async function subscribeToList(userId: string) {
-    if (listChannelRef.current) { supabase.removeChannel(listChannelRef.current); listChannelRef.current = null }
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.access_token) await supabase.realtime.setAuth(session.access_token)
-    const channel = supabase.channel('messages-stream')
-    listChannelRef.current = channel
-    channel
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload) => {
-        const m = payload.new as any
-        const convId = m.conversation_id
-        console.log('[RT] INSERT msg', { convId, selected: selectedConvIdRef.current, match: selectedConvIdRef.current === convId, curUser: currentUserIdRef.current, subUser: userId, body: m.body })
-        if (currentUserIdRef.current !== userId) { console.log('[RT] early-return user mismatch'); return }
+    // Guard against the two near-simultaneous calls on load (getUser + onAuthStateChange):
+    // two channels with the same 'messages-stream' topic conflict, the second one never
+    // really subscribes, and live delivery into the open conversation breaks. One channel only.
+    if (subscribingListRef.current) return
+    subscribingListRef.current = true
+    try {
+      if (listChannelRef.current) { supabase.removeChannel(listChannelRef.current); listChannelRef.current = null }
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.access_token) await supabase.realtime.setAuth(session.access_token)
+      const channel = supabase.channel('messages-stream')
+      listChannelRef.current = channel
+      channel
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload) => {
+          if (currentUserIdRef.current !== userId) return
+          const m = payload.new as any
+          const convId = m.conversation_id
 
-        // (1) Conversation list: move to top, refresh preview, light the unread dot.
-        let isNew = false
-        setConvs(prev => {
-          const idx = prev.findIndex(c => c.id === convId)
-          if (idx === -1) { isNew = true; return prev }
-          const updated = {
-            ...prev[idx],
-            lastMsgBody: m.body,
-            lastMsgSenderId: m.sender_id,
-            lastMsgIsRequest: !!m.request_id,
-            hasRequest: prev[idx].hasRequest || !!m.request_id,
-            last_message_at: m.created_at,
+          // (1) Conversation list: move to top, refresh preview, light the unread dot.
+          let isNew = false
+          setConvs(prev => {
+            const idx = prev.findIndex(c => c.id === convId)
+            if (idx === -1) { isNew = true; return prev }
+            const updated = {
+              ...prev[idx],
+              lastMsgBody: m.body,
+              lastMsgSenderId: m.sender_id,
+              lastMsgIsRequest: !!m.request_id,
+              hasRequest: prev[idx].hasRequest || !!m.request_id,
+              last_message_at: m.created_at,
+            }
+            return [updated, ...prev.filter((_, i) => i !== idx)]
+          })
+          if (isNew && currentUserIdRef.current === userId) void loadConvs(userId)
+
+          // (2) Open conversation: append the new message live + scroll, and mark read.
+          if (selectedConvIdRef.current === convId) {
+            void markRead(convId, m.created_at)
+            const { data } = await supabase
+              .from('messages')
+              .select(`
+                id, conversation_id, sender_id, body, photo_url, request_id, created_at,
+                request:stay_requests!request_id(${REQUEST_SELECT})
+              `)
+              .eq('id', m.id)
+              .single()
+            if (data) {
+              const { data: sp } = await supabase.from('profiles').select('full_name').eq('id', data.sender_id).single()
+              setMessages(prev => prev.find(x => x.id === data.id)
+                ? prev
+                : [...prev, normalizeMsg({ ...data, sender: { full_name: sp?.full_name ?? null } })])
+              if (nearBottomRef.current) setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 60)
+            }
           }
-          return [updated, ...prev.filter((_, i) => i !== idx)]
         })
-        if (isNew && currentUserIdRef.current === userId) void loadConvs(userId)
-
-        // (2) Open conversation: append the new message live + scroll, and mark read.
-        if (selectedConvIdRef.current === convId) {
-          console.log('[RT] append branch ENTERED for', convId)
-          void markRead(convId, m.created_at)
-          const { data, error: fErr } = await supabase
-            .from('messages')
-            .select(`
-              id, conversation_id, sender_id, body, photo_url, request_id, created_at,
-              request:stay_requests!request_id(${REQUEST_SELECT})
-            `)
-            .eq('id', m.id)
-            .single()
-          console.log('[RT] fetched msg', { has: !!data, fErr: fErr?.message })
-          if (data) {
-            const { data: sp } = await supabase.from('profiles').select('full_name').eq('id', data.sender_id).single()
-            setMessages(prev => {
-              const dup = !!prev.find(x => x.id === data.id)
-              console.log('[RT] setMessages append', { dup, prevLen: prev.length })
-              return dup ? prev : [...prev, normalizeMsg({ ...data, sender: { full_name: sp?.full_name ?? null } })]
-            })
-            if (nearBottomRef.current) setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 60)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'stay_requests' }, (payload) => {
+          if (currentUserIdRef.current !== userId) return
+          const r = payload.new as Partial<RequestData> & { id?: string; conversation_id?: string }
+          if (r.id) {
+            setMessages(prev => prev.map(msg =>
+              msg.request?.id === r.id ? { ...msg, request: { ...msg.request, ...r } as RequestData } : msg))
           }
-        }
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'stay_requests' }, (payload) => {
-        if (currentUserIdRef.current !== userId) return
-        const r = payload.new as Partial<RequestData> & { id?: string; conversation_id?: string }
-        if (r.id) {
-          setMessages(prev => prev.map(msg =>
-            msg.request?.id === r.id ? { ...msg, request: { ...msg.request, ...r } as RequestData } : msg))
-        }
-        if (r.conversation_id) {
-          setConvs(prev => prev.map(c =>
-            c.id === r.conversation_id ? { ...c, requestStatus: r.status ?? c.requestStatus, hasRequest: true } : c))
-        }
-      })
-      .subscribe((status) => {
-        // Recover from a dropped/failed channel so live updates resume on their own.
-        if ((status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') && listChannelRef.current === channel) {
-          setTimeout(() => {
-            if (listChannelRef.current === channel && currentUserIdRef.current === userId) void subscribeToList(userId)
-          }, 2000)
-        }
-      })
+          if (r.conversation_id) {
+            setConvs(prev => prev.map(c =>
+              c.id === r.conversation_id ? { ...c, requestStatus: r.status ?? c.requestStatus, hasRequest: true } : c))
+          }
+        })
+        .subscribe((status) => {
+          // Recover from a dropped/failed channel so live updates resume on their own.
+          if ((status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') && listChannelRef.current === channel) {
+            setTimeout(() => {
+              if (listChannelRef.current === channel && currentUserIdRef.current === userId) void subscribeToList(userId)
+            }, 2000)
+          }
+        })
+    } finally {
+      subscribingListRef.current = false
+    }
   }
 
   async function openConv(conv: ConvRow) {
