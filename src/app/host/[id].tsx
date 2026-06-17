@@ -22,7 +22,7 @@ const SLEEP_LABELS: Record<string, string> = {
 }
 
 export default function PublicHostProfile() {
-  const { id } = useLocalSearchParams<{ id: string }>()
+  const { id, location: locationParam } = useLocalSearchParams<{ id: string; location?: string }>()
   const C = useTheme()
   const styles = useMemo(() => makeStyles(C), [C])
 
@@ -45,21 +45,33 @@ export default function PublicHostProfile() {
     router.push({ pathname: '/', params: { signup: '1' } })
   }
 
-  const load = useCallback(async (userId: string) => {
-    const [{ data: prof }, { data: locs }, { data: revs }] = await Promise.all([
+  const load = useCallback(async (userId: string, locationId?: string) => {
+    // Public profile reads the coarse-coordinate view; fall back to the base
+    // table only if the view doesn't exist yet (before the DB migration runs).
+    const locFrom = (table: string) => {
+      const base = supabase.from(table).select('*').eq('user_id', userId)
+      return locationId
+        ? base.eq('id', locationId).maybeSingle()
+        : base.order('created_at', { ascending: true }).limit(1).maybeSingle()
+    }
+    const [{ data: prof }, locRes, { data: revs }] = await Promise.all([
       supabase.from('profiles').select('id, full_name, bio, bike_model, avatar_url').eq('id', userId).maybeSingle(),
-      supabase.from('host_locations').select('*').eq('user_id', userId).limit(1).maybeSingle(),
+      locFrom('host_locations_public'),
       supabase.from('reviews')
         .select('rating, body, reviewer_id')
         .eq('reviewee_id', userId)
         .order('created_at', { ascending: false })
-        .limit(5),
     ])
 
-    if (!prof || !locs) { setNotFound(true); setLoading(false); return }
+    let loc = locRes.data
+    if (locRes.error && /does not exist|find the table|42P01|PGRST205/i.test(`${locRes.error.code} ${locRes.error.message}`)) {
+      loc = (await locFrom('host_locations')).data
+    }
+
+    if (!prof || !loc) { setNotFound(true); setLoading(false); return }
 
     setProfile(prof)
-    setLocation(locs)
+    setLocation(loc)
 
     if (revs?.length) {
       const reviewerIds = [...new Set(revs.map((r: any) => r.reviewer_id).filter(Boolean))]
@@ -71,7 +83,7 @@ export default function PublicHostProfile() {
       const sum = revs.reduce((acc: number, r: any) => acc + r.rating, 0)
       setAvgRating(sum / revs.length)
       setReviewCount(revs.length)
-      setReviews(revs.map((r: any) => ({ ...r, reviewer_name: reviewerMap[r.reviewer_id] || null })))
+      setReviews(revs.slice(0, 5).map((r: any) => ({ ...r, reviewer_name: reviewerMap[r.reviewer_id] || null })))
     }
 
     setLoading(false)
@@ -79,8 +91,8 @@ export default function PublicHostProfile() {
 
   useEffect(() => {
     if (!id) return
-    void Promise.resolve().then(() => load(id))
-  }, [id, load])
+    void Promise.resolve().then(() => load(id, locationParam))
+  }, [id, locationParam, load])
 
   if (loading) {
     return (
@@ -216,7 +228,7 @@ export default function PublicHostProfile() {
           style={styles.ctaBtn}
           onPress={() => {
             if (isLoggedIn === false) { goToSignup(); return }
-            router.replace({ pathname: '/(tabs)/map', params: { knockHost: profile.id } })
+            router.replace({ pathname: '/(tabs)/map', params: { knockHost: profile.id, knockLocation: location.id } })
           }}
         >
           <Text style={styles.ctaBtnText}>{isLoggedIn === false ? 'Join to knock on the door' : 'Knock on the door'}</Text>

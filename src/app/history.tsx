@@ -59,7 +59,7 @@ export default function HistoryScreen() {
 
     const [{ data: profiles }, { data: locs }, { data: myReviews }] = await Promise.all([
       otherIds.length ? supabase.from('profiles').select('id, full_name').in('id', otherIds) : Promise.resolve({ data: [] as any[] }),
-      locIds.length ? supabase.from('host_locations').select('id, location_city, location_country').in('id', locIds) : Promise.resolve({ data: [] as any[] }),
+      locIds.length ? supabase.from('host_locations_public').select('id, location_city, location_country').in('id', locIds) : Promise.resolve({ data: [] as any[] }),
       supabase.from('reviews').select('stay_request_id').eq('reviewer_id', userId),
     ])
 

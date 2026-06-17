@@ -27,7 +27,7 @@ function placeLabel(city?: string | null, country?: string | null): string {
 }
 
 export default function MapScreen() {
-  const { knockHost } = useLocalSearchParams<{ knockHost?: string }>()
+  const { knockHost, knockLocation } = useLocalSearchParams<{ knockHost?: string; knockLocation?: string }>()
   const C = useTheme()
   const styles = useMemo(() => makeStyles(C), [C])
   const [hosts, setHosts] = useState<any[]>([])
@@ -94,7 +94,13 @@ export default function MapScreen() {
 
 
   const fetchHosts = useCallback(async () => {
-    const { data, error } = await supabase.from('host_locations').select('*')
+    // Read coarse (rounded) coordinates from the public view. Fall back to the
+    // base table only if the view doesn't exist yet (before the DB migration runs).
+    let res = await supabase.from('host_locations_public').select('*')
+    if (res.error && /does not exist|find the table|42P01|PGRST205/i.test(`${res.error.code} ${res.error.message}`)) {
+      res = await supabase.from('host_locations').select('*')
+    }
+    const { data, error } = res
     if (error) { console.error(error); setLoading(false); return }
     if (!data || data.length === 0) { setHosts([]); setLoading(false); return }
 
@@ -171,7 +177,8 @@ export default function MapScreen() {
 
   useEffect(() => {
     if (!knockHost || handledKnockHostRef.current === knockHost || hosts.length === 0) return
-    const host = hosts.find(h => h.user_id === knockHost)
+    const host = (knockLocation ? hosts.find(h => h.id === knockLocation && h.user_id === knockHost) : null)
+      ?? hosts.find(h => h.user_id === knockHost)
     if (!host) return
     handledKnockHostRef.current = knockHost
     void Promise.resolve().then(() => {
@@ -179,7 +186,7 @@ export default function MapScreen() {
       setShowHostProfile(false)
       beginRequest()
     })
-  }, [hosts, knockHost])
+  }, [hosts, knockHost, knockLocation])
 
   function beginRequest() {
     setArrivalChip('tonight')
@@ -651,7 +658,10 @@ export default function MapScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={{ height: 46, borderRadius: 100, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
-                    onPress={() => { setShowHostProfile(false); router.push(`/host/${selected.user_id}` as any) }}
+                    onPress={() => {
+                      setShowHostProfile(false)
+                      router.push({ pathname: '/host/[id]', params: { id: selected.user_id, location: selected.id } })
+                    }}
                   >
                     <Text style={{ color: C.text, fontSize: 14, fontWeight: '700' }}>View full profile</Text>
                   </TouchableOpacity>
