@@ -30,21 +30,30 @@ async function checkUnread(userId: string) {
   if (!convData?.length) return false
 
   const convIds = convData.map((c: any) => c.id)
-  const { data: lastMsgs } = await supabase
-    .from('messages')
-    .select('conversation_id, sender_id')
-    .in('conversation_id', convIds)
-    .order('created_at', { ascending: false })
+  const [{ data: lastMsgs }, { data: reads }] = await Promise.all([
+    supabase.from('messages')
+      .select('conversation_id, sender_id, created_at')
+      .in('conversation_id', convIds)
+      .order('created_at', { ascending: false }),
+    supabase.from('conversation_reads')
+      .select('conversation_id, last_read_at')
+      .eq('user_id', userId),
+  ])
 
-  // For each conversation, check if the latest message is from someone else
+  const readMap: Record<string, string> = {}
+  reads?.forEach((r: any) => { readMap[r.conversation_id] = r.last_read_at })
+
+  // Unread if the latest message in a conversation is from someone else and is
+  // newer than this user's last read of that conversation.
   const seen = new Set<string>()
-  let anyUnread = false
   for (const msg of lastMsgs ?? []) {
     if (seen.has(msg.conversation_id)) continue
     seen.add(msg.conversation_id)
-    if (msg.sender_id !== userId) { anyUnread = true; break }
+    if (msg.sender_id === userId) continue
+    const lastRead = readMap[msg.conversation_id]
+    if (!lastRead || new Date(msg.created_at).getTime() > new Date(lastRead).getTime()) return true
   }
-  return anyUnread
+  return false
 }
 
 export default function TabsLayout() {

@@ -143,6 +143,13 @@ function conversationStatus(C: ThemeColors, conv: ConvRow, isUnread: boolean, us
   return makeStatus(C)[conv.requestStatus || 'PENDING'] || makeStatus(C).PENDING
 }
 
+// Unread = last message is from the other person and is newer than my last read.
+function isConvUnread(conv: ConvRow, userId: string | null | undefined, readMap: Record<string, string>): boolean {
+  if (!conv.lastMsgSenderId || conv.lastMsgSenderId === userId) return false
+  const lastRead = readMap[conv.id]
+  return !lastRead || new Date(conv.last_message_at).getTime() > new Date(lastRead).getTime()
+}
+
 // For DATE strings (YYYY-MM-DD) — manual parse to avoid timezone shifts
 function fmtDateStr(s: string): string {
   const [y, m, d] = s.split('-')
@@ -388,7 +395,7 @@ export default function RequestsScreen() {
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
   const [currentUser, setCurrentUser] = useState<any>(null)
-  const [seenConvIds, setSeenConvIds] = useState<Set<string>>(new Set())
+  const [readMap, setReadMap] = useState<Record<string, string>>({})  // conversation_id -> my last_read_at
   const [sendingCoordsFor, setSendingCoordsFor] = useState<string | null>(null)
   const [myReview, setMyReview] = useState<{ rating: number; body: string } | null>(null)
   const [reviewStars, setReviewStars] = useState(0)
@@ -406,6 +413,8 @@ export default function RequestsScreen() {
   const loadUserIdRef = useRef<string | null>(null)
   const respondingRef = useRef(false)   // guard against double-tap accept/decline
   const sendingMsgRef = useRef(false)   // guard against double-tap send message
+  const listChannelRef = useRef<any>(null)   // realtime for the whole conversation list
+  const selectedConvIdRef = useRef<string | null>(null)
 
   const { openConv: openConvParam } = useLocalSearchParams<{ openConv?: string }>()
 
@@ -414,11 +423,16 @@ export default function RequestsScreen() {
       supabase.removeChannel(channelRef.current)
       channelRef.current = null
     }
+    if (listChannelRef.current) {
+      supabase.removeChannel(listChannelRef.current)
+      listChannelRef.current = null
+    }
+    setReadMap({})
     setSelected(null)
+    selectedConvIdRef.current = null
     setMessages([])
     setText('')
     setSending(false)
-    setSeenConvIds(new Set())
     setSendingCoordsFor(null)
     setMyReview(null)
     setReviewStars(0)
@@ -434,6 +448,7 @@ export default function RequestsScreen() {
       if (user) {
         setCurrentUser(user)
         loadConvs(user.id)
+        void subscribeToList(user.id)
       } else {
         clearConversationState()
         setCurrentUser(null)
@@ -456,13 +471,17 @@ export default function RequestsScreen() {
       if (nextUser) {
         setCurrentUser(nextUser)
         loadConvs(nextUser.id)
+        void subscribeToList(nextUser.id)
       } else {
         setCurrentUser(null)
         setLoading(false)
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+      if (listChannelRef.current) { supabase.removeChannel(listChannelRef.current); listChannelRef.current = null }
+    }
   }, [])
 
   // Refresh convs every time the tab gets focus
@@ -494,11 +513,9 @@ export default function RequestsScreen() {
 
   // Sync unread indicator to tab bar
   useEffect(() => {
-    const anyUnread = convs.some(c =>
-      c.lastMsgSenderId && c.lastMsgSenderId !== currentUser?.id && !seenConvIds.has(c.id)
-    )
+    const anyUnread = convs.some(c => isConvUnread(c, currentUser?.id, readMap))
     unreadStore.set(anyUnread)
-  }, [convs, currentUser, seenConvIds])
+  }, [convs, currentUser, readMap])
 
   async function loadConvs(userId: string) {
     loadUserIdRef.current = userId
@@ -515,7 +532,7 @@ export default function RequestsScreen() {
     const convIds = convData.map((c: any) => c.id)
     const otherIds = convData.map((c: any) => c.user_a === userId ? c.user_b : c.user_a)
 
-    const [{ data: profiles }, { data: lastMsgs }, { data: requestRows }] = await Promise.all([
+    const [{ data: profiles }, { data: lastMsgs }, { data: requestRows }, { data: readRows }] = await Promise.all([
       supabase.from('profiles').select('id, full_name, avatar_url').in('id', otherIds),
       supabase.from('messages')
         .select('conversation_id, body, sender_id, request_id, created_at')
@@ -525,9 +542,21 @@ export default function RequestsScreen() {
         .select('conversation_id, status, host_id, guest_id, created_at')
         .in('conversation_id', convIds)
         .order('created_at', { ascending: false }),
+      supabase.from('conversation_reads')
+        .select('conversation_id, last_read_at')
+        .eq('user_id', userId),
     ])
 
     if (loadUserIdRef.current !== userId || currentUserIdRef.current !== userId) return
+
+    setReadMap(prev => {
+      const next = { ...prev }
+      readRows?.forEach((r: any) => {
+        const cur = next[r.conversation_id]
+        if (!cur || new Date(r.last_read_at).getTime() > new Date(cur).getTime()) next[r.conversation_id] = r.last_read_at
+      })
+      return next
+    })
 
     const profileMap: Record<string, { full_name: string | null; avatar_url: string | null }> = {}
     profiles?.forEach((p: any) => { profileMap[p.id] = { full_name: p.full_name, avatar_url: p.avatar_url } })
@@ -574,17 +603,69 @@ export default function RequestsScreen() {
     setLoading(false)
   }
 
+  async function markRead(convId: string, isoTime: string) {
+    const userId = currentUserIdRef.current
+    if (!userId) return
+    setReadMap(prev => {
+      const cur = prev[convId]
+      if (cur && new Date(cur).getTime() >= new Date(isoTime).getTime()) return prev
+      return { ...prev, [convId]: isoTime }
+    })
+    await supabase.from('conversation_reads')
+      .upsert({ user_id: userId, conversation_id: convId, last_read_at: isoTime }, { onConflict: 'user_id,conversation_id' })
+  }
+
+  // Live-update the conversation LIST: any new message (in any of my conversations)
+  // moves it to the top, refreshes the preview, and lights up the unread dot.
+  async function subscribeToList(userId: string) {
+    if (listChannelRef.current) { supabase.removeChannel(listChannelRef.current); listChannelRef.current = null }
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) await supabase.realtime.setAuth(session.access_token)
+    const channel = supabase.channel('conv-list')
+    listChannelRef.current = channel
+    channel
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+        if (currentUserIdRef.current !== userId) return
+        const m = payload.new as any
+        const convId = m.conversation_id
+        if (selectedConvIdRef.current === convId) void markRead(convId, m.created_at)
+        let isNew = false
+        setConvs(prev => {
+          const idx = prev.findIndex(c => c.id === convId)
+          if (idx === -1) { isNew = true; return prev }
+          const updated = {
+            ...prev[idx],
+            lastMsgBody: m.body,
+            lastMsgSenderId: m.sender_id,
+            lastMsgIsRequest: !!m.request_id,
+            hasRequest: prev[idx].hasRequest || !!m.request_id,
+            last_message_at: m.created_at,
+          }
+          return [updated, ...prev.filter((_, i) => i !== idx)]
+        })
+        if (isNew && currentUserIdRef.current === userId) void loadConvs(userId)
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'stay_requests' }, (payload) => {
+        if (currentUserIdRef.current !== userId) return
+        const r = payload.new as any
+        if (!r.conversation_id) return
+        setConvs(prev => prev.map(c => c.id === r.conversation_id ? { ...c, requestStatus: r.status ?? c.requestStatus, hasRequest: true } : c))
+      })
+      .subscribe()
+  }
+
   async function openConv(conv: ConvRow) {
     const userId = currentUserIdRef.current
     if (!userId || (conv.user_a !== userId && conv.user_b !== userId)) return
     setSelected(conv)
+    selectedConvIdRef.current = conv.id
     // Open pinned to the bottom (newest message), and keep pinning while the
     // variable-height items (request cards, photos, review block) lay out.
     nearBottomRef.current = true
     autoStickRef.current = true
     openingRef.current = true
     setTimeout(() => { openingRef.current = false }, 800)
-    setSeenConvIds(prev => new Set([...prev, conv.id]))
+    void markRead(conv.id, conv.last_message_at)
     setMessages([])
     const { data: msgData } = await supabase
       .from('messages')
@@ -1152,9 +1233,7 @@ export default function RequestsScreen() {
           ) : filteredConvs
             .map(conv => {
               const name = conv.other.full_name || 'Rider'
-              const isUnread = !!conv.lastMsgSenderId
-                && conv.lastMsgSenderId !== currentUser?.id
-                && !seenConvIds.has(conv.id)
+              const isUnread = isConvUnread(conv, currentUser?.id, readMap)
               const preview = conv.lastMsgIsRequest
                 ? '🤞 Stay request'
                 : (conv.lastMsgBody ?? '')
