@@ -68,14 +68,17 @@ dvojice jezdců × jedno `host_location`. Vynuceno triggery + RLS (`validate_con
 
 ---
 
-## ⚠️ JEDINÝ otevřený launch blocker (musí vyřešit Petr — není to kód)
-**Potvrzování e-mailu je zapnuté → bez funkčního odesílání e-mailů (SMTP) se nový uživatel
-nepřihlásí.** Při registraci appka říká „Check your email to confirm your account". Když SMTP
-není nastavené, e-mail nedorazí. Možnosti (rozhodnutí na Petrovi):
-- **A) Nastavit SMTP** v Supabase (Auth → Emails) — doporučeno; fungují i resety hesla.
-- **B) Dočasně vypnout potvrzování e-mailu** (Auth → Providers → Email → „Confirm email" off)
-  — lidé se přihlásí hned, ale bez ověření e-mailu.
-- Související: v Auth povolit redirect URL `…/reset-password` (jinak reset míří jinam).
+## E-maily / přihlášení — OK, jen ověřit doručení (už NENÍ blocker)
+Dřívější poznámka „SMTP čeká" je **zastaralá**. Ověřil jsem živou Auth konfiguraci:
+- Potvrzování e-mailu je zapnuté (`mailer_autoconfirm = false`).
+- **Vlastní SMTP je nastavený** (host i uživatel vyplněné, odesílatel
+  `TWOwheelCOME <noreply@twowheelcome.com>`) → potvrzovací e-maily se odesílají.
+- `site_url = https://www.twowheelcome.com/`, povolené redirecty zahrnují i
+  `…/reset-password` → reset hesla míří správně.
+
+Takže registrace + přihlášení mají fungovat. **Zbývá jen praktické ověření:** Petr ať
+jednou zaregistruje nový účet na reálný e-mail a potvrdí, že potvrzovací e-mail opravdu
+dorazí (a nespadne do spamu). To je jediné, co z Node ověřit nejde.
 
 ## Menší TODO (nízká priorita)
 - **Legal stránky** (`privacy.tsx`, `terms.tsx`) — doplnit firemní/GDPR údaje (čeká na Petrovy
