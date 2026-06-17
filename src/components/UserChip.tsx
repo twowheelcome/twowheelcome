@@ -29,13 +29,17 @@ function publish(next: Partial<ChipState>) {
 
 async function loadProfile(authUser?: AuthUserLike | null, force = false) {
   const currentUser = authUser ?? (await supabase.auth.getUser()).data.user
-  if (!currentUser) { publish({ loggedIn: false, profile: null }); return }
-  if (!force && _state.profile?.userId === currentUser.id) { publish({ loggedIn: true }); return }
+  if (!currentUser) { publish({ loggedIn: false, profile: null }); return null }
+  if (!force && _state.profile?.userId === currentUser.id) {
+    publish({ loggedIn: true })
+    return currentUser
+  }
 
   if (!_state.profile) publish({ loggedIn: true, profile: null })
   const { data } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', currentUser.id).single()
   const name = data?.full_name || currentUser.email?.split('@')[0] || 'Rider'
   publish({ loggedIn: true, profile: { userId: currentUser.id, name, avatarUrl: data?.avatar_url ?? null } })
+  return currentUser
 }
 
 // Call after the user edits their own profile (name/avatar) so the chip updates immediately.
@@ -49,10 +53,10 @@ export function UserChip() {
 
   useEffect(() => {
     _listeners.add(setState)
-    loadProfile()
+    void loadProfile()
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        loadProfile(session.user)
+        void loadProfile(session.user)
       } else {
         publish({ loggedIn: false, profile: null })
       }
@@ -84,19 +88,21 @@ export function UserChip() {
 
   return (
     <TouchableOpacity
-      style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.elevated, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}
+      style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: C.elevated, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
       onPress={() => router.push('/(tabs)/profile')}
       activeOpacity={0.7}
       accessibilityRole="button"
       accessibilityLabel="Open profile"
     >
-      {state.profile.avatarUrl ? (
-        <Image source={{ uri: state.profile.avatarUrl }} style={{ width: 40, height: 40 }} resizeMode="cover" />
-      ) : (
-        <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: C.white, fontSize: 12, fontWeight: '900' }}>{initials}</Text>
-        </View>
-      )}
+      <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
+        {state.profile.avatarUrl ? (
+          <Image source={{ uri: state.profile.avatarUrl }} style={{ width: 40, height: 40 }} resizeMode="cover" />
+        ) : (
+          <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: C.white, fontSize: 12, fontWeight: '900' }}>{initials}</Text>
+          </View>
+        )}
+      </View>
     </TouchableOpacity>
   )
 }

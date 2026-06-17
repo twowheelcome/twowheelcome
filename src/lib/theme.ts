@@ -26,11 +26,6 @@ const base = {
   purpleSoft:   '#8A6A8A18',
   purpleBorder: '#8A6A8A55',
 
-  // Buddy pin — host you've stayed with and rated (gold, both modes)
-  buddy:       '#E0A23C',
-  buddySoft:   '#E0A23C1F',
-  buddyBorder: '#E0A23C66',
-
   white: '#ffffff',
   black: '#000000',
 } as const

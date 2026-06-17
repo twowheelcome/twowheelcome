@@ -38,13 +38,11 @@ function injectLeafletCSS() {
 export default function HostMap({
   hosts,
   onHostSelect,
-  buddyIds = [],
   satellite = false,
   onSatelliteToggle,
 }: {
   hosts: Host[]
   onHostSelect: (host: Host) => void
-  buddyIds?: string[]
   satellite?: boolean
   onSatelliteToggle?: () => void
 }) {
@@ -55,7 +53,6 @@ export default function HostMap({
   const circlesRef = useRef<any[]>([])
   const clusterRef = useRef<any>(null)
   const hostsRef = useRef(hosts); hostsRef.current = hosts
-  const buddyRef = useRef(buddyIds); buddyRef.current = buddyIds
   const satelliteRef = useRef(satellite)
   const tileLayerRef = useRef<any>(null)
   const overlayLayersRef = useRef<any[]>([])
@@ -74,37 +71,30 @@ export default function HostMap({
 
     currentHosts.forEach(host => {
       if (!host.location_lat || !host.location_lng) return
-      const isBuddy = buddyRef.current.includes(host.id)
-      const pinColor = isBuddy ? C.buddy : C.accent
-      const size = isBuddy ? 44 : 38
-	      // Fuzz circle for non-buddy hosts
-      if (!isBuddy) {
-        const circle = L.circle([host.location_lat, host.location_lng], {
-          radius: 500,
-          color: C.accent,
-          fill: false,
-          dashArray: '8 6',
-          weight: 2,
-          opacity: 0.45,
-        }).addTo(map)
-        circlesRef.current.push(circle)
-      }
+      const pinColor = C.accent
+      const size = 38
+      const circle = L.circle([host.location_lat, host.location_lng], {
+        radius: 500,
+        color: C.accent,
+        fill: false,
+        dashArray: '8 6',
+        weight: 2,
+        opacity: 0.45,
+      }).addTo(map)
+      circlesRef.current.push(circle)
 
       const avatarInner = host.profiles?.avatar_url
         ? `<img src="${host.profiles.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
-        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:${isBuddy ? 17 : 15}px;font-weight:800;color:#fff;">${host.profiles?.full_name ? host.profiles.full_name[0].toUpperCase() : '?'}</div>`
-
-      const buddyStar = isBuddy ? `<div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:13px;line-height:1;z-index:1;">⭐</div>` : ''
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;">${host.profiles?.full_name ? host.profiles.full_name[0].toUpperCase() : '?'}</div>`
 
       const totalH = size + 8  // circle + arrow
       const markerHtml = `
         <div style="position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;">
-          ${buddyStar}
           <div style="
             width:${size}px;height:${size}px;
             background:${pinColor};
             border-radius:50%;
-            border:2.5px solid ${isBuddy ? C.buddy : '#fff'};
+            border:2.5px solid #fff;
             box-shadow:0 2px 10px rgba(0,0,0,0.35);
             overflow:hidden;
             flex-shrink:0;
@@ -203,7 +193,7 @@ export default function HostMap({
     return () => {}
 	  // Repaint markers when host inputs change; addMarkers reads the latest theme and callbacks through component scope.
 	  // eslint-disable-next-line react-hooks/exhaustive-deps
-	  }, [hosts, buddyIds])
+	  }, [hosts])
 
   function setupTileLayers(map: any, isSatellite: boolean) {
     if (!map) return

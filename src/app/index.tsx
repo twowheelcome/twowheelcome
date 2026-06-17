@@ -267,6 +267,16 @@ export default function AuthScreen() {
         <TouchableOpacity style={styles.forgotWrap} onPress={() => setOnboardingSeen(false)}>
           <Text style={styles.forgotText}>View intro</Text>
         </TouchableOpacity>
+
+        <View style={styles.legalLinks}>
+          <TouchableOpacity onPress={() => router.push('/privacy')} hitSlop={8}>
+            <Text style={styles.legalLinkText}>Privacy</Text>
+          </TouchableOpacity>
+          <Text style={styles.legalSeparator}>·</Text>
+          <TouchableOpacity onPress={() => router.push('/terms')} hitSlop={8}>
+            <Text style={styles.legalLinkText}>Terms</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </ScrollView>
   )
@@ -331,6 +341,9 @@ function makeStyles(C: ThemeColors) {
 
     forgotWrap: { alignItems: 'center', paddingVertical: 4 },
     forgotText: { color: C.textDim, fontSize: 14 },
+    legalLinks: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingTop: 6 },
+    legalLinkText: { color: C.textDim, fontSize: 13, fontWeight: '700' },
+    legalSeparator: { color: C.textFaint, fontSize: 13 },
 
     msgError:       { backgroundColor: C.errorSoft, borderWidth: 1, borderColor: C.errorBorder, borderRadius: 14, padding: 14 },
     msgErrorText:   { color: C.error, fontSize: 13, lineHeight: 19 },

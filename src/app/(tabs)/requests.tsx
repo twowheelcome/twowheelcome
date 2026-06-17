@@ -71,6 +71,10 @@ type MsgRow = {
 }
 
 type ConversationFilter = 'all' | 'knocks' | 'hosting'
+type ExactPointSummary = {
+  coords: { lat: number; lng: number }
+  lines: { label: string; value: string }[]
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -185,6 +189,19 @@ function isAcceptedAutoMessage(body: string | null): boolean {
 
 function isExactPointMessage(body: string | null): boolean {
   return !!body?.startsWith('Exact meeting point:')
+}
+
+function parseExactPointMessage(body: string | null): ExactPointSummary | null {
+  const coords = extractCoords(body)
+  if (!body || !coords || !isExactPointMessage(body)) return null
+  const lines = body.split('\n').map(line => line.trim()).filter(Boolean)
+  const summaryLines = lines
+    .map(line => {
+      const match = line.match(/^(Place|Bike|Sleep|Services|Return):\s*(.+)$/)
+      return match ? { label: match[1], value: match[2] } : null
+    })
+    .filter(Boolean) as { label: string; value: string }[]
+  return { coords, lines: summaryLines }
 }
 
 function labelList(values: string[] | null | undefined, labels: Record<string, string>, fallback?: string | null): string {
@@ -482,12 +499,16 @@ export default function RequestsScreen() {
       subscription.unsubscribe()
       if (listChannelRef.current) { supabase.removeChannel(listChannelRef.current); listChannelRef.current = null }
     }
+    // Auth bootstrap owns the channel lifecycle; inner callbacks read latest ids from refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Refresh convs every time the tab gets focus
   useFocusEffect(
     useCallback(() => {
-      if (currentUser) loadConvs(currentUser.id)
+      if (currentUser) {
+        loadConvs(currentUser.id)
+      }
     }, [currentUser])
   )
 
@@ -1096,6 +1117,7 @@ export default function RequestsScreen() {
 	            const isHost = m.request ? currentUser?.id === m.request.host_id : false
 	            const navCoords = extractCoords(m.body)
 	            const acceptedAuto = isAcceptedAutoMessage(m.body)
+	            const exactPoint = parseExactPointMessage(m.body)
 
 	            if (m.request_id && m.request && !acceptedAuto && !isExactPointMessage(m.body)) {
               return (
@@ -1107,6 +1129,60 @@ export default function RequestsScreen() {
 	                    onRespond={respondToRequest}
 	                    responding={respondingFor === m.request.id}
 	                  />
+                </View>
+              )
+            }
+
+            if (acceptedAuto) {
+              return (
+                <View style={[styles.msgRow, isMine ? styles.msgRowRight : styles.msgRowLeft]}>
+                  <View style={styles.autoCard}>
+                    <View style={styles.autoHeader}>
+                      <Text style={styles.autoIcon}>✓</Text>
+                      <Text style={styles.autoTitle}>Request accepted</Text>
+                    </View>
+                    <Text style={styles.autoText}>
+                      {isMine
+                        ? 'You accepted this stay. Share the exact meeting point when you are ready.'
+                        : 'The stay is accepted. The host will share the exact meeting point here when you are set.'}
+                    </Text>
+                    <Text style={styles.autoTime}>{fmtTime(m.created_at)}</Text>
+                  </View>
+                </View>
+              )
+            }
+
+            if (exactPoint) {
+              return (
+                <View style={[styles.msgRow, isMine ? styles.msgRowRight : styles.msgRowLeft]}>
+                  <View style={styles.meetingCard}>
+                    <View style={styles.meetingHeader}>
+                      <Text style={styles.meetingIcon}>📍</Text>
+                      <View style={styles.meetingHeaderText}>
+                        <Text style={styles.meetingTitle}>Exact meeting point</Text>
+                        <Text style={styles.meetingCoords}>
+                          {exactPoint.coords.lat.toFixed(6)}, {exactPoint.coords.lng.toFixed(6)}
+                        </Text>
+                      </View>
+                    </View>
+                    {exactPoint.lines.length ? (
+                      <View style={styles.meetingSummary}>
+                        {exactPoint.lines.map(line => (
+                          <View key={line.label} style={styles.meetingLine}>
+                            <Text style={styles.meetingLabel}>{line.label}</Text>
+                            <Text style={styles.meetingValue}>{line.value}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    ) : null}
+                    <TouchableOpacity
+                      style={styles.meetingNavButton}
+                      onPress={() => openNavigation(exactPoint.coords.lat, exactPoint.coords.lng)}
+                    >
+                      <Text style={styles.meetingNavText}>Open navigation</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.autoTime}>{fmtTime(m.created_at)}</Text>
+                  </View>
                 </View>
               )
             }
@@ -1334,6 +1410,125 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   bubblePhoto: { width: 220, height: 160, borderRadius: 14 },
   bubbleTime: { color: C.textDim, fontSize: 10, alignSelf: 'flex-end' },
   bubbleTimeMine: { color: 'rgba(255,255,255,0.55)' },
+  autoCard: {
+    maxWidth: '82%',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: C.successBorder,
+    backgroundColor: C.successSoft,
+    padding: 12,
+    gap: 6,
+  },
+  autoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  autoIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    overflow: 'hidden',
+    backgroundColor: C.success,
+    color: C.white,
+    textAlign: 'center',
+    lineHeight: 22,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  autoTitle: {
+    color: C.success,
+    fontSize: 13,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+  },
+  autoText: {
+    color: C.textMuted,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  autoTime: {
+    color: C.textDim,
+    fontSize: 10,
+    alignSelf: 'flex-end',
+  },
+  meetingCard: {
+    width: '82%',
+    maxWidth: 440,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: C.accentBorder,
+    backgroundColor: C.surface,
+    padding: 14,
+    gap: 10,
+  },
+  meetingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  meetingIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    overflow: 'hidden',
+    backgroundColor: C.accentSoft,
+    textAlign: 'center',
+    lineHeight: 34,
+    fontSize: 17,
+  },
+  meetingHeaderText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  meetingTitle: {
+    color: C.text,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  meetingCoords: {
+    color: C.textDim,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  meetingSummary: {
+    borderTopWidth: 1,
+    borderTopColor: C.border,
+    paddingTop: 8,
+    gap: 6,
+  },
+  meetingLine: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+  },
+  meetingLabel: {
+    width: 58,
+    color: C.textDim,
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  meetingValue: {
+    flex: 1,
+    color: C.text,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  meetingNavButton: {
+    alignSelf: 'flex-start',
+    borderRadius: 100,
+    backgroundColor: C.accent,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  meetingNavText: {
+    color: C.white,
+    fontSize: 12,
+    fontWeight: '900',
+  },
 
   // Input
   coordinateTray: {
@@ -1497,26 +1692,26 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   convStatusText: { fontSize: 11, fontWeight: '800' },
 
   reviewCard: {
-    backgroundColor: C.surface, borderRadius: 20, borderWidth: 1, borderColor: C.buddyBorder,
+    backgroundColor: C.surface, borderRadius: 20, borderWidth: 1, borderColor: C.accentBorder,
     padding: 16, gap: 12, marginTop: 16,
   },
-  reviewTitle: { color: C.buddy, fontSize: 10, fontWeight: '800', letterSpacing: 2 },
+  reviewTitle: { color: C.accent, fontSize: 10, fontWeight: '800', letterSpacing: 2 },
   reviewStars: { flexDirection: 'row', gap: 8 },
   reviewStar: { fontSize: 32, color: C.border },
-  reviewStarActive: { color: C.buddy },
+  reviewStarActive: { color: C.accent },
   reviewInput: {
     backgroundColor: C.elevated, borderRadius: 14, padding: 12,
     color: C.text, fontSize: 16, minHeight: 60,
     borderWidth: 1, borderColor: C.border,
   },
   reviewSubmit: {
-    backgroundColor: C.buddy, borderRadius: 100, padding: 13, alignItems: 'center',
+    backgroundColor: C.accent, borderRadius: 100, padding: 13, alignItems: 'center',
   },
   reviewSubmitDisabled: { backgroundColor: C.elevated },
   reviewSubmitText: { color: C.white, fontWeight: '700', fontSize: 13, letterSpacing: 1 },
   reviewDone: {
-    backgroundColor: C.buddySoft, borderRadius: 14, borderWidth: 1, borderColor: C.buddyBorder,
+    backgroundColor: C.accentSoft, borderRadius: 14, borderWidth: 1, borderColor: C.accentBorder,
     padding: 12, alignItems: 'center', marginTop: 16,
   },
-  reviewDoneText: { color: C.buddy, fontSize: 13, fontWeight: '600' },
+  reviewDoneText: { color: C.accent, fontSize: 13, fontWeight: '600' },
 }) }
