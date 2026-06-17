@@ -397,6 +397,9 @@ export default function RequestsScreen() {
   const [respondingFor, setRespondingFor] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<ConversationFilter>('all')
   const flatRef = useRef<FlatList<MsgRow>>(null)
+  const nearBottomRef = useRef(true)   // is the user near the bottom of the thread?
+  const autoStickRef = useRef(true)    // keep pinning to bottom as content lays out
+  const openingRef = useRef(false)     // briefly true right after opening a conversation
   const channelRef = useRef<any>(null)
   const autoOpenedRef = useRef<string | null>(null)
   const currentUserIdRef = useRef<string | null>(null)
@@ -573,6 +576,12 @@ export default function RequestsScreen() {
     const userId = currentUserIdRef.current
     if (!userId || (conv.user_a !== userId && conv.user_b !== userId)) return
     setSelected(conv)
+    // Open pinned to the bottom (newest message), and keep pinning while the
+    // variable-height items (request cards, photos, review block) lay out.
+    nearBottomRef.current = true
+    autoStickRef.current = true
+    openingRef.current = true
+    setTimeout(() => { openingRef.current = false }, 800)
     setSeenConvIds(prev => new Set([...prev, conv.id]))
     setMessages([])
     const { data: msgData } = await supabase
@@ -675,7 +684,9 @@ export default function RequestsScreen() {
           if (prev.find(m => m.id === data.id)) return prev
           return [...prev, normalizeMsg({ ...data, sender: { full_name: sp?.full_name ?? null } })]
         })
-        setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100)
+        // Only follow the new message down if the user is already at the bottom;
+        // don't yank them away from history they're reading.
+        if (nearBottomRef.current) setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 60)
       })
       .on('postgres_changes', {
         event: 'UPDATE', schema: 'public', table: 'stay_requests',
@@ -746,7 +757,10 @@ export default function RequestsScreen() {
       .update({ last_message_at: new Date().toISOString() })
       .eq('id', conversationId)
     setSending(false)
-    setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100)
+    // Sending always jumps to the bottom to show your own message.
+    nearBottomRef.current = true
+    autoStickRef.current = true
+    setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 60)
   }
 
   function handleMessageKeyPress(e: any) {
@@ -935,7 +949,16 @@ export default function RequestsScreen() {
           data={messages}
           keyExtractor={m => m.id}
           contentContainerStyle={styles.msgList}
-          onLayout={() => flatRef.current?.scrollToEnd({ animated: false })}
+          onContentSizeChange={() => { if (autoStickRef.current) flatRef.current?.scrollToEnd({ animated: false }) }}
+          onScroll={(e) => {
+            const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent
+            const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height)
+            const nearBottom = distanceFromBottom < 120
+            nearBottomRef.current = nearBottom
+            // While opening, ignore transient scroll positions so we stay pinned.
+            if (!openingRef.current) autoStickRef.current = nearBottom
+          }}
+          scrollEventThrottle={16}
 	          ListFooterComponent={(() => {
 	            const acceptedReq = messages.find(m => m.request?.status === 'ACCEPTED' && hasStayEnded(m.request))?.request
 	            if (!acceptedReq) return null
