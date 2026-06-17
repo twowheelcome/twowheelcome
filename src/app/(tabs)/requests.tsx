@@ -699,18 +699,54 @@ export default function RequestsScreen() {
     if (currentUserIdRef.current !== userId || (selected.user_a !== userId && selected.user_b !== userId)) return
     setSending(true)
     const body = text.trim()
+    const conversationId = selected.id
     setText('')
-    await supabase.from('messages').insert({
-      conversation_id: selected.id,
+    const { data: inserted, error } = await supabase.from('messages').insert({
+      conversation_id: conversationId,
       sender_id: userId,
       body,
     })
+      .select(`
+        id, conversation_id, sender_id, body, photo_url, request_id, created_at,
+        request:stay_requests!request_id(${REQUEST_SELECT})
+      `)
+      .single()
+    if (error) {
+      setText(body)
+      setSending(false)
+      return
+    }
+    if (currentUserIdRef.current !== userId) {
+      setSending(false)
+      return
+    }
+    if (inserted) {
+      const normalizedInserted = normalizeMsg({ ...inserted, sender: { full_name: currentUser.user_metadata?.full_name ?? null } })
+      setMessages(prev => prev.find(m => m.id === normalizedInserted.id) ? prev : [...prev, normalizedInserted])
+      setConvs(prev => prev.map(c =>
+        c.id === conversationId
+          ? { ...c, lastMsgBody: body, lastMsgSenderId: userId, lastMsgIsRequest: false, last_message_at: normalizedInserted.created_at }
+          : c
+      ))
+    }
     await supabase
       .from('conversations')
       .update({ last_message_at: new Date().toISOString() })
-      .eq('id', selected.id)
+      .eq('id', conversationId)
     setSending(false)
     setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100)
+  }
+
+  function handleMessageKeyPress(e: any) {
+    if (Platform.OS !== 'web') return
+    const key = e?.nativeEvent?.key
+    const shiftKey = !!(e?.shiftKey || e?.nativeEvent?.shiftKey)
+    if (key === 'Enter' && !shiftKey) {
+      e?.preventDefault?.()
+      if (text.trim() && !sending) {
+        void sendMessage()
+      }
+    }
   }
 
   async function sendCoordinates(req: RequestData) {
@@ -846,6 +882,21 @@ export default function RequestsScreen() {
 
   if (selected) {
     const otherName = selected.other.full_name || 'Rider'
+    let coordinateRequest: RequestData | null = null
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const req = messages[i]?.request
+      if (!req || req.status !== 'ACCEPTED' || currentUser?.id !== req.host_id) continue
+      const coordsSent = messages.some(msg =>
+        msg.sender_id === currentUser?.id
+        && isExactPointMessage(msg.body)
+        && (!msg.request_id || msg.request_id === req.id)
+      )
+      if (!coordsSent) {
+        coordinateRequest = req
+        break
+      }
+    }
+
     return (
       <KeyboardAvoidingView
         style={styles.container}
@@ -919,27 +970,6 @@ export default function RequestsScreen() {
 	            const isHost = m.request ? currentUser?.id === m.request.host_id : false
 	            const navCoords = extractCoords(m.body)
 	            const acceptedAuto = isAcceptedAutoMessage(m.body)
-	            const acceptedReq = m.request?.status === 'ACCEPTED' && currentUser?.id === m.request.host_id
-	              ? m.request
-	              : [...messages]
-	                .filter(msg =>
-	                  msg.request?.status === 'ACCEPTED'
-	                  && currentUser?.id === msg.request.host_id
-	                  && new Date(msg.created_at).getTime() <= new Date(m.created_at).getTime()
-	                )
-	                .map(msg => msg.request!)
-	                .pop()
-	            const hasSentCoordinatesAfterThisMessage = messages.some(msg =>
-	              msg.sender_id === currentUser?.id
-	              && isExactPointMessage(msg.body)
-	              && (!msg.request_id || msg.request_id === acceptedReq?.id)
-	              && new Date(msg.created_at).getTime() > new Date(m.created_at).getTime()
-	            )
-	            const showCoordinateAction = !!acceptedReq
-	              && isMine
-	              && currentUser?.id === acceptedReq.host_id
-	              && acceptedAuto
-	              && !hasSentCoordinatesAfterThisMessage
 
 	            if (m.request_id && m.request && !acceptedAuto && !isExactPointMessage(m.body)) {
               return (
@@ -967,17 +997,6 @@ export default function RequestsScreen() {
                       <Text style={[styles.navActionText, isMine && styles.navActionTextMine]}>Open navigation</Text>
                     </TouchableOpacity>
                   ) : null}
-                  {showCoordinateAction ? (
-                    <TouchableOpacity
-                      style={[styles.navAction, styles.navActionMine, sendingCoordsFor === acceptedReq.id && styles.coordinateActionDisabled]}
-                      onPress={() => sendCoordinates(acceptedReq)}
-                      disabled={sendingCoordsFor === acceptedReq.id}
-                    >
-                      <Text style={[styles.navActionText, styles.navActionTextMine]}>
-                        {sendingCoordsFor === acceptedReq.id ? 'Sending...' : 'Send coordinates'}
-                      </Text>
-                    </TouchableOpacity>
-                  ) : null}
                   {m.photo_url ? (
                     <Image source={{ uri: m.photo_url }} style={styles.bubblePhoto} resizeMode="cover" />
                   ) : null}
@@ -988,6 +1007,27 @@ export default function RequestsScreen() {
           }}
         />
 
+        {coordinateRequest ? (
+          <View style={styles.coordinateTray}>
+            <View style={styles.coordinateTrayCopy}>
+              <Text style={styles.coordinateTrayTitle}>Ready with the meeting point?</Text>
+              <Text style={styles.coordinateTrayText}>Send exact coordinates when you and the rider are set.</Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.coordinateTrayButton,
+                sendingCoordsFor === coordinateRequest.id && styles.coordinateTrayButtonDisabled,
+              ]}
+              onPress={() => sendCoordinates(coordinateRequest!)}
+              disabled={sendingCoordsFor === coordinateRequest.id}
+            >
+              <Text style={styles.coordinateTrayButtonText}>
+                {sendingCoordsFor === coordinateRequest.id ? 'Sending...' : 'Send coordinates'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
@@ -996,7 +1036,7 @@ export default function RequestsScreen() {
             placeholder="Type a message..."
             placeholderTextColor={C.textDim}
             multiline
-            onSubmitEditing={Platform.OS === 'web' ? sendMessage : undefined}
+            onKeyPress={handleMessageKeyPress}
           />
           <TouchableOpacity
             style={[styles.sendBtn, (!text.trim() || sending) && styles.sendBtnDisabled]}
@@ -1165,7 +1205,6 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.55)',
     backgroundColor: 'rgba(255,255,255,0.14)',
   },
-  coordinateActionDisabled: { opacity: 0.65 },
   navActionText: { color: C.accent, fontSize: 12, fontWeight: '800' },
   navActionTextMine: { color: C.white },
   bubblePhoto: { width: 220, height: 160, borderRadius: 14 },
@@ -1173,6 +1212,49 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   bubbleTimeMine: { color: 'rgba(255,255,255,0.55)' },
 
   // Input
+  coordinateTray: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: C.surface,
+    borderTopWidth: 1,
+    borderTopColor: C.border,
+  },
+  coordinateTrayCopy: {
+    flex: 1,
+    minWidth: 180,
+    gap: 2,
+  },
+  coordinateTrayTitle: {
+    color: C.text,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
+  coordinateTrayText: {
+    color: C.textDim,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  coordinateTrayButton: {
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 100,
+    backgroundColor: C.accent,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    minHeight: 38,
+  },
+  coordinateTrayButtonDisabled: { opacity: 0.65 },
+  coordinateTrayButtonText: {
+    color: C.white,
+    fontSize: 12,
+    fontWeight: '900',
+  },
   inputRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     padding: 12, paddingHorizontal: 16,
