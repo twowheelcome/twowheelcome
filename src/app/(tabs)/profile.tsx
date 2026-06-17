@@ -26,6 +26,7 @@ export default function ProfileScreen() {
   const [savingBike, setSavingBike] = useState(false)
   const [avatarError, setAvatarError] = useState<string | null>(null)
   const [reviews, setReviews] = useState<{ rating: number; body: string | null; reviewer_name: string | null; created_at: string }[]>([])
+  const [pendingReviews, setPendingReviews] = useState(0)
   const [showQR, setShowQR] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -58,6 +59,7 @@ export default function ProfileScreen() {
     setSavingBike(false)
     setAvatarError(null)
     setReviews([])
+    setPendingReviews(0)
     setShowQR(false)
     setShowDeleteConfirm(false)
     setDeleting(false)
@@ -86,6 +88,21 @@ export default function ProfileScreen() {
       reviewer_name: rev.reviewer?.full_name ?? null,
       created_at: rev.created_at,
     })))
+
+    // Pending reviews you can still leave — as a guest AND as a host (symmetric).
+    const today = new Date().toISOString().split('T')[0]
+    const [{ data: endedStays }, { data: myRevs }] = await Promise.all([
+      supabase.from('stay_requests')
+        .select('id')
+        .or(`guest_id.eq.${resolvedUser.id},host_id.eq.${resolvedUser.id}`)
+        .eq('status', 'ACCEPTED')
+        .lte('departure_date', today),
+      supabase.from('reviews').select('stay_request_id').eq('reviewer_id', resolvedUser.id),
+    ])
+    if (userIdRef.current !== resolvedUser.id) return
+    const reviewedSet = new Set((myRevs || []).map((r2: any) => r2.stay_request_id))
+    setPendingReviews((endedStays || []).filter((s: any) => !reviewedSet.has(s.id)).length)
+
     setLoading(false)
   }
 
@@ -399,6 +416,16 @@ export default function ProfileScreen() {
           </View>
         )}
 
+        {/* Pending reviews prompt — symmetric for guests and hosts */}
+        {pendingReviews > 0 && (
+          <TouchableOpacity style={styles.reviewPrompt} onPress={() => router.push('/history')} activeOpacity={0.85}>
+            <Text style={styles.reviewPromptText}>
+              ⭐ You have {pendingReviews} {pendingReviews === 1 ? 'stay' : 'stays'} to review
+            </Text>
+            <Text style={styles.reviewPromptSub}>Tap to rate your hosts and guests →</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Menu items */}
         <View style={styles.menuGroup}>
           <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/become-host')}>
@@ -578,6 +605,9 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   statLabel: { color: C.textDim, fontSize: 12, letterSpacing: 0.5 },
   statDivider: { width: 1, backgroundColor: C.border, marginVertical: 4 },
 
+  reviewPrompt: { backgroundColor: C.buddySoft, borderColor: C.buddyBorder, borderWidth: 1, borderRadius: 16, padding: 16, marginBottom: 12, gap: 3 },
+  reviewPromptText: { color: C.text, fontSize: 15, fontWeight: '800' },
+  reviewPromptSub: { color: C.textMuted, fontSize: 13 },
   menuGroup: { gap: 10 },
   menuItem: {
     backgroundColor: C.surface,

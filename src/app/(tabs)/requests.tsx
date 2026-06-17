@@ -1022,6 +1022,7 @@ export default function RequestsScreen() {
         <View style={styles.header}>
           <TouchableOpacity onPress={() => {
             setSelected(null)
+            selectedConvIdRef.current = null
             setMyReview(null); setReviewStars(0); setReviewBody('')
             if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null }
           }}>
