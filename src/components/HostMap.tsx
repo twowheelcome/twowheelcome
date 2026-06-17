@@ -21,12 +21,16 @@ interface Host {
   last_review: { rating: number; body: string | null; reviewer_name: string | null } | null
 }
 
-function injectLeafletCSS() {
-  if (document.getElementById('leaflet-css')) return
+function injectCss(id: string, href: string) {
+  if (document.getElementById(id)) return
   const link = document.createElement('link')
-  link.id = 'leaflet-css'; link.rel = 'stylesheet'
-  link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+  link.id = id; link.rel = 'stylesheet'; link.href = href
   document.head.appendChild(link)
+}
+
+function injectLeafletCSS() {
+  injectCss('leaflet-css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css')
+  injectCss('leaflet-markercluster-css', 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css')
 }
 
 export default function HostMap({
@@ -47,6 +51,7 @@ export default function HostMap({
   const mapInstanceRef = useRef<any>(null)
   const markersRef = useRef<any[]>([])
   const circlesRef = useRef<any[]>([])
+  const clusterRef = useRef<any>(null)
   const hostsRef = useRef(hosts); hostsRef.current = hosts
   const buddyRef = useRef(buddyIds); buddyRef.current = buddyIds
   const satelliteRef = useRef(satellite)
@@ -58,8 +63,9 @@ export default function HostMap({
 
   function addMarkers(L: any, currentHosts: Host[]) {
     const map = mapInstanceRef.current
-    if (!map) return
-    markersRef.current.forEach(m => m.remove())
+    const cluster = clusterRef.current
+    if (!map || !cluster) return
+    cluster.clearLayers()
     markersRef.current = []
     circlesRef.current.forEach(c => c.remove())
     circlesRef.current = []
@@ -115,8 +121,8 @@ export default function HostMap({
       })
 
       const marker = L.marker([host.location_lat, host.location_lng], { icon: markerIcon })
-        .addTo(map)
         .on('click', () => onHostSelect(host))
+      cluster.addLayer(marker)
 
       markersRef.current.push(marker)
     })
@@ -127,7 +133,7 @@ export default function HostMap({
     let cancelled = false
     injectLeafletCSS()
 
-    import('leaflet').then(mod => {
+    import('leaflet').then(mod => import('leaflet.markercluster').then(() => {
       if (cancelled || !mapRef.current) return
       const L = mod.default
       const initialCenter = savedMapView?.center ?? [49.5, 15.5]
@@ -138,6 +144,26 @@ export default function HostMap({
       setupTileLayers(L, map, satelliteRef.current)
 
       mapInstanceRef.current = map
+
+      // Cluster overlapping hosts into count bubbles ("3+", "10+", "20+");
+      // individual avatars appear once zoomed in enough to separate them.
+      clusterRef.current = (L as any).markerClusterGroup({
+        showCoverageOnHover: false,
+        spiderfyOnMaxZoom: true,
+        maxClusterRadius: 55,
+        iconCreateFunction: (cl: any) => {
+          const n = cl.getChildCount()
+          const label = n >= 20 ? '20+' : n >= 10 ? '10+' : n >= 3 ? '3+' : String(n)
+          const sz = n >= 20 ? 52 : n >= 10 ? 46 : 40
+          return L.divIcon({
+            html: `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${C.accent};border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:${n >= 10 ? 15 : 14}px;">${label}</div>`,
+            className: '',
+            iconSize: [sz, sz],
+          })
+        },
+      })
+      map.addLayer(clusterRef.current)
+
       map.on('moveend zoomend', () => {
         if (cancelled || mapInstanceRef.current !== map) return
         const center = map.getCenter()
@@ -155,12 +181,12 @@ export default function HostMap({
         })
         L.marker([e.latlng.lat, e.latlng.lng], { icon: youIcon, zIndexOffset: 2000 }).addTo(map)
       })
-    })
+    }))
 
     return () => {
       cancelled = true
       if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null }
-      markersRef.current = []; circlesRef.current = []; overlayLayersRef.current = []
+      markersRef.current = []; circlesRef.current = []; overlayLayersRef.current = []; clusterRef.current = null
     }
 	  // Leaflet owns the mounted map instance; this effect should run once and then use refs for live values.
 	  // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -28,6 +28,7 @@
     "expo-system-ui": "~56.0.5",
     "expo-web-browser": "~56.0.5",
     "leaflet": "^1.9.4",
+    "leaflet.markercluster": "^1.5.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-leaflet": "^5.0.0",
@@ -43,6 +44,7 @@
     "react-native-worklets": "0.8.3"
   },
   "devDependencies": {
+    "@types/leaflet.markercluster": "^1.5.6",
     "@types/react": "~19.2.2",
     "eslint": "^9.39.4",
     "eslint-config-expo": "~56.0.4",
