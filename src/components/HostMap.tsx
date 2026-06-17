@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useFocusEffect } from 'expo-router'
+import L from 'leaflet'
+import 'leaflet.markercluster'  // side-effect: patches the same L with markerClusterGroup
 import { useTheme } from '../lib/ThemeContext'
 
 let savedMapView: { center: [number, number]; zoom: number } | null = null
@@ -61,7 +63,7 @@ export default function HostMap({
   const [locating, setLocating] = useState(false)
   const [locateError, setLocateError] = useState('')
 
-  function addMarkers(L: any, currentHosts: Host[]) {
+  function addMarkers(currentHosts: Host[]) {
     const map = mapInstanceRef.current
     const cluster = clusterRef.current
     if (!map || !cluster) return
@@ -133,15 +135,13 @@ export default function HostMap({
     let cancelled = false
     injectLeafletCSS()
 
-    import('leaflet').then(mod => import('leaflet.markercluster').then(() => {
-      if (cancelled || !mapRef.current) return
-      const L = mod.default
+    {
       const initialCenter = savedMapView?.center ?? [49.5, 15.5]
       const initialZoom = savedMapView?.zoom ?? 7
-      const map = L.map(mapRef.current, { zoomControl: false }).setView(initialCenter, initialZoom)
+      const map = L.map(mapRef.current, { zoomControl: false }).setView(initialCenter as any, initialZoom)
 
       // Tile layers
-      setupTileLayers(L, map, satelliteRef.current)
+      setupTileLayers(map, satelliteRef.current)
 
       mapInstanceRef.current = map
 
@@ -169,7 +169,7 @@ export default function HostMap({
         const center = map.getCenter()
         savedMapView = { center: [center.lat, center.lng], zoom: map.getZoom() }
       })
-      addMarkers(L, hostsRef.current)
+      addMarkers(hostsRef.current)
 
       map.locate({ setView: false, maxZoom: 11 })
       map.on('locationfound', (e: any) => {
@@ -181,7 +181,7 @@ export default function HostMap({
         })
         L.marker([e.latlng.lat, e.latlng.lng], { icon: youIcon, zIndexOffset: 2000 }).addTo(map)
       })
-    }))
+    }
 
     return () => {
       cancelled = true
@@ -199,17 +199,13 @@ export default function HostMap({
   }, []))
 
   useEffect(() => {
-    if (!mapInstanceRef.current) return
-    let cancelled = false
-    import('leaflet').then(mod => {
-      if (!cancelled && mapInstanceRef.current) addMarkers(mod.default, hosts)
-    })
-    return () => { cancelled = true }
+    if (mapInstanceRef.current) addMarkers(hosts)
+    return () => {}
 	  // Repaint markers when host inputs change; addMarkers reads the latest theme and callbacks through component scope.
 	  // eslint-disable-next-line react-hooks/exhaustive-deps
 	  }, [hosts, buddyIds])
 
-  function setupTileLayers(L: any, map: any, isSatellite: boolean) {
+  function setupTileLayers(map: any, isSatellite: boolean) {
     if (!map) return
     if (tileLayerRef.current) tileLayerRef.current.remove()
     overlayLayersRef.current.forEach(l => l.remove())
@@ -239,13 +235,8 @@ export default function HostMap({
   }
 
   useEffect(() => {
-    if (!mapInstanceRef.current) return
-    let cancelled = false
-    import('leaflet').then(mod => {
-      const map = mapInstanceRef.current
-      if (!cancelled && map) setupTileLayers(mod.default, map, satellite)
-    })
-    return () => { cancelled = true }
+    const map = mapInstanceRef.current
+    if (map) setupTileLayers(map, satellite)
   }, [satellite])
 
   return (
