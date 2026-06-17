@@ -1101,6 +1101,7 @@ export default function RequestsScreen() {
                   value={reviewBody}
                   onChangeText={setReviewBody}
                   multiline
+                  maxLength={500}
                 />
                 <TouchableOpacity
                   style={[styles.reviewSubmit, (!reviewStars || submittingReview) && styles.reviewSubmitDisabled]}
@@ -1238,6 +1239,7 @@ export default function RequestsScreen() {
             placeholder="Type a message..."
             placeholderTextColor={C.textDim}
             multiline
+            maxLength={2000}
             onKeyPress={handleMessageKeyPress}
           />
           <TouchableOpacity

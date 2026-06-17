@@ -135,6 +135,16 @@ export default function BecomeHostScreen() {
       setSaveError(`Location #${missingIdx + 1} has no pin yet — tap the map to set its position, or remove that location before saving.`)
       return
     }
+    const noParkingIdx = locations.findIndex(l => l.parkings.length === 0)
+    if (noParkingIdx >= 0) {
+      setSaveError(`Location #${noParkingIdx + 1}: pick at least one parking option — it's the first thing riders look for.`)
+      return
+    }
+    const noSleepIdx = locations.findIndex(l => l.sleepTypes.length === 0)
+    if (noSleepIdx >= 0) {
+      setSaveError(`Location #${noSleepIdx + 1}: pick at least one sleeping option so guests know what to expect.`)
+      return
+    }
     if (!currentUser) {
       setSaveError('You are not logged in — please sign in and try again.')
       return
@@ -336,6 +346,7 @@ export default function BecomeHostScreen() {
             onChangeText={text => updateLocation(index, { notes: text })}
             multiline
             numberOfLines={4}
+            maxLength={800}
           />
         </View>
       ))}

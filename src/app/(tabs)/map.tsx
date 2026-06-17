@@ -343,7 +343,7 @@ export default function MapScreen() {
               <TouchableOpacity style={styles.counterBtn} onPress={() => setGuests(Math.min(selected.max_guests || 4, guests + 1))}>
                 <Text style={styles.counterBtnText}>+</Text>
               </TouchableOpacity>
-              <Text style={styles.counterMax}>max {selected.max_guests}</Text>
+              <Text style={styles.counterMax}>max {selected.max_guests || 4}</Text>
             </View>
           </View>
 
@@ -427,6 +427,17 @@ export default function MapScreen() {
                   onChange={(e: any) => {
                     const file = e.target.files?.[0]
                     if (!file) return
+                    if (!file.type?.startsWith('image/')) {
+                      setSendError('Please choose an image file.')
+                      e.target.value = ''
+                      return
+                    }
+                    if (file.size > 10 * 1024 * 1024) {
+                      setSendError('That photo is too large (max 10 MB). Please pick a smaller one.')
+                      e.target.value = ''
+                      return
+                    }
+                    setSendError('')
                     setPhotoFile(file)
                   }}
                 />
@@ -460,6 +471,7 @@ export default function MapScreen() {
               onChangeText={setMessage}
               multiline
               numberOfLines={4}
+              maxLength={1000}
             />
           </View>
 

@@ -9,6 +9,10 @@ import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 
 const ONBOARDING_KEY = '@twowheelcome/onboarding-seen'
 
+function isValidEmail(e: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim())
+}
+
 // ── First-run onboarding ─────────────────────────────────────────────────────
 
 function Onboarding({ C, onDone }: { C: ThemeColors; onDone: () => void }) {
@@ -112,26 +116,35 @@ export default function AuthScreen() {
   }, [session])
 
   async function handleLogin() {
-    setAuthError(''); setAuthSuccess(''); setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) setAuthError(error.message)
+    setAuthError(''); setAuthSuccess('')
+    if (!isValidEmail(email)) { setAuthError('Please enter a valid email address.'); return }
+    if (!password) { setAuthError('Please enter your password.'); return }
+    setLoading(true)
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+    if (error) {
+      setAuthError(/invalid login credentials/i.test(error.message)
+        ? 'Wrong email or password. Please check and try again.'
+        : error.message)
+    }
     setLoading(false)
   }
 
   async function handleRegister() {
     setAuthError(''); setAuthSuccess('')
     if (!fullName.trim()) { setAuthError('Please enter your name.'); return }
-    if (!email.trim()) { setAuthError('Please enter your email.'); return }
+    if (!isValidEmail(email)) { setAuthError('Please enter a valid email address.'); return }
     if (password.length < 6) { setAuthError('Password must be at least 6 characters.'); return }
     setLoading(true)
     const name = fullName.trim()
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: email.trim(),
       password,
       options: { data: { full_name: name } },
     })
     if (error) {
-      setAuthError(error.message)
+      setAuthError(/already registered|already exists|already been registered/i.test(error.message)
+        ? 'That email already has an account. Try logging in instead.'
+        : error.message)
     } else {
       if (data.user) {
         await supabase.from('profiles').upsert({ id: data.user.id, full_name: name })
@@ -143,7 +156,7 @@ export default function AuthScreen() {
 
   async function handleForgotPassword() {
     setAuthError(''); setAuthSuccess('')
-    if (!email.trim()) { setAuthError('Enter your email above first, then tap “Forgot your password?”.'); return }
+    if (!isValidEmail(email)) { setAuthError('Enter a valid email above first, then tap “Forgot your password?”.'); return }
     setLoading(true)
     const redirectTo = Platform.OS === 'web' && typeof window !== 'undefined'
       ? `${window.location.origin}/reset-password`
