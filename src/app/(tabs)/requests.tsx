@@ -1264,11 +1264,12 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   input: {
     flex: 1, backgroundColor: C.elevated, borderRadius: 100,
     paddingHorizontal: 18, paddingVertical: 12,
-    color: C.text, fontSize: 14, maxHeight: 120,
+    color: C.text, fontSize: 16, maxHeight: 120, minWidth: 0,
   },
   sendBtn: {
     width: 46, height: 46, borderRadius: 23,
     backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
   },
   sendBtnDisabled: { backgroundColor: C.border },
   sendBtnText: { color: C.white, fontSize: 20, fontWeight: '700' },
@@ -1381,7 +1382,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   reviewStarActive: { color: C.buddy },
   reviewInput: {
     backgroundColor: C.elevated, borderRadius: 14, padding: 12,
-    color: C.text, fontSize: 14, minHeight: 60,
+    color: C.text, fontSize: 16, minHeight: 60,
     borderWidth: 1, borderColor: C.border,
   },
   reviewSubmit: {

@@ -307,7 +307,7 @@ function makeStyles(C: ThemeColors) {
       borderRadius: 100, paddingHorizontal: 18, borderWidth: 1, borderColor: C.border, height: 54,
     },
     inputIcon: { marginRight: 10 },
-    input:     { flex: 1, color: C.text, fontSize: 15 },
+    input:     { flex: 1, color: C.text, fontSize: 16 },
 
     btnPrimary:     { height: 54, backgroundColor: C.accent, borderRadius: 100, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
     btnPrimaryText: { color: C.white, fontSize: 16, fontWeight: '700' },

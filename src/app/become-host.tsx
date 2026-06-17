@@ -421,7 +421,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   pLabelActive: { color: C.accent },
   pDesc: { color: C.textDim, fontSize: 10, textAlign: 'center' },
 
-  textarea: { backgroundColor: C.elevated, borderRadius: 12, padding: 14, color: C.text, fontSize: 14, borderWidth: 1, borderColor: C.border, minHeight: 110, textAlignVertical: 'top', lineHeight: 22 },
+  textarea: { backgroundColor: C.elevated, borderRadius: 12, padding: 14, color: C.text, fontSize: 16, borderWidth: 1, borderColor: C.border, minHeight: 110, textAlignVertical: 'top', lineHeight: 22 },
 
   addBtn: { borderWidth: 1, borderColor: C.accent, borderRadius: 100, padding: 14, alignItems: 'center', borderStyle: 'dashed' },
   addBtnText: { color: C.accent, fontWeight: '700', fontSize: 14, letterSpacing: 1 },

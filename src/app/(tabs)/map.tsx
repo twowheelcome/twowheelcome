@@ -361,7 +361,7 @@ export default function MapScreen() {
                       const dep = new Date(new Date(d).getTime() + 86400000).toISOString().split('T')[0]
                       setDepartureDate(dep)
                     }}
-                    style={{ background: C.bg, border: `1px solid ${C.borderMid}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontSize: 13, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any}
+                    style={{ background: C.bg, border: `1px solid ${C.borderMid}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontSize: 16, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any}
                   />
                 ) : (
                   <TextInput
@@ -383,7 +383,7 @@ export default function MapScreen() {
               {Platform.OS === 'web' ? (
                 <input type="time" value={arrivalTime}
                   onChange={(e: any) => setArrivalTime(e.target.value)}
-                  style={{ background: C.bg, border: `1px solid ${C.borderMid}`, borderRadius: 8, padding: '10px 12px', color: arrivalTime ? C.text : C.textFaint, fontSize: 13, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any} />
+                  style={{ background: C.bg, border: `1px solid ${C.borderMid}`, borderRadius: 8, padding: '10px 12px', color: arrivalTime ? C.text : C.textFaint, fontSize: 16, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any} />
               ) : (
                 <TextInput style={styles.dateInput} value={arrivalTime} onChangeText={setArrivalTime} placeholder="e.g. 17:00" placeholderTextColor="#777" />
               )}
@@ -854,13 +854,13 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   buttonText:       { color: C.white, fontWeight: '800', fontSize: 14, letterSpacing: 1 },
   sectionLabel:     { color: C.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10, fontWeight: '700' },
   dateFieldLabel:   { color: C.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
-  dateInput:        { backgroundColor: C.elevated, borderRadius: 10, padding: 12, color: C.text, fontSize: 13, borderWidth: 1, borderColor: C.border },
+  dateInput:        { backgroundColor: C.elevated, borderRadius: 10, padding: 12, color: C.text, fontSize: 16, borderWidth: 1, borderColor: C.border },
   counter:          { flexDirection: 'row', alignItems: 'center', gap: 16 },
   counterBtn:       { width: 36, height: 36, borderRadius: 18, backgroundColor: C.elevated, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
   counterBtnText:   { color: C.text, fontSize: 20, fontWeight: '700' },
   counterValue:     { color: C.text, fontSize: 22, fontWeight: '800', minWidth: 24, textAlign: 'center' },
   counterMax:       { color: C.textDim, fontSize: 12 },
-  textarea:         { backgroundColor: C.elevated, borderRadius: 12, padding: 14, color: C.text, fontSize: 14, minHeight: 100, borderWidth: 1, borderColor: C.border, textAlignVertical: 'top', lineHeight: 22 },
+  textarea:         { backgroundColor: C.elevated, borderRadius: 12, padding: 14, color: C.text, fontSize: 16, minHeight: 100, borderWidth: 1, borderColor: C.border, textAlignVertical: 'top', lineHeight: 22 },
   infoBox:          { borderRadius: 12, borderWidth: 1, padding: 14 },
   infoText:         { fontSize: 13, lineHeight: 19 },
   photoBtn:         { borderWidth: 1, borderColor: C.border, borderRadius: 12, borderStyle: 'dashed', padding: 24, alignItems: 'center', justifyContent: 'center' },

@@ -210,7 +210,7 @@ export default function LocationPicker({ pin, onChange }: Props) {
             placeholder="Hledat adresu..."
             style={{
               flex: 1, background: 'transparent', border: 'none', outline: 'none',
-              color: C.text, fontSize: 13, padding: '10px 0', fontFamily: 'sans-serif',
+              color: C.text, fontSize: 16, padding: '10px 0', fontFamily: 'sans-serif',
             }}
           />
           {searching && (
