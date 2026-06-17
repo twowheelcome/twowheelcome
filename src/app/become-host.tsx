@@ -413,7 +413,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   label: { color: C.textDim, fontSize: 11, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' },
   pinLabel: { color: C.accent, fontSize: 13, fontWeight: '600', marginTop: -8 },
 
-  mapWrap: { height: 220, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: C.border },
+  mapWrap: { height: 400, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: C.border },
   mapLoading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.elevated },
 
   optCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.elevated, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: C.border, gap: 12 },
