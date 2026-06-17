@@ -17,7 +17,9 @@ DROP POLICY IF EXISTS "Public read host_locations" ON host_locations;
 
 -- 2) Public view with rounded coordinates (~2 decimals ≈ 1 km). Runs with the
 --    view owner's rights so it can read all rows, but only exposes coarse coords.
-CREATE OR REPLACE VIEW host_locations_public
+--    DROP + CREATE (not CREATE OR REPLACE) so column changes/reorders are safe.
+DROP VIEW IF EXISTS host_locations_public;
+CREATE VIEW host_locations_public
 WITH (security_invoker = false) AS
 SELECT
   id,
@@ -32,6 +34,7 @@ SELECT
   amenities,
   pricing,
   pricings,
+  vehicle_types,
   max_guests,
   notes,
   created_at
