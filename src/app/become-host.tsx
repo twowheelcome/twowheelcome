@@ -51,8 +51,21 @@ interface Location {
   notes: string
 }
 
+function makeId(): string {
+  const g: any = globalThis as any
+  if (g.crypto?.randomUUID) return g.crypto.randomUUID()
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (ch) => {
+    const r = (Math.random() * 16) | 0
+    return (ch === 'x' ? r : (r & 0x3) | 0x8).toString(16)
+  })
+}
+
+// New locations get a client-generated id up front so a mixed save batch (existing
+// rows with ids + new rows) stays uniform — PostgREST would otherwise send id:null
+// for the new rows and violate the NOT NULL constraint. A stable id also prevents
+// duplicate inserts on a second save.
 function emptyLocation(): Location {
-  return { pin: null, parkings: [], sleepTypes: [], amenities: [], maxGuests: 2, pricings: ['free'], notes: '' }
+  return { id: makeId(), pin: null, parkings: [], sleepTypes: [], amenities: [], maxGuests: 2, pricings: ['free'], notes: '' }
 }
 
 function toggle(arr: string[], value: string): string[] {
@@ -190,7 +203,7 @@ export default function BecomeHostScreen() {
 
       const rows = validLocations
         .map(l => ({
-          ...(l.id ? { id: l.id } : {}),
+          id: l.id || makeId(),
           user_id: userId,
           location_lat: l.pin!.lat,
           location_lng: l.pin!.lng,
@@ -340,7 +353,7 @@ export default function BecomeHostScreen() {
           <Text style={styles.label}>✍️ DESCRIPTION FOR RIDERS</Text>
           <TextInput
             style={styles.textarea}
-            placeholder={'What do you offer? Where exactly to park?\nShower, wifi, dinner? How to contact you?'}
+            placeholder={'Private notes for this safe spot. Keep exact directions and contact details here — they are never shown on the public map.'}
             placeholderTextColor="#666"
             value={loc.notes}
             onChangeText={text => updateLocation(index, { notes: text })}
@@ -348,6 +361,7 @@ export default function BecomeHostScreen() {
             numberOfLines={4}
             maxLength={800}
           />
+          <Text style={styles.privateNote}>🔒 Private. Exact directions are shared only when you send the meeting point in an accepted stay chat.</Text>
         </View>
       ))}
 
@@ -434,6 +448,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   pDesc: { color: C.textDim, fontSize: 10, textAlign: 'center' },
 
   textarea: { backgroundColor: C.elevated, borderRadius: 12, padding: 14, color: C.text, fontSize: 16, borderWidth: 1, borderColor: C.border, minHeight: 110, textAlignVertical: 'top', lineHeight: 22 },
+  privateNote: { color: C.textDim, fontSize: 12, lineHeight: 18 },
 
   addBtn: { borderWidth: 1, borderColor: C.accent, borderRadius: 100, padding: 14, alignItems: 'center', borderStyle: 'dashed' },
   addBtnText: { color: C.accent, fontWeight: '700', fontSize: 14, letterSpacing: 1 },
