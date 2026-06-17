@@ -4,7 +4,8 @@ import { useLocalSearchParams, router } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { SafetyBlock } from '../../components/SafetyBlock'
-import { AppHeader } from '../../components/AppHeader'
+import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
+import { UserChip } from '../../components/UserChip'
 
 const AMENITY_ICONS: Record<string, string> = {
   shower: '🚿', toilet: '🚽', kitchen: '🍳', laundry: '👕',
@@ -73,7 +74,7 @@ export default function PublicHostProfile() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <AppHeader />
+        <AppHeader left={<HeaderBackButton />} right={<UserChip />} />
         <View style={styles.center}>
           <ActivityIndicator color={C.accent} />
         </View>
@@ -84,7 +85,7 @@ export default function PublicHostProfile() {
   if (notFound) {
     return (
       <View style={styles.container}>
-        <AppHeader />
+        <AppHeader left={<HeaderBackButton />} right={<UserChip />} />
         <View style={styles.center}>
           <Text style={styles.notFoundEmoji}>🏍</Text>
           <Text style={styles.notFoundTitle}>Rider not found</Text>
@@ -102,7 +103,7 @@ export default function PublicHostProfile() {
 
   return (
     <View style={styles.container}>
-      <AppHeader />
+      <AppHeader left={<HeaderBackButton />} right={<UserChip />} />
       <ScrollView contentContainerStyle={styles.content}>
 
         {/* Avatar + name */}
@@ -114,7 +115,7 @@ export default function PublicHostProfile() {
             <Text style={styles.name}>{profile.full_name || 'Anonymous Rider'}</Text>
             {avgRating != null && (
               <Text style={styles.rating}>
-                {`${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} ${avgRating.toFixed(1)} · ${reviewCount} ${reviewCount === 1 ? 'stay' : 'stays'}`}
+                {`${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} ${avgRating.toFixed(1)} · ${reviewCount} ${reviewCount === 1 ? 'review' : 'reviews'}`}
               </Text>
             )}
             {profile.bike_model && <Text style={styles.meta}>🏍 {profile.bike_model}</Text>}
@@ -162,25 +163,33 @@ export default function PublicHostProfile() {
 
         <Text style={styles.maxGuests}>👥 Up to {location.max_guests} {location.max_guests === 1 ? 'rider' : 'riders'}</Text>
 
-        {/* Reviews */}
-        {reviews.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Reviews from riders</Text>
-            {reviews.map((r: any, i: number) => (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Reviews from riders</Text>
+          {reviews.length > 0 ? (
+            <>
+              {reviews.map((r: any, i: number) => (
               <View key={i} style={styles.reviewCard}>
                 <Text style={styles.reviewStars}>{`${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}`}</Text>
-                {r.body ? <Text style={styles.reviewBody}>{`”${r.body}”`}</Text> : null}
+                {r.body ? <Text style={styles.reviewBody}>{`“${r.body}”`}</Text> : null}
                 {r.reviewer_name ? <Text style={styles.reviewAuthor}>{`— ${r.reviewer_name}`}</Text> : null}
               </View>
-            ))}
-          </View>
-        )}
+              ))}
+            </>
+          ) : (
+            <View style={styles.reviewCard}>
+              <Text style={styles.reviewEmpty}>No reviews yet.</Text>
+            </View>
+          )}
+        </View>
 
         <View style={styles.divider} />
         <Text style={styles.joinCta}>Want to stay here?</Text>
-        <Text style={styles.joinSub}>Download the Twowheelcome app or log in to send a stay request to {profile.full_name?.split(' ')[0] || 'this host'}.</Text>
-        <TouchableOpacity style={styles.ctaBtn} onPress={() => router.replace('/(tabs)/map')}>
-          <Text style={styles.ctaBtnText}>Open in app</Text>
+        <Text style={styles.joinSub}>Send a stay request to {profile.full_name?.split(' ')[0] || 'this host'} and agree on the details in chat.</Text>
+        <TouchableOpacity
+          style={styles.ctaBtn}
+          onPress={() => router.replace({ pathname: '/(tabs)/map', params: { knockHost: profile.id } })}
+        >
+          <Text style={styles.ctaBtnText}>Knock on the door</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -214,6 +223,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   reviewStars:  { color: C.accent, fontSize: 14 },
   reviewBody:   { color: C.text, fontSize: 14, lineHeight: 20 },
   reviewAuthor: { color: C.textMuted, fontSize: 12 },
+  reviewEmpty:  { color: C.textMuted, fontSize: 13, lineHeight: 20 },
 
   divider:      { height: 1, backgroundColor: C.border, marginVertical: 8 },
   joinCta:      { color: C.text, fontSize: 18, fontWeight: '900' },

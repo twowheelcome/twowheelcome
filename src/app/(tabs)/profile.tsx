@@ -8,7 +8,7 @@ import { router } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { SafetyBlock } from '../../components/SafetyBlock'
 import { UserChip } from '../../components/UserChip'
-import { AppHeader } from '../../components/AppHeader'
+import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 
 export default function ProfileScreen() {
   const C = useTheme()
@@ -155,7 +155,7 @@ export default function ProfileScreen() {
   return (
     <View style={styles.container}>
     <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
-      <AppHeader right={<UserChip />} />
+      <AppHeader left={<HeaderBackButton />} right={<UserChip />} />
 
       {/* Avatar + QR */}
       <View style={styles.hero}>

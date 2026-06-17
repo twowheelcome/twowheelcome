@@ -768,6 +768,7 @@ export default function RequestsScreen() {
             <Text style={styles.chatAvatarText}>{otherName.charAt(0).toUpperCase()}</Text>
           </View>
           <Text style={styles.chatName}>{otherName}</Text>
+          <UserChip />
         </View>
 
         <FlatList

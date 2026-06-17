@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Platform, Modal } from 'react-native'
 import { supabase } from '../../lib/supabase'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
 import { AppHeader } from '../../components/AppHeader'
+import { UserChip } from '../../components/UserChip'
 
 
 // Deterministic ~500m offset from host ID so markers don't jump on refresh
@@ -22,6 +23,7 @@ function defaultArrivalTime() {
 }
 
 export default function MapScreen() {
+  const { knockHost } = useLocalSearchParams<{ knockHost?: string }>()
   const C = useTheme()
   const styles = useMemo(() => makeStyles(C), [C])
   const [hosts, setHosts] = useState<any[]>([])
@@ -36,6 +38,7 @@ export default function MapScreen() {
   const [sendSuccess, setSendSuccess] = useState(false)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const fileInputRef = useRef<any>(null)
+  const handledKnockHostRef = useRef<string | null>(null)
   const [arrivalChip, setArrivalChip] = useState<'tonight' | 'tomorrow' | 'other'>('tonight')
   const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().split('T')[0])
   const [departureDate, setDepartureDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0])
@@ -140,6 +143,18 @@ export default function MapScreen() {
       import('../../components/HostMap').then(m => setHostMap(() => m.default))
     }
   }, [fetchHosts])
+
+  useEffect(() => {
+    if (!knockHost || handledKnockHostRef.current === knockHost || hosts.length === 0) return
+    const host = hosts.find(h => h.user_id === knockHost)
+    if (!host) return
+    handledKnockHostRef.current = knockHost
+    void Promise.resolve().then(() => {
+      setSelected(host)
+      setShowHostProfile(false)
+      beginRequest()
+    })
+  }, [hosts, knockHost])
 
   function beginRequest() {
     setArrivalChip('tonight')
@@ -424,7 +439,7 @@ export default function MapScreen() {
   // --- Main screen ---
   return (
     <View style={styles.container}>
-      <AppHeader />
+      <AppHeader right={<UserChip />} />
 
       <View style={styles.filterBar}>
         <TouchableOpacity style={[styles.filterBtn, activeCount > 0 && styles.filterBtnActive]} onPress={() => setShowFilters(true)}>
@@ -636,7 +651,7 @@ export default function MapScreen() {
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>🏍</Text>
           <Text style={styles.emptyTitle}>{activeCount > 0 ? 'Nothing found' : 'No hosts yet'}</Text>
-          <Text style={styles.emptyText}>{activeCount > 0 ? 'Try changing or clearing filters.' : 'Be the first! Go to the Profile tab and open your doors to the community.'}</Text>
+          <Text style={styles.emptyText}>{activeCount > 0 ? 'Try changing or clearing filters.' : 'Be the first! Open your profile and offer a safe spot to the community.'}</Text>
         </View>
       )
     }
