@@ -645,9 +645,10 @@ export default function RequestsScreen() {
     listChannelRef.current = channel
     channel
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload) => {
-        if (currentUserIdRef.current !== userId) return
         const m = payload.new as any
         const convId = m.conversation_id
+        console.log('[RT] INSERT msg', { convId, selected: selectedConvIdRef.current, match: selectedConvIdRef.current === convId, curUser: currentUserIdRef.current, subUser: userId, body: m.body })
+        if (currentUserIdRef.current !== userId) { console.log('[RT] early-return user mismatch'); return }
 
         // (1) Conversation list: move to top, refresh preview, light the unread dot.
         let isNew = false
@@ -668,8 +669,9 @@ export default function RequestsScreen() {
 
         // (2) Open conversation: append the new message live + scroll, and mark read.
         if (selectedConvIdRef.current === convId) {
+          console.log('[RT] append branch ENTERED for', convId)
           void markRead(convId, m.created_at)
-          const { data } = await supabase
+          const { data, error: fErr } = await supabase
             .from('messages')
             .select(`
               id, conversation_id, sender_id, body, photo_url, request_id, created_at,
@@ -677,11 +679,14 @@ export default function RequestsScreen() {
             `)
             .eq('id', m.id)
             .single()
+          console.log('[RT] fetched msg', { has: !!data, fErr: fErr?.message })
           if (data) {
             const { data: sp } = await supabase.from('profiles').select('full_name').eq('id', data.sender_id).single()
-            setMessages(prev => prev.find(x => x.id === data.id)
-              ? prev
-              : [...prev, normalizeMsg({ ...data, sender: { full_name: sp?.full_name ?? null } })])
+            setMessages(prev => {
+              const dup = !!prev.find(x => x.id === data.id)
+              console.log('[RT] setMessages append', { dup, prevLen: prev.length })
+              return dup ? prev : [...prev, normalizeMsg({ ...data, sender: { full_name: sp?.full_name ?? null } })]
+            })
             if (nearBottomRef.current) setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 60)
           }
         }
