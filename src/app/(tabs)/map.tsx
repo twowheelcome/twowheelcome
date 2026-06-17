@@ -32,6 +32,7 @@ export default function MapScreen() {
   const styles = useMemo(() => makeStyles(C), [C])
   const [hosts, setHosts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [selected, setSelected] = useState<any>(null)
   const [showHostProfile, setShowHostProfile] = useState(false)
   const [requesting, setRequesting] = useState(false)
@@ -101,7 +102,8 @@ export default function MapScreen() {
       res = await supabase.from('host_locations').select('*')
     }
     const { data, error } = res
-    if (error) { console.error(error); setLoading(false); return }
+    if (error) { console.error(error); setLoadError(true); setLoading(false); return }
+    setLoadError(false)
     if (!data || data.length === 0) { setHosts([]); setLoading(false); return }
 
     const userIds = [...new Set(data.map((h: any) => h.user_id))]
@@ -702,6 +704,14 @@ export default function MapScreen() {
             satellite={satelliteMap}
             onSatelliteToggle={() => setSatelliteMap(v => !v)}
           />
+          {loadError && (
+            <View style={styles.loadErrorBanner}>
+              <Text style={styles.loadErrorText}>Couldn't load hosts. Check your connection.</Text>
+              <TouchableOpacity onPress={() => { setLoading(true); void fetchHosts() }}>
+                <Text style={styles.loadErrorRetry}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       ) : (
         // Map not available on this platform — fall through to list
@@ -716,6 +726,18 @@ export default function MapScreen() {
   )
 
   function renderList() {
+    if (loadError && filteredHosts.length === 0) {
+      return (
+        <View style={styles.empty}>
+          <Text style={styles.emptyEmoji}>📡</Text>
+          <Text style={styles.emptyTitle}>Couldn't load hosts</Text>
+          <Text style={styles.emptyText}>Check your connection and try again.</Text>
+          <TouchableOpacity style={[styles.button, { marginTop: 16, paddingHorizontal: 28 }]} onPress={() => { setLoading(true); void fetchHosts() }}>
+            <Text style={styles.buttonText}>RETRY</Text>
+          </TouchableOpacity>
+        </View>
+      )
+    }
     if (filteredHosts.length === 0 && !loading) {
       return (
         <View style={styles.empty}>
@@ -899,6 +921,9 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   counterBtnText:   { color: C.text, fontSize: 20, fontWeight: '700' },
   counterValue:     { color: C.text, fontSize: 22, fontWeight: '800', minWidth: 24, textAlign: 'center' },
   counterMax:       { color: C.textDim, fontSize: 12 },
+  loadErrorBanner:  { position: 'absolute', top: 16, left: 16, right: 16, zIndex: 1100, backgroundColor: C.errorSoft, borderColor: C.errorBorder, borderWidth: 1, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  loadErrorText:    { color: C.error, fontSize: 13, fontWeight: '600', flex: 1 },
+  loadErrorRetry:   { color: C.accent, fontSize: 13, fontWeight: '800' },
   textarea:         { backgroundColor: C.elevated, borderRadius: 12, padding: 14, color: C.text, fontSize: 16, minHeight: 100, borderWidth: 1, borderColor: C.border, textAlignVertical: 'top', lineHeight: 22 },
   infoBox:          { borderRadius: 12, borderWidth: 1, padding: 14 },
   infoText:         { fontSize: 13, lineHeight: 19 },
