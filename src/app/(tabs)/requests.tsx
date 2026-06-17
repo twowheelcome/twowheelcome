@@ -408,6 +408,7 @@ export default function RequestsScreen() {
   const [convs, setConvs] = useState<ConvRow[]>([])
   const [selected, setSelected] = useState<ConvRow | null>(null)
   const [messages, setMessages] = useState<MsgRow[]>([])
+  const [incomingMsg, setIncomingMsg] = useState<any>(null)  // last realtime message, appended by an effect that reads the live `selected`
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -507,6 +508,35 @@ export default function RequestsScreen() {
       }
     }, [currentUser])
   )
+
+  // Append an incoming realtime message into the OPEN conversation. Runs off the
+  // live `selected` state (not a ref), so it always targets the conversation that
+  // is actually rendered — this is the fix for "new message doesn't show live".
+  useEffect(() => {
+    const m = incomingMsg
+    if (!m || !selected || m.conversation_id !== selected.id) return
+    let cancelled = false
+    void (async () => {
+      void markRead(selected.id, m.created_at)
+      const { data } = await supabase
+        .from('messages')
+        .select(`
+          id, conversation_id, sender_id, body, photo_url, request_id, created_at,
+          request:stay_requests!request_id(${REQUEST_SELECT})
+        `)
+        .eq('id', m.id)
+        .single()
+      if (cancelled || !data) return
+      const { data: sp } = await supabase.from('profiles').select('full_name').eq('id', data.sender_id).single()
+      if (cancelled) return
+      setMessages(prev => prev.find(x => x.id === data.id)
+        ? prev
+        : [...prev, normalizeMsg({ ...data, sender: { full_name: sp?.full_name ?? null } })])
+      if (nearBottomRef.current) setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 60)
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomingMsg, selected])
 
   // Auto-open conversation when navigated from map with openConv param
   useEffect(() => {
@@ -673,25 +703,10 @@ export default function RequestsScreen() {
           })
           if (isNew && currentUserIdRef.current === userId) void loadConvs(userId)
 
-          // (2) Open conversation: append the new message live + scroll, and mark read.
-          if (selectedConvIdRef.current === convId) {
-            void markRead(convId, m.created_at)
-            const { data } = await supabase
-              .from('messages')
-              .select(`
-                id, conversation_id, sender_id, body, photo_url, request_id, created_at,
-                request:stay_requests!request_id(${REQUEST_SELECT})
-              `)
-              .eq('id', m.id)
-              .single()
-            if (data) {
-              const { data: sp } = await supabase.from('profiles').select('full_name').eq('id', data.sender_id).single()
-              setMessages(prev => prev.find(x => x.id === data.id)
-                ? prev
-                : [...prev, normalizeMsg({ ...data, sender: { full_name: sp?.full_name ?? null } })])
-              if (nearBottomRef.current) setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 60)
-            }
-          }
+          // (2) Hand the raw message to an effect that reads the live `selected` state
+          // and appends it to the open thread. Driving this off React state (not a ref)
+          // guarantees we compare against the conversation that is actually on screen.
+          setIncomingMsg(m)
         })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'stay_requests' }, (payload) => {
           if (currentUserIdRef.current !== userId) return
