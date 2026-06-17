@@ -646,10 +646,17 @@ export default function RequestsScreen() {
     }
   }
 
-  function subscribeToConv(convId: string) {
-    if (channelRef.current) supabase.removeChannel(channelRef.current)
-    channelRef.current = supabase
-      .channel(`conv:${convId}`)
+  async function subscribeToConv(convId: string) {
+    if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null }
+
+    // Realtime must carry the logged-in user's token — otherwise RLS filters out
+    // the change payloads and new messages only show up after a manual refresh.
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) await supabase.realtime.setAuth(session.access_token)
+
+    const channel = supabase.channel(`conv:${convId}`)
+    channelRef.current = channel
+    channel
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'messages',
         filter: `conversation_id=eq.${convId}`,
@@ -686,11 +693,16 @@ export default function RequestsScreen() {
             : c
         ))
       })
-      .subscribe()
+      .subscribe((status) => {
+        // Recover from a dropped/failed channel so live updates resume on their own.
+        if ((status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') && channelRef.current === channel) {
+          setTimeout(() => { if (channelRef.current === channel) void subscribeToConv(convId) }, 2000)
+        }
+      })
   }
 
   useEffect(() => {
-    return () => { if (channelRef.current) supabase.removeChannel(channelRef.current) }
+    return () => { if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null } }
   }, [])
 
   async function sendMessage() {
@@ -907,7 +919,7 @@ export default function RequestsScreen() {
           <TouchableOpacity onPress={() => {
             setSelected(null)
             setMyReview(null); setReviewStars(0); setReviewBody('')
-            if (channelRef.current) supabase.removeChannel(channelRef.current)
+            if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null }
           }}>
             <Text style={styles.back}>←</Text>
           </TouchableOpacity>
