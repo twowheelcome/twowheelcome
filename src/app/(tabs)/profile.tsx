@@ -6,7 +6,6 @@ import QRCode from 'react-native-qrcode-svg'
 import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
-import { SafetyBlock } from '../../components/SafetyBlock'
 import { UserChip, refreshUserChip } from '../../components/UserChip'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 
@@ -367,38 +366,8 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Your place card */}
-        {isHost && (() => {
-          const loc = hostLocations[0]
-          const parkings: string[] = loc.parkings?.length ? loc.parkings : (loc.parking ? [loc.parking] : [])
-          const pricings: string[] = loc.pricings?.length ? loc.pricings : (loc.pricing ? [loc.pricing] : ['free'])
-          const sleepTypes: string[] = loc.sleep_types || []
-          const isFree = pricings.includes('free')
-          return (
-            <View style={styles.placeCard}>
-              <View style={styles.placeCardHeader}>
-                <Text style={styles.placeCardTitle}>Bike safety at your place</Text>
-                {loc.is_open && (
-                  <View style={styles.openTag}>
-                    <Text style={styles.openTagText}>Open</Text>
-                  </View>
-                )}
-              </View>
-              <SafetyBlock parkings={parkings} />
-              <View style={styles.placeDetails}>
-                {sleepTypes.length > 0 && (
-                  <Text style={styles.placeDetailText}>
-                    {sleepTypes.includes('room') ? '🛏 Private room' : sleepTypes.includes('roof') ? '🏠 Roof over head' : '⛺ Tent space'}
-                    {loc.max_guests ? `  ·  max ${loc.max_guests} riders` : ''}
-                  </Text>
-                )}
-                <Text style={styles.placeDetailText}>
-                  {isFree ? '🤝 Free' : pricings.includes('tip') ? '🙏 Tip welcome' : '💶 Paid'}
-                </Text>
-              </View>
-            </View>
-          )
-        })()}
+        {/* Listings are managed in "My Listings" (below) so multi-location hosts
+            aren't shown a single confusing inline place. */}
 
         {/* Reviews */}
         {reviews.length > 0 && (
