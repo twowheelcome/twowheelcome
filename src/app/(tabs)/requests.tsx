@@ -3,7 +3,7 @@ import {
   FlatList, Image, KeyboardAvoidingView, Linking, Platform,
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
-import { useFocusEffect, useLocalSearchParams } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { unreadStore } from '../../lib/unreadStore'
@@ -541,18 +541,55 @@ export default function RequestsScreen() {
     return () => { cancelled = true }
   }, [incomingMsg, selected])
 
-  // Auto-open conversation when navigated from map with openConv param
-  useEffect(() => {
-    if (openConvParam && convs.length > 0 && autoOpenedRef.current !== openConvParam) {
-      const conv = convs.find(c => c.id === openConvParam)
-      if (conv) {
-        autoOpenedRef.current = openConvParam
-        openConv(conv)
-      }
+  // Fetch one conversation by id, shaped like a list row. Used when the openConv
+  // deep-link arrives before the list has loaded, so opening never races the list.
+  async function fetchConvById(convId: string, userId: string): Promise<ConvRow | null> {
+    const { data: c } = await supabase
+      .from('conversations')
+      .select('id, user_a, user_b, location_id, last_message_at')
+      .eq('id', convId)
+      .maybeSingle()
+    if (!c || (c.user_a !== userId && c.user_b !== userId)) return null
+    const otherId = c.user_a === userId ? c.user_b : c.user_a
+    const [{ data: prof }, { data: loc }] = await Promise.all([
+      otherId
+        ? supabase.from('profiles').select('id, full_name, avatar_url').eq('id', otherId).maybeSingle()
+        : Promise.resolve({ data: null as any }),
+      c.location_id
+        ? supabase.from('host_locations_public').select('location_city, location_country').eq('id', c.location_id).maybeSingle()
+        : Promise.resolve({ data: null as any }),
+    ])
+    return {
+      id: c.id, user_a: c.user_a, user_b: c.user_b, location_id: c.location_id,
+      locationLabel: loc ? ([loc.location_city, loc.location_country].filter(Boolean).join(', ') || 'Past location') : 'Past location',
+      last_message_at: c.last_message_at,
+      other: { id: otherId, full_name: prof?.full_name ?? null, avatar_url: prof?.avatar_url ?? null },
+      lastMsgBody: null, lastMsgSenderId: null, lastMsgIsRequest: false,
+      hasRequest: false, requestStatus: null, requestHostId: null, requestGuestId: null,
     }
-    // openConv depends on live chat state; this effect is intentionally driven by route + loaded conversations.
+  }
+
+  // Auto-open a conversation when navigated from the map (openConv param). Opens as
+  // soon as the param AND a user are present — using the loaded list if it's there,
+  // otherwise fetching that one conversation directly so it never depends on the
+  // list's load timing. The param is consumed afterwards so re-renders and repeat
+  // navigations to the same conversation behave (no loop, and it re-opens next time).
+  useEffect(() => {
+    if (!openConvParam) { autoOpenedRef.current = null; return }
+    if (!currentUser || autoOpenedRef.current === openConvParam) return
+    autoOpenedRef.current = openConvParam
+    const userId = currentUser.id
+    const targetId = openConvParam
+    void (async () => {
+      const conv = convs.find(c => c.id === targetId) ?? await fetchConvById(targetId, userId)
+      if (currentUserIdRef.current !== userId) return
+      if (conv) openConv(conv)
+      router.setParams({ openConv: '' })
+    })()
+    // Intentionally not depending on `convs`: the direct fetch makes opening
+    // timing-independent, and depending on convs would cancel the in-flight open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [convs, openConvParam])
+  }, [openConvParam, currentUser])
 
   // Reload convs when navigating back from chat
   useEffect(() => {
