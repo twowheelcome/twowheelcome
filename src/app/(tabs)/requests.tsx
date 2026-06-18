@@ -3,11 +3,13 @@ import {
   FlatList, Image, KeyboardAvoidingView, Linking, Platform,
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
-import { useFocusEffect, useLocalSearchParams } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { unreadStore } from '../../lib/unreadStore'
 import { pendingChatStore } from '../../lib/pendingChatStore'
+import { mapFocusStore } from '../../lib/mapFocusStore'
+import { fuzzCoords } from '../../lib/geo'
 import { UserChip } from '../../components/UserChip'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 
@@ -430,6 +432,7 @@ export default function RequestsScreen() {
   const listChannelRef = useRef<any>(null)   // realtime for the whole conversation list
   const subscribingListRef = useRef(false)   // guard so we never create two channels at once
   const selectedConvIdRef = useRef<string | null>(null)
+  const locCoordsRef = useRef<{ lat: number; lng: number } | null>(null)  // open conversation's approximate map point
 
   // reviewRequest can still arrive as a route param; the conversation to open now
   // comes via pendingChatStore (see useFocusEffect) so it survives tab re-focus.
@@ -589,6 +592,39 @@ export default function RequestsScreen() {
     const anyUnread = convs.some(c => isConvUnread(c, currentUser?.id, readMap))
     unreadStore.set(anyUnread)
   }, [convs, currentUser, readMap])
+
+  // Preload the open conversation's approximate map point (rounded public coords +
+  // the same ~500m fuzz the map uses) so "Show on map" is instant.
+  useEffect(() => {
+    locCoordsRef.current = null
+    const locId = selected?.location_id
+    if (!locId) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('host_locations_public')
+        .select('location_lat, location_lng').eq('id', locId).maybeSingle()
+      if (!cancelled && data?.location_lat != null && data?.location_lng != null) {
+        locCoordsRef.current = fuzzCoords(locId, data.location_lat, data.location_lng)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [selected?.location_id])
+
+  // Open the in-app map centred on this conversation's APPROXIMATE area. Cross-tab,
+  // so it goes through the focus-consumed mapFocusStore.
+  async function showLocationOnMap() {
+    const locId = selected?.location_id
+    if (!locId) return
+    let coords = locCoordsRef.current
+    if (!coords) {
+      const { data } = await supabase.from('host_locations_public')
+        .select('location_lat, location_lng').eq('id', locId).maybeSingle()
+      if (data?.location_lat != null && data?.location_lng != null) coords = fuzzCoords(locId, data.location_lat, data.location_lng)
+    }
+    if (!coords) return
+    mapFocusStore.set(coords)
+    router.push('/(tabs)/map')
+  }
 
   async function loadConvs(userId: string) {
     loadUserIdRef.current = userId
@@ -1087,6 +1123,15 @@ export default function RequestsScreen() {
           <UserChip />
         </View>
 
+        {/* Quick link to the conversation's place on the in-app map (approximate area) */}
+        {Platform.OS === 'web' && selected.location_id ? (
+          <TouchableOpacity style={styles.showMapBar} onPress={showLocationOnMap} accessibilityRole="button">
+            <Text style={styles.showMapBarIcon}>🗺</Text>
+            <Text style={styles.showMapBarText} numberOfLines={1}>Show approximate area on map</Text>
+            <Text style={styles.showMapBarChevron}>›</Text>
+          </TouchableOpacity>
+        ) : null}
+
         <FlatList
           ref={flatRef}
           data={messages}
@@ -1413,6 +1458,15 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   chatIdentity: { flex: 1, paddingHorizontal: 10 },
   chatName: { color: C.text, fontSize: 16, fontWeight: '700' },
   chatLocation: { color: C.textDim, fontSize: 11, marginTop: 1 },
+
+  showMapBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 20, paddingVertical: 10,
+    backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border,
+  },
+  showMapBarIcon: { fontSize: 15 },
+  showMapBarText: { flex: 1, color: C.accent, fontSize: 13, fontWeight: '800' },
+  showMapBarChevron: { color: C.accent, fontSize: 18, fontWeight: '800' },
 
   // Messages
   msgList: { padding: 16, gap: 8, paddingBottom: 8 },

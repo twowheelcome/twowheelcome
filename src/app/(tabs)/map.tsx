@@ -4,19 +4,12 @@ import { supabase } from '../../lib/supabase'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { pendingChatStore } from '../../lib/pendingChatStore'
+import { mapFocusStore } from '../../lib/mapFocusStore'
+import { fuzzCoords } from '../../lib/geo'
 import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
 
-
-// Deterministic ~500m offset from host ID so markers don't jump on refresh
-function fuzzCoords(id: string, lat: number, lng: number): { lat: number; lng: number } {
-  let h = 0
-  for (let i = 0; i < id.length; i++) { h = Math.imul(h ^ id.charCodeAt(i), 0x9e3779b1) }
-  const latOff = ((h & 0xfff) - 0x7ff) / 150000   // ±0.0054° ≈ ±500m
-  const lngOff = (((h >> 12) & 0xfff) - 0x7ff) / 150000
-  return { lat: lat + latOff, lng: lng + lngOff }
-}
 
 function defaultArrivalTime() {
   const d = new Date(Date.now() + 3600000)
@@ -68,8 +61,8 @@ export default function MapScreen() {
   const myActiveByLocationRef = useRef<Record<string, string>>({})
   // location_id -> conversation_id, so "Open your chat" deep-links to that exact thread.
   const [myConvByLocation, setMyConvByLocation] = useState<Record<string, string>>({})
-  // An approximate point to centre the map on, requested from the "Request a stay"
-  // screen's "Show on map". One-shot: cleared once HostMap has centred on it.
+  // An approximate point to centre the map on, requested from a chat's "Show on map"
+  // (via mapFocusStore). One-shot: cleared once HostMap has centred on it.
   const [focusPoint, setFocusPoint] = useState<{ lat: number; lng: number } | null>(null)
 
   const activeCount = filterParkings.length + filterSleep.length + filterAmenities.length + (filterMinGuests > 0 ? 1 : 0) + filterPricings.length
@@ -221,6 +214,10 @@ export default function MapScreen() {
     useCallback(() => {
       const uid = currentUserIdRef.current
       if (uid) void loadMyRequests(uid)
+      // Honour a "Show on map" request from a chat. Consumed on every focus, so it
+      // works whether the Map tab was already mounted or just re-focused.
+      const focus = mapFocusStore.consume()
+      if (focus) setFocusPoint(focus)
     }, [loadMyRequests])
   )
 
@@ -442,20 +439,6 @@ export default function MapScreen() {
               </View>
             </View>
             <SafetyBlock parkings={selectedParkings} />
-            {Platform.OS === 'web' && selected.location_lat && selected.location_lng && (
-              <TouchableOpacity
-                style={styles.showMapBtn}
-                onPress={() => {
-                  // Approximate area only (the map's coords are already rounded + fuzzed).
-                  // We're on the Map tab, so centre directly instead of a cross-tab hop.
-                  setFocusPoint({ lat: selected.location_lat, lng: selected.location_lng })
-                  setRequesting(false)
-                  setShowHostProfile(false)
-                }}
-              >
-                <Text style={styles.showMapBtnText}>🗺  Show approximate area on map</Text>
-              </TouchableOpacity>
-            )}
           </View>
 
           <View style={styles.card}>
@@ -1068,8 +1051,6 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   lastReviewAuthor: { color: C.textDim, fontSize: 11, marginTop: 4 },
   ownBadge:         { color: C.accent, fontSize: 13 },
   cardLocation:     { color: C.textDim, fontSize: 12, marginTop: 3 },
-  showMapBtn:       { marginTop: 12, borderRadius: 100, borderWidth: 1.5, borderColor: C.accent, backgroundColor: C.accentSoft, paddingVertical: 11, alignItems: 'center' },
-  showMapBtnText:   { color: C.accent, fontSize: 13, fontWeight: '800' },
   pricePill:        { borderRadius: 100, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4 },
   pricePillText:    { fontSize: 11, fontWeight: '600' },
   detail:           { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.border, gap: 10 },
