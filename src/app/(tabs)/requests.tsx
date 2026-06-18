@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   FlatList, Image, KeyboardAvoidingView, Linking, Platform,
-  ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View,
+  ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
+import { Feather } from '@expo/vector-icons'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
@@ -260,7 +261,7 @@ function RequestCard({
   const rc = useMemo(() => makeRc(C), [C])
   const STATUS = useMemo(() => makeStatus(C), [C])
   const s = STATUS[req.status] || STATUS.PENDING
-  const vehicle = req.guest_vehicle === 'moto' ? '🏍 Moto' : null
+  const vehicle = req.guest_vehicle === 'moto' ? 'Moto' : null
   const guestsLabel = req.guests_count === 1 ? '1 rider' : `${req.guests_count} riders`
   const isGuest = !isHost
   const loc = req.location
@@ -269,25 +270,26 @@ function RequestCard({
   const sleep = labelList(loc?.sleep_types, SLEEP_LABELS)
   const amenities = labelList(loc?.amenities, AMENITY_LABELS)
   const pricing = labelList(loc?.pricings, PRICING_LABELS, loc?.pricing)
-  const fields = ([
-    place ? { label: 'Place', value: place } : null,
-    { label: 'Dates', value: `${fmtDateStr(req.arrival_date)} → ${fmtDateStr(req.departure_date)}` },
-    { label: 'Arrival', value: req.arrival_time ? `approx. ${req.arrival_time}` : 'Not set' },
-    parking ? { label: 'Bike', value: parking } : null,
-    sleep ? { label: 'Sleep', value: sleep } : null,
-    amenities ? { label: 'Services', value: amenities } : null,
-    pricing ? { label: 'Return', value: pricing } : null,
-  ].filter(Boolean) as { label: string; value: string }[])
+  // One consistent Feather icon per fact (icon = friendly cue, value = the point).
+  const facts = ([
+    place ? { icon: 'map-pin', value: place } : null,
+    { icon: 'calendar', value: `${fmtDateStr(req.arrival_date)} → ${fmtDateStr(req.departure_date)}` },
+    { icon: 'clock', value: req.arrival_time ? `Arrival approx. ${req.arrival_time}` : 'Arrival time not set' },
+    { icon: 'users', value: `${guestsLabel}${vehicle ? ` · ${vehicle}` : ''}` },
+    parking ? { icon: 'shield', value: parking } : null,
+    sleep ? { icon: 'moon', value: sleep } : null,
+    amenities ? { icon: 'coffee', value: amenities } : null,
+    pricing ? { icon: 'tag', value: pricing } : null,
+  ].filter(Boolean) as { icon: keyof typeof Feather.glyphMap; value: string }[])
 
   return (
     <View style={rc.card}>
-      {/* Header: icon + title + status */}
+      {/* Header: icon chip + title + status */}
       <View style={rc.head}>
-        <Text style={rc.headIcon}>{isGuest ? '🔒' : '🤞'}</Text>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={rc.headTitle}>{isGuest ? 'Your knock' : 'Stay request'}</Text>
-          <Text style={rc.headSub}>{guestsLabel}{vehicle ? ` · ${vehicle}` : ''}</Text>
+        <View style={rc.headIcon}>
+          <Feather name={isGuest ? 'send' : 'inbox'} size={17} color={C.accent} />
         </View>
+        <Text style={rc.headTitle}>{isGuest ? 'Your knock' : 'Stay request'}</Text>
         <View style={[rc.statusBadge, { backgroundColor: s.bg }]}>
           <Text style={[rc.statusText, { color: s.color }]}>{s.label}</Text>
         </View>
@@ -313,15 +315,20 @@ function RequestCard({
           </View>
         </View>
       )}
-      {/* Details — clean label / value rows, consistent with the rest of the app */}
-      <View style={rc.summaryBox}>
-        {fields.map(f => (
-          <View key={f.label} style={rc.row}>
-            <Text style={rc.rowLabel}>{f.label}</Text>
-            <Text style={rc.rowValue}>{f.value}</Text>
+      {/* Details — friendly icon + value rows (value is the focus, icon is the cue) */}
+      <View style={rc.facts}>
+        {facts.map((f, i) => (
+          <View key={i} style={rc.fact}>
+            <Feather name={f.icon} size={16} color={C.accent} style={rc.factIcon} />
+            <Text style={rc.factValue}>{f.value}</Text>
           </View>
         ))}
-        {loc?.notes ? <Text style={rc.notes}>{loc.notes}</Text> : null}
+        {loc?.notes ? (
+          <View style={rc.fact}>
+            <Feather name="file-text" size={16} color={C.accent} style={rc.factIcon} />
+            <Text style={[rc.factValue, rc.factNotes]}>{loc.notes}</Text>
+          </View>
+        ) : null}
       </View>
 
       {/* Message text */}
@@ -367,21 +374,20 @@ function makeRc(C: ThemeColors) { return StyleSheet.create({
   },
   head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headIcon: {
-    width: 34, height: 34, borderRadius: 17, overflow: 'hidden',
-    backgroundColor: C.accentSoft, textAlign: 'center', lineHeight: 34, fontSize: 17,
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: C.accentSoft, alignItems: 'center', justifyContent: 'center',
   },
-  headTitle: { color: C.text, fontSize: 15, fontWeight: '900' },
-  headSub: { color: C.textDim, fontSize: 12, marginTop: 1 },
+  headTitle: { flex: 1, color: C.text, fontSize: 16, fontWeight: '900' },
   statusBadge: {
     borderRadius: 100, flexShrink: 0,
     paddingHorizontal: 12, paddingVertical: 5,
   },
   statusText: { fontSize: 12, fontWeight: '700' },
-  summaryBox: { backgroundColor: C.elevated, borderRadius: 12, borderWidth: 1, borderColor: C.border, padding: 12, gap: 7 },
-  row: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  rowLabel: { width: 64, color: C.textDim, fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: 18 },
-  rowValue: { flex: 1, color: C.text, fontSize: 13, lineHeight: 18 },
-  notes: { color: C.textMuted, fontSize: 12, lineHeight: 18, marginTop: 2 },
+  facts: { gap: 11, paddingVertical: 2 },
+  fact: { flexDirection: 'row', alignItems: 'flex-start', gap: 11 },
+  factIcon: { marginTop: 2, width: 18 },
+  factValue: { flex: 1, color: C.text, fontSize: 14, lineHeight: 20 },
+  factNotes: { color: C.textMuted, fontSize: 13, lineHeight: 19 },
   msgBlock: {
     backgroundColor: C.elevated, borderRadius: 12,
     paddingHorizontal: 12, paddingVertical: 10,
@@ -405,8 +411,6 @@ function makeRc(C: ThemeColors) { return StyleSheet.create({
 export default function RequestsScreen() {
   const C = useTheme()
   const styles = useMemo(() => makeStyles(C), [C])
-  const { width: windowWidth } = useWindowDimensions()
-  const isWideChat = windowWidth >= 700   // desktop / wide web → show the map link as a prominent chip
   const [convs, setConvs] = useState<ConvRow[]>([])
   const [selected, setSelected] = useState<ConvRow | null>(null)
   const [messages, setMessages] = useState<MsgRow[]>([])
@@ -1125,24 +1129,16 @@ export default function RequestsScreen() {
           <UserChip />
         </View>
 
-        {/* Quick link to the conversation's place on the in-app map (approximate area).
-            Mobile: a full-width bar. Desktop/wide: a centred, prominent chip button. */}
+        {/* Quick link to the conversation's place on the in-app map (approximate area) —
+            a prominent centred chip on every screen size. */}
         {Platform.OS === 'web' && selected.location_id ? (
-          isWideChat ? (
-            <View style={styles.showMapChipWrap}>
-              <TouchableOpacity style={styles.showMapChip} onPress={showLocationOnMap} accessibilityRole="button">
-                <Text style={styles.showMapChipIcon}>🗺</Text>
-                <Text style={styles.showMapChipText}>Show approximate area on map</Text>
-                <Text style={styles.showMapChipChevron}>›</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity style={styles.showMapBar} onPress={showLocationOnMap} accessibilityRole="button">
-              <Text style={styles.showMapBarIcon}>🗺</Text>
-              <Text style={styles.showMapBarText} numberOfLines={1}>Show approximate area on map</Text>
-              <Text style={styles.showMapBarChevron}>›</Text>
+          <View style={styles.showMapChipWrap}>
+            <TouchableOpacity style={styles.showMapChip} onPress={showLocationOnMap} accessibilityRole="button">
+              <Text style={styles.showMapChipIcon}>🗺</Text>
+              <Text style={styles.showMapChipText}>Show approximate area on map</Text>
+              <Text style={styles.showMapChipChevron}>›</Text>
             </TouchableOpacity>
-          )
+          </View>
         ) : null}
 
         <FlatList
@@ -1472,16 +1468,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   chatName: { color: C.text, fontSize: 16, fontWeight: '700' },
   chatLocation: { color: C.textDim, fontSize: 11, marginTop: 1 },
 
-  showMapBar: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 20, paddingVertical: 10,
-    backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border,
-  },
-  showMapBarIcon: { fontSize: 15 },
-  showMapBarText: { flex: 1, color: C.accent, fontSize: 13, fontWeight: '800' },
-  showMapBarChevron: { color: C.accent, fontSize: 18, fontWeight: '800' },
-
-  // Desktop / wide: a centred, prominent chip so the action is obvious.
+  // A centred, prominent chip so the action is obvious on every screen size.
   showMapChipWrap: {
     alignItems: 'center',
     paddingVertical: 12, paddingHorizontal: 16,
