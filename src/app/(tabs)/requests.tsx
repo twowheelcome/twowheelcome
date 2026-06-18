@@ -3,11 +3,12 @@ import {
   FlatList, Image, KeyboardAvoidingView, Linking, Platform,
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
-import { useFocusEffect, useLocalSearchParams } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { unreadStore } from '../../lib/unreadStore'
 import { pendingChatStore } from '../../lib/pendingChatStore'
+import { mapFocusStore } from '../../lib/mapFocusStore'
 import { UserChip } from '../../components/UserChip'
 import { AppHeader } from '../../components/AppHeader'
 
@@ -1081,7 +1082,11 @@ export default function RequestsScreen() {
             <Text style={styles.back}>←</Text>
           </TouchableOpacity>
           <View style={styles.chatAvatar}>
-            <Text style={styles.chatAvatarText}>{otherName.charAt(0).toUpperCase()}</Text>
+            {selected.other.avatar_url ? (
+              <Image source={{ uri: selected.other.avatar_url }} style={styles.chatAvatarImg} />
+            ) : (
+              <Text style={styles.chatAvatarText}>{otherName.charAt(0).toUpperCase()}</Text>
+            )}
           </View>
           <View style={styles.chatIdentity}>
             <Text style={styles.chatName}>{otherName}</Text>
@@ -1210,12 +1215,25 @@ export default function RequestsScreen() {
                         ))}
                       </View>
                     ) : null}
-                    <TouchableOpacity
-                      style={styles.meetingNavButton}
-                      onPress={() => openNavigation(exactPoint.coords.lat, exactPoint.coords.lng)}
-                    >
-                      <Text style={styles.meetingNavText}>Open navigation</Text>
-                    </TouchableOpacity>
+                    <View style={styles.meetingActions}>
+                      {Platform.OS === 'web' && (
+                        <TouchableOpacity
+                          style={styles.meetingMapButton}
+                          onPress={() => {
+                            mapFocusStore.set({ lat: exactPoint.coords.lat, lng: exactPoint.coords.lng, label: 'Meeting point' })
+                            router.push('/(tabs)/map')
+                          }}
+                        >
+                          <Text style={styles.meetingMapText}>Show on map</Text>
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        style={styles.meetingNavButton}
+                        onPress={() => openNavigation(exactPoint.coords.lat, exactPoint.coords.lng)}
+                      >
+                        <Text style={styles.meetingNavText}>Open navigation</Text>
+                      </TouchableOpacity>
+                    </View>
                     <Text style={styles.autoTime}>{fmtTime(m.created_at)}</Text>
                   </View>
                 </View>
@@ -1410,9 +1428,10 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   chatAvatar: {
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: C.elevated, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: C.border,
+    borderWidth: 1.5, borderColor: C.border, overflow: 'hidden',
   },
   chatAvatarText: { color: C.accent, fontWeight: '800', fontSize: 15 },
+  chatAvatarImg: { width: 38, height: 38, borderRadius: 19 },
   chatIdentity: { flex: 1, paddingHorizontal: 10 },
   chatName: { color: C.text, fontSize: 16, fontWeight: '700' },
   chatLocation: { color: C.textDim, fontSize: 11, marginTop: 1 },
@@ -1556,6 +1575,12 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
+  meetingActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignItems: 'center',
+  },
   meetingNavButton: {
     alignSelf: 'flex-start',
     borderRadius: 100,
@@ -1565,6 +1590,20 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   },
   meetingNavText: {
     color: C.white,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  meetingMapButton: {
+    alignSelf: 'flex-start',
+    borderRadius: 100,
+    backgroundColor: C.surface,
+    borderWidth: 1.5,
+    borderColor: C.accent,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  meetingMapText: {
+    color: C.accent,
     fontSize: 12,
     fontWeight: '900',
   },

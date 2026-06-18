@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { pendingChatStore } from '../../lib/pendingChatStore'
+import { mapFocusStore, type MapFocus } from '../../lib/mapFocusStore'
 import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
 import { AppHeader } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
@@ -68,6 +69,8 @@ export default function MapScreen() {
   const myActiveByLocationRef = useRef<Record<string, string>>({})
   // location_id -> conversation_id, so "Open your chat" deep-links to that exact thread.
   const [myConvByLocation, setMyConvByLocation] = useState<Record<string, string>>({})
+  // A point to centre the map on, requested from a chat's "Show on map" action.
+  const [focusPoint, setFocusPoint] = useState<MapFocus | null>(null)
 
   const activeCount = filterParkings.length + filterSleep.length + filterAmenities.length + (filterMinGuests > 0 ? 1 : 0) + filterPricings.length
 
@@ -218,6 +221,10 @@ export default function MapScreen() {
     useCallback(() => {
       const uid = currentUserIdRef.current
       if (uid) void loadMyRequests(uid)
+      // Honour a "Show on map" request from a chat (consumed on every focus, so it
+      // works whether the Map tab was already mounted or not).
+      const focus = mapFocusStore.consume()
+      if (focus) setFocusPoint(focus)
     }, [loadMyRequests])
   )
 
@@ -856,6 +863,7 @@ export default function MapScreen() {
             }}
             satellite={satelliteMap}
             onSatelliteToggle={() => setSatelliteMap(v => !v)}
+            focusPoint={focusPoint}
           />
           {loadError && (
             <View style={styles.loadErrorBanner}>

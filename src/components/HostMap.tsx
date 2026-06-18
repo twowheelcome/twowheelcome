@@ -59,11 +59,13 @@ export default function HostMap({
   onHostSelect,
   satellite = false,
   onSatelliteToggle,
+  focusPoint = null,
 }: {
   hosts: Host[]
   onHostSelect: (host: Host) => void
   satellite?: boolean
   onSatelliteToggle?: () => void
+  focusPoint?: { lat: number; lng: number; label?: string } | null
 }) {
   const C = useTheme()
   const mapRef = useRef<HTMLDivElement>(null)
@@ -75,6 +77,7 @@ export default function HostMap({
   const satelliteRef = useRef(satellite)
   const tileLayerRef = useRef<any>(null)
   const overlayLayersRef = useRef<any[]>([])
+  const focusMarkerRef = useRef<any>(null)
   satelliteRef.current = satellite
   const [locating, setLocating] = useState(false)
   const [locateError, setLocateError] = useState('')
@@ -249,6 +252,28 @@ export default function HostMap({
     const map = mapInstanceRef.current
     if (map) setupTileLayers(map, satellite)
   }, [satellite])
+
+  // Centre on an externally-requested point (e.g. an accepted meeting point shared
+  // in chat) and drop a clearly-labelled marker. Only exact, post-acceptance points
+  // reach here, so this never exposes a private location early.
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!map || !focusPoint) return
+    if (focusMarkerRef.current) { focusMarkerRef.current.remove(); focusMarkerRef.current = null }
+    const label = escapeHtml(focusPoint.label || 'Meeting point')
+    const icon = L.divIcon({
+      html: `
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div style="background:${C.accent};color:#fff;font-weight:800;font-size:12px;padding:3px 9px;border-radius:100px;border:2px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.4);white-space:nowrap;">📍 ${label}</div>
+          <div style="width:16px;height:16px;background:${C.accent};border:3px solid #fff;border-radius:50%;margin-top:3px;box-shadow:0 2px 10px rgba(0,0,0,0.4);"></div>
+        </div>`,
+      className: '', iconSize: [140, 44], iconAnchor: [70, 44],
+    })
+    focusMarkerRef.current = L.marker([focusPoint.lat, focusPoint.lng], { icon, zIndexOffset: 3000 }).addTo(map)
+    map.setView([focusPoint.lat, focusPoint.lng], 16)
+    // C/L are stable for the map's lifetime; only the requested point should retrigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusPoint])
 
   return (
     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
