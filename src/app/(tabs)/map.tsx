@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Platfo
 import { supabase } from '../../lib/supabase'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
+import { pendingChatStore } from '../../lib/pendingChatStore'
 import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
 import { AppHeader } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
@@ -377,7 +378,8 @@ export default function MapScreen() {
         setRequesting(false)
         setMessage('')
         setSelected(null)
-        router.push({ pathname: '/(tabs)/requests', params: { openConv: convId } })
+        pendingChatStore.set({ convId })
+        router.push('/(tabs)/requests')
       }, 1500)
     } catch (e: any) {
       setSendError(e?.message || 'Unexpected error')
@@ -766,9 +768,8 @@ export default function MapScreen() {
                       onPress={() => {
                         setShowHostProfile(false)
                         const convId = myConvByLocation[selected.id]
-                        router.push(convId
-                          ? { pathname: '/(tabs)/requests', params: { openConv: convId } }
-                          : '/(tabs)/requests')
+                        if (convId) pendingChatStore.set({ convId })
+                        router.push('/(tabs)/requests')
                       }}
                     >
                       <Text style={{ color: C.white, fontSize: 15, fontWeight: '900', letterSpacing: 1 }}>OPEN YOUR CHAT</Text>

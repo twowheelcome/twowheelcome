@@ -3,6 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import { router, useFocusEffect } from 'expo-router'
 import { supabase } from '../lib/supabase'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
+import { pendingChatStore } from '../lib/pendingChatStore'
 import { AppHeader, HeaderBackButton } from '../components/AppHeader'
 
 type Stay = {
@@ -95,10 +96,8 @@ export default function HistoryScreen() {
 
   function openConversation(s: Stay) {
     if (!s.conversationId) return
-    router.push({
-      pathname: '/(tabs)/requests',
-      params: { openConv: s.conversationId, ...(s.canReview ? { reviewRequest: s.id } : {}) },
-    })
+    pendingChatStore.set({ convId: s.conversationId, reviewRequestId: s.canReview ? s.id : null })
+    router.push('/(tabs)/requests')
   }
 
   return (

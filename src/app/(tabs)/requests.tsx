@@ -3,10 +3,11 @@ import {
   FlatList, Image, KeyboardAvoidingView, Linking, Platform,
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
+import { useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { unreadStore } from '../../lib/unreadStore'
+import { pendingChatStore } from '../../lib/pendingChatStore'
 import { UserChip } from '../../components/UserChip'
 import { AppHeader } from '../../components/AppHeader'
 
@@ -427,7 +428,6 @@ export default function RequestsScreen() {
   const nearBottomRef = useRef(true)   // is the user near the bottom of the thread?
   const autoStickRef = useRef(true)    // keep pinning to bottom as content lays out
   const openingRef = useRef(false)     // briefly true right after opening a conversation
-  const autoOpenedRef = useRef<string | null>(null)
   const currentUserIdRef = useRef<string | null>(null)
   const loadUserIdRef = useRef<string | null>(null)
   const respondingRef = useRef(false)   // guard against double-tap accept/decline
@@ -436,7 +436,9 @@ export default function RequestsScreen() {
   const subscribingListRef = useRef(false)   // guard so we never create two channels at once
   const selectedConvIdRef = useRef<string | null>(null)
 
-  const { openConv: openConvParam, reviewRequest: reviewRequestParam } = useLocalSearchParams<{ openConv?: string; reviewRequest?: string }>()
+  // reviewRequest can still arrive as a route param; the conversation to open now
+  // comes via pendingChatStore (see useFocusEffect) so it survives tab re-focus.
+  const { reviewRequest: reviewRequestParam } = useLocalSearchParams<{ reviewRequest?: string }>()
   const [reviewRequestId, setReviewRequestId] = useState<string | null>(null)
 
   function clearConversationState() {
@@ -457,7 +459,6 @@ export default function RequestsScreen() {
     setReviewRequestId(null)
     setSubmittingReview(false)
     setRespondingFor(null)
-    autoOpenedRef.current = null
   }
 
   useEffect(() => {
@@ -504,12 +505,24 @@ export default function RequestsScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Refresh convs every time the tab gets focus
+  // Refresh convs every time the tab gets focus, and honour a pending "open this
+  // exact chat" request from the map/history. useFocusEffect fires on EVERY focus
+  // (incl. tab switches when the screen stays mounted), so this opens the right
+  // conversation even when a different one is already open — overriding it.
   useFocusEffect(
     useCallback(() => {
-      if (currentUser) {
-        loadConvs(currentUser.id)
+      if (!currentUser) return
+      const userId = currentUser.id
+      loadConvs(userId)
+      const pending = pendingChatStore.consume()
+      if (pending) {
+        void (async () => {
+          const conv = convs.find(c => c.id === pending.convId) ?? await fetchConvById(pending.convId, userId)
+          if (conv && currentUserIdRef.current === userId) openConv(conv, pending.reviewRequestId)
+        })()
       }
+      // convs/fetchConvById/openConv intentionally excluded; this must run on focus only.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentUser])
   )
 
@@ -568,28 +581,6 @@ export default function RequestsScreen() {
       hasRequest: false, requestStatus: null, requestHostId: null, requestGuestId: null,
     }
   }
-
-  // Auto-open a conversation when navigated from the map (openConv param). Opens as
-  // soon as the param AND a user are present — using the loaded list if it's there,
-  // otherwise fetching that one conversation directly so it never depends on the
-  // list's load timing. The param is consumed afterwards so re-renders and repeat
-  // navigations to the same conversation behave (no loop, and it re-opens next time).
-  useEffect(() => {
-    if (!openConvParam) { autoOpenedRef.current = null; return }
-    if (!currentUser || autoOpenedRef.current === openConvParam) return
-    autoOpenedRef.current = openConvParam
-    const userId = currentUser.id
-    const targetId = openConvParam
-    void (async () => {
-      const conv = convs.find(c => c.id === targetId) ?? await fetchConvById(targetId, userId)
-      if (currentUserIdRef.current !== userId) return
-      if (conv) openConv(conv)
-      router.setParams({ openConv: '' })
-    })()
-    // Intentionally not depending on `convs`: the direct fetch makes opening
-    // timing-independent, and depending on convs would cancel the in-flight open.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openConvParam, currentUser])
 
   // Reload convs when navigating back from chat
   useEffect(() => {
@@ -783,7 +774,7 @@ export default function RequestsScreen() {
     }
   }
 
-  async function openConv(conv: ConvRow) {
+  async function openConv(conv: ConvRow, preferredReviewRequestId?: string | null) {
     const userId = currentUserIdRef.current
     if (!userId || (conv.user_a !== userId && conv.user_b !== userId)) return
     setSelected(conv)
@@ -822,7 +813,7 @@ export default function RequestsScreen() {
     const endedRequests = normalized
       .map(m => m.request)
       .filter((req): req is RequestData => !!req && req.status === 'ACCEPTED' && hasStayEnded(req))
-    const acceptedReq = endedRequests.find(req => req.id === reviewRequestParam)
+    const acceptedReq = endedRequests.find(req => req.id === (preferredReviewRequestId ?? reviewRequestParam))
       ?? [...endedRequests].reverse()[0]
     setReviewRequestId(acceptedReq?.id ?? null)
     setMyReview(null); setReviewStars(0); setReviewBody('')
