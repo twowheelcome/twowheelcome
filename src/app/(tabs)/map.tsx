@@ -5,7 +5,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { pendingChatStore } from '../../lib/pendingChatStore'
 import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
-import { AppHeader } from '../../components/AppHeader'
+import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
 
 
@@ -427,12 +427,9 @@ export default function MapScreen() {
     const selectedPricings: string[] = selected.pricings?.length ? selected.pricings : (selected.pricing ? [selected.pricing] : ['free'])
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => { setRequesting(false); setShowHostProfile(true) }}>
-            <Text style={styles.back}>← Back</Text>
-          </TouchableOpacity>
+        <AppHeader left={<HeaderBackButton onPress={() => { setRequesting(false); setShowHostProfile(true) }} />}>
           <Text style={styles.headerTitle}>Request a stay</Text>
-        </View>
+        </AppHeader>
         <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
           <View style={styles.card}>
             <View style={styles.cardRow}>
@@ -999,7 +996,6 @@ export default function MapScreen() {
 
 function makeStyles(C: ThemeColors) { return StyleSheet.create({
   container:        { flex: 1, backgroundColor: C.bg },
-  header:           { paddingHorizontal: 20, paddingTop: 46, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: C.border, backgroundColor: C.bg },
   headerRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerRight:      { flexDirection: 'row', alignItems: 'center', gap: 10 },
   hostsTitle:       { color: C.text, fontSize: 22, fontWeight: '900', letterSpacing: 0 },
@@ -1050,8 +1046,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   satIcon:       { fontSize: 16 },
   satLabel:      { color: C.textMuted, fontSize: 13, fontWeight: '700' },
   satLabelActive:{ color: C.white },
-  back:             { color: C.accent, fontSize: 16, marginBottom: 8 },
-  headerTitle:      { color: C.text, fontSize: 18, fontWeight: '800', letterSpacing: 1 },
+  headerTitle:      { color: C.text, fontSize: 20, fontWeight: '800', textAlign: 'center' },
   list:             { flex: 1 },
   empty:            { alignItems: 'center', justifyContent: 'center', padding: 48 },
   emptyEmoji:       { fontSize: 64, marginBottom: 16 },

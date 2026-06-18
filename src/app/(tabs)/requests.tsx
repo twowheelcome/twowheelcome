@@ -9,7 +9,7 @@ import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { unreadStore } from '../../lib/unreadStore'
 import { pendingChatStore } from '../../lib/pendingChatStore'
 import { UserChip } from '../../components/UserChip'
-import { AppHeader } from '../../components/AppHeader'
+import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -267,14 +267,28 @@ function RequestCard({
   const sleep = labelList(loc?.sleep_types, SLEEP_LABELS)
   const amenities = labelList(loc?.amenities, AMENITY_LABELS)
   const pricing = labelList(loc?.pricings, PRICING_LABELS, loc?.pricing)
+  const fields = ([
+    place ? { label: 'Place', value: place } : null,
+    { label: 'Dates', value: `${fmtDateStr(req.arrival_date)} → ${fmtDateStr(req.departure_date)}` },
+    { label: 'Arrival', value: req.arrival_time ? `approx. ${req.arrival_time}` : 'Not set' },
+    parking ? { label: 'Bike', value: parking } : null,
+    sleep ? { label: 'Sleep', value: sleep } : null,
+    amenities ? { label: 'Services', value: amenities } : null,
+    pricing ? { label: 'Return', value: pricing } : null,
+  ].filter(Boolean) as { label: string; value: string }[])
 
   return (
     <View style={rc.card}>
-      <Text style={rc.cardTitle}>{isGuest ? '🔒 YOUR KNOCK' : '🤞 STAY REQUEST'}</Text>
-
-      {/* Status badge */}
-      <View style={[rc.statusBadge, { backgroundColor: s.bg }]}>
-        <Text style={[rc.statusText, { color: s.color }]}>{s.label}</Text>
+      {/* Header: icon + title + status */}
+      <View style={rc.head}>
+        <Text style={rc.headIcon}>{isGuest ? '🔒' : '🤞'}</Text>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={rc.headTitle}>{isGuest ? 'Your knock' : 'Stay request'}</Text>
+          <Text style={rc.headSub}>{guestsLabel}{vehicle ? ` · ${vehicle}` : ''}</Text>
+        </View>
+        <View style={[rc.statusBadge, { backgroundColor: s.bg }]}>
+          <Text style={[rc.statusText, { color: s.color }]}>{s.label}</Text>
+        </View>
       </View>
 
       {/* Privacy block — guest side only */}
@@ -297,37 +311,15 @@ function RequestCard({
           </View>
         </View>
       )}
-      {/* Details */}
-      <View style={rc.details}>
-        {loc ? (
-          <View style={rc.locationRecap}>
-            <Text style={rc.recapTitle}>AGREED PLACE</Text>
-            {place ? <Text style={rc.recapLine}>📍 {place}</Text> : null}
-            {parking ? <Text style={rc.recapLine}>🏍 {parking}</Text> : null}
-            {sleep ? <Text style={rc.recapLine}>🛏 {sleep}</Text> : null}
-            {amenities ? <Text style={rc.recapLine}>🔧 {amenities}</Text> : null}
-            {pricing ? <Text style={rc.recapLine}>💰 {pricing}</Text> : null}
-            {loc.notes ? <Text style={rc.recapNotes}>{loc.notes}</Text> : null}
+      {/* Details — clean label / value rows, consistent with the rest of the app */}
+      <View style={rc.summaryBox}>
+        {fields.map(f => (
+          <View key={f.label} style={rc.row}>
+            <Text style={rc.rowLabel}>{f.label}</Text>
+            <Text style={rc.rowValue}>{f.value}</Text>
           </View>
-        ) : null}
-        <View style={rc.detailRow}>
-          <Text style={rc.detailIcon}>📅</Text>
-          <Text style={rc.detailText}>
-            {fmtDateStr(req.arrival_date)} → {fmtDateStr(req.departure_date)}
-          </Text>
-        </View>
-        <View style={rc.detailRow}>
-          <Text style={rc.detailIcon}>🕐</Text>
-          <Text style={rc.detailText}>
-            {req.arrival_time ? `Arrival approx. ${req.arrival_time}` : 'Arrival time not set'}
-          </Text>
-        </View>
-        <View style={rc.detailRow}>
-          <Text style={rc.detailIcon}>👥</Text>
-          <Text style={rc.detailText}>
-            {guestsLabel}{vehicle ? `  ·  ${vehicle}` : ''}
-          </Text>
-        </View>
+        ))}
+        {loc?.notes ? <Text style={rc.notes}>{loc.notes}</Text> : null}
       </View>
 
       {/* Message text */}
@@ -371,20 +363,23 @@ function makeRc(C: ThemeColors) { return StyleSheet.create({
     borderWidth: 1, borderColor: C.border,
     padding: 14, gap: 10, maxWidth: '90%',
   },
-  cardTitle: { color: C.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 2 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headIcon: {
+    width: 34, height: 34, borderRadius: 17, overflow: 'hidden',
+    backgroundColor: C.accentSoft, textAlign: 'center', lineHeight: 34, fontSize: 17,
+  },
+  headTitle: { color: C.text, fontSize: 15, fontWeight: '900' },
+  headSub: { color: C.textDim, fontSize: 12, marginTop: 1 },
   statusBadge: {
-    alignSelf: 'flex-start', borderRadius: 100,
+    borderRadius: 100, flexShrink: 0,
     paddingHorizontal: 12, paddingVertical: 5,
   },
   statusText: { fontSize: 12, fontWeight: '700' },
-  details: { gap: 6 },
-  locationRecap: { backgroundColor: C.elevated, borderRadius: 12, borderWidth: 1, borderColor: C.border, padding: 10, gap: 4 },
-  recapTitle: { color: C.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
-  recapLine: { color: C.text, fontSize: 12, lineHeight: 18 },
-  recapNotes: { color: C.textMuted, fontSize: 12, lineHeight: 18, marginTop: 2 },
-  detailRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  detailIcon: { fontSize: 13, lineHeight: 20 },
-  detailText: { color: C.text, fontSize: 13, lineHeight: 20, flex: 1 },
+  summaryBox: { backgroundColor: C.elevated, borderRadius: 12, borderWidth: 1, borderColor: C.border, padding: 12, gap: 7 },
+  row: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  rowLabel: { width: 64, color: C.textDim, fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5, lineHeight: 18 },
+  rowValue: { flex: 1, color: C.text, fontSize: 13, lineHeight: 18 },
+  notes: { color: C.textMuted, fontSize: 12, lineHeight: 18, marginTop: 2 },
   msgBlock: {
     backgroundColor: C.elevated, borderRadius: 12,
     paddingHorizontal: 12, paddingVertical: 10,
@@ -1073,13 +1068,11 @@ export default function RequestsScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => {
+          <HeaderBackButton onPress={() => {
             setSelected(null)
             selectedConvIdRef.current = null
             setMyReview(null); setReviewStars(0); setReviewBody('')
-          }}>
-            <Text style={styles.back}>←</Text>
-          </TouchableOpacity>
+          }} />
           <View style={styles.chatAvatar}>
             {selected.other.avatar_url ? (
               <Image source={{ uri: selected.other.avatar_url }} style={styles.chatAvatarImg} />
@@ -1404,13 +1397,12 @@ export default function RequestsScreen() {
 function makeStyles(C: ThemeColors) { return StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   header: {
-    flexDirection: 'row', alignItems: 'center',
+    flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingHorizontal: 20, paddingTop: 46, paddingBottom: 14,
     backgroundColor: C.bg, borderBottomWidth: 1, borderBottomColor: C.border,
   },
   title: { color: C.text, fontSize: 24, fontWeight: '900', letterSpacing: 1, flex: 1 },
   titleAccent: { color: C.accent },
-  back: { color: C.accent, fontSize: 24, fontWeight: '700', paddingRight: 4 },
   chatAvatar: {
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: C.elevated, alignItems: 'center', justifyContent: 'center',
