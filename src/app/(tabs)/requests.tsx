@@ -249,13 +249,14 @@ async function openNavigation(lat: number, lng: number) {
 // ── RequestCard ───────────────────────────────────────────────────────────
 
 function RequestCard({
-  req, body, isHost, onRespond, responding,
+  req, body, isHost, onRespond, responding, onShowMap,
 }: {
   req: RequestData
   body: string | null
   isHost: boolean
   onRespond: (id: string, status: 'ACCEPTED' | 'REJECTED') => void
   responding?: boolean
+  onShowMap?: () => void
 }) {
   const C = useTheme()
   const rc = useMemo(() => makeRc(C), [C])
@@ -331,6 +332,15 @@ function RequestCard({
         ) : null}
       </View>
 
+      {/* In-app map link for this stay's approximate area */}
+      {onShowMap ? (
+        <TouchableOpacity style={rc.mapBtn} onPress={onShowMap} accessibilityRole="button">
+          <Feather name="map" size={15} color={C.accent} />
+          <Text style={rc.mapBtnText}>Show approximate area on map</Text>
+          <Feather name="chevron-right" size={16} color={C.accent} />
+        </TouchableOpacity>
+      ) : null}
+
       {/* Message text */}
       {body ? (
         <View style={rc.msgBlock}>
@@ -388,6 +398,12 @@ function makeRc(C: ThemeColors) { return StyleSheet.create({
   factIcon: { marginTop: 2, width: 18 },
   factValue: { flex: 1, color: C.text, fontSize: 14, lineHeight: 20 },
   factNotes: { color: C.textMuted, fontSize: 13, lineHeight: 19 },
+  mapBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start',
+    backgroundColor: C.accentSoft, borderWidth: 1, borderColor: C.accentBorder,
+    borderRadius: 100, paddingHorizontal: 14, paddingVertical: 9,
+  },
+  mapBtnText: { color: C.accent, fontSize: 13, fontWeight: '800' },
   msgBlock: {
     backgroundColor: C.elevated, borderRadius: 12,
     paddingHorizontal: 12, paddingVertical: 10,
@@ -1129,18 +1145,6 @@ export default function RequestsScreen() {
           <UserChip />
         </View>
 
-        {/* Quick link to the conversation's place on the in-app map (approximate area) —
-            a prominent centred chip on every screen size. */}
-        {Platform.OS === 'web' && selected.location_id ? (
-          <View style={styles.showMapChipWrap}>
-            <TouchableOpacity style={styles.showMapChip} onPress={showLocationOnMap} accessibilityRole="button">
-              <Text style={styles.showMapChipIcon}>🗺</Text>
-              <Text style={styles.showMapChipText}>Show approximate area on map</Text>
-              <Text style={styles.showMapChipChevron}>›</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
-
         <FlatList
           ref={flatRef}
           data={messages}
@@ -1214,6 +1218,7 @@ export default function RequestsScreen() {
 	                    isHost={isHost}
 	                    onRespond={respondToRequest}
 	                    responding={respondingFor === m.request.id}
+	                    onShowMap={Platform.OS === 'web' && m.request.location_id ? showLocationOnMap : undefined}
 	                  />
                 </View>
               )
@@ -1468,23 +1473,6 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   chatName: { color: C.text, fontSize: 16, fontWeight: '700' },
   chatLocation: { color: C.textDim, fontSize: 11, marginTop: 1 },
 
-  // A centred, prominent chip so the action is obvious on every screen size.
-  showMapChipWrap: {
-    alignItems: 'center',
-    paddingVertical: 12, paddingHorizontal: 16,
-    borderBottomWidth: 1, borderBottomColor: C.border,
-  },
-  showMapChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 9,
-    backgroundColor: C.accentSoft,
-    borderWidth: 1.5, borderColor: C.accent,
-    borderRadius: 100,
-    paddingHorizontal: 20, paddingVertical: 11,
-  },
-  showMapChipIcon: { fontSize: 16 },
-  showMapChipText: { color: C.accent, fontSize: 14, fontWeight: '800' },
-  showMapChipChevron: { color: C.accent, fontSize: 18, fontWeight: '800' },
-
   // Messages
   msgList: { padding: 16, gap: 8, paddingBottom: 8 },
   msgRow: { flexDirection: 'row' },
@@ -1682,23 +1670,23 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     fontWeight: '900',
   },
   inputRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    padding: 12, paddingHorizontal: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingVertical: 8, paddingHorizontal: 12,
     backgroundColor: C.surface,
     borderTopWidth: 1, borderTopColor: C.border,
   },
   input: {
     flex: 1, backgroundColor: C.elevated, borderRadius: 100,
-    paddingHorizontal: 18, paddingVertical: 12,
-    color: C.text, fontSize: 16, maxHeight: 120, minWidth: 0,
+    paddingHorizontal: 16, paddingVertical: 8,
+    color: C.text, fontSize: 15, maxHeight: 100, minWidth: 0,
   },
   sendBtn: {
-    width: 46, height: 46, borderRadius: 23,
+    width: 38, height: 38, borderRadius: 19,
     backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
   sendBtnDisabled: { backgroundColor: C.border },
-  sendBtnText: { color: C.white, fontSize: 20, fontWeight: '700' },
+  sendBtnText: { color: C.white, fontSize: 18, fontWeight: '700', lineHeight: 20 },
 
   // Conversation list
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
