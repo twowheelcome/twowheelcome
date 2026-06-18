@@ -158,11 +158,15 @@ export default function MapScreen() {
   // My active (pending/accepted) requests, keyed by location, so the host card can
   // show the stay's status instead of a duplicate "Knock on the door".
   const loadMyRequests = useCallback(async (userId: string) => {
+    // Only stays that haven't ended block a new knock — a past accepted stay can't
+    // overlap a future one, which mirrors what the DB exclusion constraint enforces.
+    const today = new Date().toISOString().split('T')[0]
     const { data } = await supabase
       .from('stay_requests')
       .select('location_id, status, conversation_id')
       .eq('guest_id', userId)
       .in('status', ['PENDING', 'ACCEPTED'])
+      .gte('departure_date', today)
     if (currentUserIdRef.current !== userId) return
     const map: Record<string, string> = {}
     const convMap: Record<string, string> = {}
@@ -220,6 +224,13 @@ export default function MapScreen() {
   // Keep the ref in sync after optimistic in-place updates (send success / dup error).
   useEffect(() => { myActiveByLocationRef.current = myActiveByLocation }, [myActiveByLocation])
 
+  // Whenever a host is opened (map marker, list, or deep-link, on web or native),
+  // refresh my request statuses so the card shows the right state, not a stale one.
+  useEffect(() => {
+    const uid = currentUserIdRef.current
+    if (selected && uid) void loadMyRequests(uid)
+  }, [selected, loadMyRequests])
+
   useEffect(() => {
     if (!knockHost || handledKnockHostRef.current === knockHost || hosts.length === 0) return
     const host = (knockLocation ? hosts.find(h => h.id === knockLocation && h.user_id === knockHost) : null)
@@ -273,11 +284,29 @@ export default function MapScreen() {
       setSendError('Use a valid arrival time in 24-hour HH:MM format.')
       return
     }
-    if (myActiveByLocationRef.current[selected.id]) {
-      setSendError(myActiveByLocationRef.current[selected.id] === 'ACCEPTED'
-        ? "You're already booked here. Open your chat for the details."
-        : 'You already have a pending request here. Open your chat to follow up.')
-      return
+    // Authoritative, date-aware guard that mirrors the DB exclusion constraint: never
+    // try to create a second active request that overlaps an existing one for this
+    // place. Two ranges overlap iff existing.arrival <= new.departure AND
+    // existing.departure >= new.arrival. This catches it before the insert so the
+    // user never sees the raw constraint error, on web and native alike.
+    {
+      const { data: clash } = await supabase
+        .from('stay_requests')
+        .select('id, status')
+        .eq('guest_id', userId)
+        .eq('location_id', selected.id)
+        .in('status', ['PENDING', 'ACCEPTED'])
+        .lte('arrival_date', departureDate)
+        .gte('departure_date', arrivalDate)
+        .limit(1)
+      if (currentUserIdRef.current !== userId) return
+      if (clash && clash.length > 0) {
+        setMyActiveByLocation(prev => ({ ...prev, [selected.id]: clash[0].status === 'ACCEPTED' ? 'ACCEPTED' : (prev[selected.id] || 'PENDING') }))
+        setSendError(clash[0].status === 'ACCEPTED'
+          ? "You're already booked here for these dates. Open your chat for the details."
+          : 'You already have an active request for these dates. Open your chat to follow up.')
+        return
+      }
     }
     setSendError('')
     sendingRef.current = true
@@ -354,7 +383,7 @@ export default function MapScreen() {
         const dupe = reqErr?.code === '23P01' || /no_overlapping_active_stays|exclusion/i.test(reqErr?.message || '')
         if (dupe) setMyActiveByLocation(prev => ({ ...prev, [selected.id]: prev[selected.id] || 'PENDING' }))
         setSendError(dupe
-          ? 'You already have an active request for this stay. Open your chat to follow up.'
+          ? 'You already have an active request for these dates. Open your chat to follow up.'
           : (reqErr?.message || 'Request error'))
         setSending(false)
         return

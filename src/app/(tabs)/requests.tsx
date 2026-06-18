@@ -1357,7 +1357,7 @@ export default function RequestsScreen() {
                   style={styles.convRow}
                   onPress={() => openConv(conv)}
                 >
-                  <View style={styles.convCard}>
+                  <View style={[styles.convCard, isUnread && styles.convCardUnread]}>
                     <View style={styles.convAvatarWrap}>
                       {conv.other.avatar_url ? (
                         <Image source={{ uri: conv.other.avatar_url }} style={styles.convAvatarImg} />
@@ -1697,8 +1697,18 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12,
     minHeight: 78,
     paddingVertical: 13,
+    paddingLeft: 10,
+    // A transparent left bar on read rows keeps content aligned with unread rows,
+    // which add a coloured bar.
+    borderLeftWidth: 3, borderLeftColor: 'transparent',
     borderBottomWidth: 1,
     borderBottomColor: C.border,
+  },
+  // Unread: a clear tint over the whole row + a left accent bar, so a new message
+  // is impossible to miss. Clears once read.
+  convCardUnread: {
+    backgroundColor: C.accentSoft,
+    borderLeftColor: C.accent,
   },
   convAvatarWrap: { position: 'relative' },
   convAvatar: {
