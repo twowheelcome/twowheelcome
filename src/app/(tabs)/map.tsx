@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Platform, Modal } from 'react-native'
 import { supabase } from '../../lib/supabase'
-import { router, useLocalSearchParams } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
 import { AppHeader } from '../../components/AppHeader'
@@ -59,6 +59,12 @@ export default function MapScreen() {
   const [filterMinGuests, setFilterMinGuests] = useState(0)
   const [filterPricings, setFilterPricings] = useState<string[]>([])
   const [satelliteMap, setSatelliteMap] = useState(false)
+  // location_id -> my active request status ('PENDING' | 'ACCEPTED') as the guest,
+  // so we never offer a second knock for a stay that is already in progress.
+  const [myActiveByLocation, setMyActiveByLocation] = useState<Record<string, string>>({})
+  // Mirror of the map above for reads inside callbacks that fire before a re-render
+  // (e.g. the knock deep-link sets `selected` and acts in the same tick).
+  const myActiveByLocationRef = useRef<Record<string, string>>({})
 
   const activeCount = filterParkings.length + filterSleep.length + filterAmenities.length + (filterMinGuests > 0 ? 1 : 0) + filterPricings.length
 
@@ -146,11 +152,30 @@ export default function MapScreen() {
     setLoading(false)
   }, [])
 
+  // My active (pending/accepted) requests, keyed by location, so the host card can
+  // show the stay's status instead of a duplicate "Knock on the door".
+  const loadMyRequests = useCallback(async (userId: string) => {
+    const { data } = await supabase
+      .from('stay_requests')
+      .select('location_id, status')
+      .eq('guest_id', userId)
+      .in('status', ['PENDING', 'ACCEPTED'])
+    if (currentUserIdRef.current !== userId) return
+    const map: Record<string, string> = {}
+    data?.forEach((r: any) => {
+      // An accepted stay outranks a still-pending one for the same place.
+      if (map[r.location_id] !== 'ACCEPTED') map[r.location_id] = r.status
+    })
+    myActiveByLocationRef.current = map
+    setMyActiveByLocation(map)
+  }, [])
+
   useEffect(() => {
     void Promise.resolve().then(fetchHosts)
     supabase.auth.getUser().then(({ data: { user } }) => {
       currentUserIdRef.current = user?.id ?? null
       setCurrentUser(user)
+      if (user) void loadMyRequests(user.id)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const nextUser = session?.user ?? null
@@ -167,12 +192,26 @@ export default function MapScreen() {
       setSendSuccess(false)
       setPhotoFile(null)
       handledKnockHostRef.current = null
+      if (nextUser) void loadMyRequests(nextUser.id)
+      else setMyActiveByLocation({})
     })
     if (Platform.OS === 'web') {
       import('../../components/HostMap').then(m => setHostMap(() => m.default))
     }
     return () => subscription.unsubscribe()
-  }, [fetchHosts])
+  }, [fetchHosts, loadMyRequests])
+
+  // Refresh my request statuses when returning to the map (e.g. the host just
+  // accepted in chat), so the host card reflects the latest state.
+  useFocusEffect(
+    useCallback(() => {
+      const uid = currentUserIdRef.current
+      if (uid) void loadMyRequests(uid)
+    }, [loadMyRequests])
+  )
+
+  // Keep the ref in sync after optimistic in-place updates (send success / dup error).
+  useEffect(() => { myActiveByLocationRef.current = myActiveByLocation }, [myActiveByLocation])
 
   useEffect(() => {
     if (!knockHost || handledKnockHostRef.current === knockHost || hosts.length === 0) return
@@ -183,11 +222,22 @@ export default function MapScreen() {
     void Promise.resolve().then(() => {
       setSelected(host)
       setShowHostProfile(false)
-      beginRequest()
+      beginRequest(host.id)
     })
+    // beginRequest is intentionally excluded; this runs only on a new knock target.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hosts, knockHost, knockLocation])
 
-  function beginRequest() {
+  function beginRequest(targetLocationId?: string) {
+    // Already have an active request for this place — show the host card (with its
+    // status) instead of opening a fresh request form. Read from the ref so the
+    // knock deep-link (which sets `selected` in the same tick) checks the right place.
+    const locId = targetLocationId ?? selected?.id
+    if (locId && myActiveByLocationRef.current[locId]) {
+      setRequesting(false)
+      setShowHostProfile(true)
+      return
+    }
     setArrivalChip('tonight')
     setArrivalDate(new Date().toISOString().split('T')[0])
     setDepartureDate(new Date(Date.now() + 86400000).toISOString().split('T')[0])
@@ -214,6 +264,12 @@ export default function MapScreen() {
     }
     if (arrivalTime.trim() && !/^([01]\d|2[0-3]):[0-5]\d$/.test(arrivalTime.trim())) {
       setSendError('Use a valid arrival time in 24-hour HH:MM format.')
+      return
+    }
+    if (myActiveByLocationRef.current[selected.id]) {
+      setSendError(myActiveByLocationRef.current[selected.id] === 'ACCEPTED'
+        ? "You're already booked here. Open your chat for the details."
+        : 'You already have a pending request here. Open your chat to follow up.')
       return
     }
     setSendError('')
@@ -286,7 +342,16 @@ export default function MapScreen() {
         })
         .select('id')
         .single()
-      if (reqErr || !reqData) { setSendError(reqErr?.message || 'Request error'); setSending(false); return }
+      if (reqErr || !reqData) {
+        // The DB blocks a second active request for the same stay (overlapping dates).
+        const dupe = reqErr?.code === '23P01' || /no_overlapping_active_stays|exclusion/i.test(reqErr?.message || '')
+        if (dupe) setMyActiveByLocation(prev => ({ ...prev, [selected.id]: prev[selected.id] || 'PENDING' }))
+        setSendError(dupe
+          ? 'You already have an active request for this stay. Open your chat to follow up.'
+          : (reqErr?.message || 'Request error'))
+        setSending(false)
+        return
+      }
 
       await supabase.from('messages').insert({
         conversation_id: convId,
@@ -299,6 +364,7 @@ export default function MapScreen() {
         body: { request_id: reqData.id, event: 'new_request' },
       }).catch(() => {})
 
+      setMyActiveByLocation(prev => ({ ...prev, [selected.id]: 'PENDING' }))
       setSendSuccess(true)
       setTimeout(() => {
         setSendSuccess(false)
@@ -644,6 +710,7 @@ export default function MapScreen() {
         <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowHostProfile(false)} />
         {selected && (() => {
           const isOwn = selected.user_id === currentUser?.id
+          const myStatus = myActiveByLocation[selected.id]   // 'PENDING' | 'ACCEPTED' | undefined
           const parkings: string[] = selected.parkings?.length ? selected.parkings : (selected.parking ? [selected.parking] : [])
           const initials = (selected.profiles?.full_name || '?').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
           return (
@@ -671,24 +738,59 @@ export default function MapScreen() {
 
               {/* CTAs */}
               {!isOwn ? (
-                <>
-                  <TouchableOpacity
-                    style={{ height: 54, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 }}
-                    onPress={() => { setShowHostProfile(false); beginRequest() }}
-                  >
-                    <Text style={{ fontSize: 17 }}>🏠</Text>
-                    <Text style={{ color: C.white, fontSize: 15, fontWeight: '900', letterSpacing: 1 }}>KNOCK ON THE DOOR</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={{ height: 46, borderRadius: 100, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
-                    onPress={() => {
-                      setShowHostProfile(false)
-                      router.push({ pathname: '/host/[id]', params: { id: selected.user_id, location: selected.id } })
-                    }}
-                  >
-                    <Text style={{ color: C.text, fontSize: 14, fontWeight: '700' }}>View full profile</Text>
-                  </TouchableOpacity>
-                </>
+                myStatus ? (
+                  // Already knocking here — show the stay's status, never a duplicate knock.
+                  <>
+                    <View style={{
+                      borderRadius: 16, paddingVertical: 13, paddingHorizontal: 16, alignItems: 'center', gap: 3,
+                      backgroundColor: myStatus === 'ACCEPTED' ? C.successSoft : C.warningSoft,
+                      borderWidth: 1, borderColor: myStatus === 'ACCEPTED' ? C.successBorder : C.warningBorder,
+                    }}>
+                      <Text style={{ color: myStatus === 'ACCEPTED' ? C.success : C.warning, fontSize: 14, fontWeight: '900', letterSpacing: 0.5 }}>
+                        {myStatus === 'ACCEPTED' ? "✅ ACCEPTED — YOU'RE BOOKED" : '⏳ REQUEST SENT — PENDING'}
+                      </Text>
+                      <Text style={{ color: C.textMuted, fontSize: 12, textAlign: 'center' }}>
+                        {myStatus === 'ACCEPTED'
+                          ? 'The host shares the exact meeting point in your chat.'
+                          : 'Waiting for the host to reply. Follow up in your chat.'}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={{ height: 54, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' }}
+                      onPress={() => { setShowHostProfile(false); router.push('/(tabs)/requests') }}
+                    >
+                      <Text style={{ color: C.white, fontSize: 15, fontWeight: '900', letterSpacing: 1 }}>OPEN YOUR CHAT</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{ height: 46, borderRadius: 100, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
+                      onPress={() => {
+                        setShowHostProfile(false)
+                        router.push({ pathname: '/host/[id]', params: { id: selected.user_id, location: selected.id } })
+                      }}
+                    >
+                      <Text style={{ color: C.text, fontSize: 14, fontWeight: '700' }}>View full profile</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <TouchableOpacity
+                      style={{ height: 54, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 }}
+                      onPress={() => { setShowHostProfile(false); beginRequest() }}
+                    >
+                      <Text style={{ fontSize: 17 }}>🏠</Text>
+                      <Text style={{ color: C.white, fontSize: 15, fontWeight: '900', letterSpacing: 1 }}>KNOCK ON THE DOOR</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{ height: 46, borderRadius: 100, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
+                      onPress={() => {
+                        setShowHostProfile(false)
+                        router.push({ pathname: '/host/[id]', params: { id: selected.user_id, location: selected.id } })
+                      }}
+                    >
+                      <Text style={{ color: C.text, fontSize: 14, fontWeight: '700' }}>View full profile</Text>
+                    </TouchableOpacity>
+                  </>
+                )
               ) : (
                 <TouchableOpacity
                   style={{ height: 54, borderRadius: 100, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
@@ -706,7 +808,10 @@ export default function MapScreen() {
         <View style={{ flex: 1 }}>
           <HostMap
             hosts={filteredHosts}
-            onHostSelect={(host: any) => { setSelected(host); setShowHostProfile(true) }}
+            onHostSelect={(host: any) => {
+              setSelected(host); setShowHostProfile(true)
+              if (currentUserIdRef.current) void loadMyRequests(currentUserIdRef.current)
+            }}
             satellite={satelliteMap}
             onSatelliteToggle={() => setSatelliteMap(v => !v)}
           />
@@ -813,8 +918,8 @@ export default function MapScreen() {
                     </View>
                   )}
                   {!isOwn ? (
-                    <TouchableOpacity style={styles.requestButton} onPress={beginRequest}>
-                      <Text style={styles.requestButtonText}>Ask to stay</Text>
+                    <TouchableOpacity style={styles.requestButton} onPress={() => { setSelected(host); beginRequest(host.id) }}>
+                      <Text style={styles.requestButtonText}>{myActiveByLocation[host.id] ? (myActiveByLocation[host.id] === 'ACCEPTED' ? "You're booked" : 'Request pending') : 'Ask to stay'}</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity style={styles.editButton} onPress={() => router.push('/become-host')}>
