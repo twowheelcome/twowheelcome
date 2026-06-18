@@ -129,6 +129,11 @@ const PRICING_LABELS: Record<string, string> = {
   fixed: 'Paid',
 }
 
+// Same Feather icon set the request card uses, keyed by the meeting-point line label.
+const MEETING_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
+  Place: 'map-pin', Bike: 'shield', Sleep: 'moon', Services: 'coffee', Return: 'tag',
+}
+
 function makeStatus(C: ThemeColors): Record<string, { label: string; color: string; bg: string; border?: string }> {
   return {
     PENDING:  { label: 'Pending',  color: C.warning, bg: C.warningSoft, border: C.warningBorder },
@@ -1248,7 +1253,9 @@ export default function RequestsScreen() {
                 <View style={[styles.msgRow, isMine ? styles.msgRowRight : styles.msgRowLeft]}>
                   <View style={styles.meetingCard}>
                     <View style={styles.meetingHeader}>
-                      <Text style={styles.meetingIcon}>📍</Text>
+                      <View style={styles.meetingIcon}>
+                        <Feather name="navigation" size={17} color={C.accent} />
+                      </View>
                       <View style={styles.meetingHeaderText}>
                         <Text style={styles.meetingTitle}>Exact meeting point</Text>
                         <Text style={styles.meetingCoords}>
@@ -1257,11 +1264,11 @@ export default function RequestsScreen() {
                       </View>
                     </View>
                     {exactPoint.lines.length ? (
-                      <View style={styles.meetingSummary}>
+                      <View style={styles.meetingFacts}>
                         {exactPoint.lines.map(line => (
-                          <View key={line.label} style={styles.meetingLine}>
-                            <Text style={styles.meetingLabel}>{line.label}</Text>
-                            <Text style={styles.meetingValue}>{line.value}</Text>
+                          <View key={line.label} style={styles.meetingFact}>
+                            <Feather name={MEETING_ICONS[line.label] ?? 'info'} size={16} color={C.accent} style={styles.meetingFactIcon} />
+                            <Text style={styles.meetingFactValue}>{line.value}</Text>
                           </View>
                         ))}
                       </View>
@@ -1270,6 +1277,7 @@ export default function RequestsScreen() {
                       style={styles.meetingNavButton}
                       onPress={() => openNavigation(exactPoint.coords.lat, exactPoint.coords.lng)}
                     >
+                      <Feather name="navigation" size={14} color={C.white} />
                       <Text style={styles.meetingNavText}>Open navigation</Text>
                     </TouchableOpacity>
                     <Text style={styles.autoTime}>{fmtTime(m.created_at)}</Text>
@@ -1548,12 +1556,12 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     fontSize: 10,
     alignSelf: 'flex-end',
   },
+  // Matches the Stay request / Your knock card for a consistent look.
   meetingCard: {
-    width: '82%',
-    maxWidth: 440,
-    borderRadius: 18,
+    maxWidth: '90%',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: C.accentBorder,
+    borderColor: C.border,
     backgroundColor: C.surface,
     padding: 14,
     gap: 10,
@@ -1567,11 +1575,9 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    overflow: 'hidden',
     backgroundColor: C.accentSoft,
-    textAlign: 'center',
-    lineHeight: 34,
-    fontSize: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   meetingHeaderText: {
     flex: 1,
@@ -1579,49 +1585,32 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   },
   meetingTitle: {
     color: C.text,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '900',
   },
   meetingCoords: {
     color: C.textDim,
     fontSize: 12,
     lineHeight: 17,
+    marginTop: 1,
   },
-  meetingSummary: {
-    borderTopWidth: 1,
-    borderTopColor: C.border,
-    paddingTop: 8,
-    gap: 6,
-  },
-  meetingLine: {
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'flex-start',
-  },
-  meetingLabel: {
-    width: 58,
-    color: C.textDim,
-    fontSize: 11,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  meetingValue: {
-    flex: 1,
-    color: C.text,
-    fontSize: 13,
-    lineHeight: 18,
-  },
+  meetingFacts: { gap: 11, paddingVertical: 2 },
+  meetingFact: { flexDirection: 'row', alignItems: 'flex-start', gap: 11 },
+  meetingFactIcon: { marginTop: 2, width: 18 },
+  meetingFactValue: { flex: 1, color: C.text, fontSize: 14, lineHeight: 20 },
   meetingNavButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     alignSelf: 'flex-start',
     borderRadius: 100,
     backgroundColor: C.accent,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   meetingNavText: {
     color: C.white,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '900',
   },
 
