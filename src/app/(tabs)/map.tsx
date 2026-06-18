@@ -65,6 +65,8 @@ export default function MapScreen() {
   // Mirror of the map above for reads inside callbacks that fire before a re-render
   // (e.g. the knock deep-link sets `selected` and acts in the same tick).
   const myActiveByLocationRef = useRef<Record<string, string>>({})
+  // location_id -> conversation_id, so "Open your chat" deep-links to that exact thread.
+  const [myConvByLocation, setMyConvByLocation] = useState<Record<string, string>>({})
 
   const activeCount = filterParkings.length + filterSleep.length + filterAmenities.length + (filterMinGuests > 0 ? 1 : 0) + filterPricings.length
 
@@ -157,17 +159,21 @@ export default function MapScreen() {
   const loadMyRequests = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from('stay_requests')
-      .select('location_id, status')
+      .select('location_id, status, conversation_id')
       .eq('guest_id', userId)
       .in('status', ['PENDING', 'ACCEPTED'])
     if (currentUserIdRef.current !== userId) return
     const map: Record<string, string> = {}
+    const convMap: Record<string, string> = {}
     data?.forEach((r: any) => {
       // An accepted stay outranks a still-pending one for the same place.
       if (map[r.location_id] !== 'ACCEPTED') map[r.location_id] = r.status
+      // One conversation per (rider pair, location), so any active request points to it.
+      if (r.conversation_id) convMap[r.location_id] = r.conversation_id
     })
     myActiveByLocationRef.current = map
     setMyActiveByLocation(map)
+    setMyConvByLocation(convMap)
   }, [])
 
   useEffect(() => {
@@ -757,7 +763,13 @@ export default function MapScreen() {
                     </View>
                     <TouchableOpacity
                       style={{ height: 54, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' }}
-                      onPress={() => { setShowHostProfile(false); router.push('/(tabs)/requests') }}
+                      onPress={() => {
+                        setShowHostProfile(false)
+                        const convId = myConvByLocation[selected.id]
+                        router.push(convId
+                          ? { pathname: '/(tabs)/requests', params: { openConv: convId } }
+                          : '/(tabs)/requests')
+                      }}
                     >
                       <Text style={{ color: C.white, fontSize: 15, fontWeight: '900', letterSpacing: 1 }}>OPEN YOUR CHAT</Text>
                     </TouchableOpacity>
