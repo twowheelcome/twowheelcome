@@ -177,6 +177,14 @@ export default function PublicHostProfile() {
           <Text style={styles.bio}>{profile.bio}</Text>
         )}
 
+        {/* What the host wrote about this place (public description) */}
+        {location.notes ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>About this place</Text>
+            <Text style={styles.bio}>{location.notes}</Text>
+          </View>
+        ) : null}
+
         {/* Sleep */}
         {location.sleep_types?.length > 0 && (
           <View style={styles.section}>

@@ -367,11 +367,11 @@ export default function BecomeHostScreen() {
             })}
           </View>
 
-          {/* Notes */}
+          {/* Public description */}
           <Text style={styles.label}>✍️ DESCRIPTION FOR RIDERS</Text>
           <TextInput
             style={styles.textarea}
-            placeholder={'Private notes for this safe spot. Keep exact directions and contact details here — they are never shown on the public map.'}
+            placeholder={'What should riders know about this place? e.g. "Quiet street, gate code on arrival", "Women only", "Dog on site". Riders read this before they knock.'}
             placeholderTextColor="#666"
             value={loc.notes}
             onChangeText={text => updateLocation(index, { notes: text })}
@@ -379,7 +379,7 @@ export default function BecomeHostScreen() {
             numberOfLines={4}
             maxLength={800}
           />
-          <Text style={styles.privateNote}>🔒 Private. Exact directions are shared only when you send the meeting point in an accepted stay chat.</Text>
+          <Text style={styles.privateNote}>👀 Public — riders see this on your listing before they knock. Do NOT put your exact address or contact here; the precise meeting point is shared privately in chat only after you accept.</Text>
         </View>
       ))}
 
