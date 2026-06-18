@@ -64,7 +64,26 @@ export default function LocationPicker({ pin, onChange }: Props) {
   const [results, setResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
   const [locating, setLocating] = useState(false)
+  // Map starts locked so scrolling the page over it doesn't pan or drop a pin by
+  // accident. It only becomes interactive after the user taps to set/adjust.
+  const [interactive, setInteractive] = useState(false)
+  const interactiveRef = useRef(false)
   const searchTimeout = useRef<any>(null)
+
+  function setMapInteractive(map: any, on: boolean) {
+    if (!map) return
+    const handlers = ['dragging', 'touchZoom', 'doubleClickZoom', 'scrollWheelZoom', 'boxZoom', 'keyboard', 'tap']
+    handlers.forEach(h => {
+      if (!map[h]) return
+      if (on) map[h].enable()
+      else map[h].disable()
+    })
+  }
+
+  useEffect(() => {
+    interactiveRef.current = interactive
+    setMapInteractive(mapInstanceRef.current, interactive)
+  }, [interactive])
 
   useEffect(() => {
     pinRef.current = pin
@@ -159,6 +178,7 @@ export default function LocationPicker({ pin, onChange }: Props) {
         maxZoom: 18,
       }).addTo(map)
       mapInstanceRef.current = map
+      setMapInteractive(map, interactiveRef.current)   // start locked until the user taps to set
 
       if (pinRef.current) {
         const label = pinRef.current.city || `${pinRef.current.lat.toFixed(4)}, ${pinRef.current.lng.toFixed(4)}`
@@ -166,6 +186,7 @@ export default function LocationPicker({ pin, onChange }: Props) {
       }
 
       map.on('click', async (e: any) => {
+        if (!interactiveRef.current) return   // ignore taps while the map is locked
         const { lat, lng } = e.latlng
         const geo = await reverseGeocode(lat, lng)
         const label = geo.city || `${lat.toFixed(4)}, ${lng.toFixed(4)}`
@@ -269,15 +290,51 @@ export default function LocationPicker({ pin, onChange }: Props) {
       {/* Mapa */}
       <div style={{ position: 'relative', flex: 1 }}>
         <div ref={mapRef as any} style={{ width: '100%', height: '100%' }} />
-        {!pin && (
-          <div style={{
-            position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
-            background: 'rgba(26,34,41,0.88)', color: C.textMuted, fontSize: 11,
-            padding: '4px 10px', borderRadius: 20, zIndex: 1000, pointerEvents: 'none',
-            whiteSpace: 'nowrap',
-          }}>
-            Hledej adresu nebo klikni na mapu
+
+        {/* Locked by default: this overlay lets a vertical swipe scroll the PAGE over
+            the map and prevents accidental pin drops. Tap to unlock for placing. */}
+        {!interactive && (
+          <div
+            onClick={() => setInteractive(true)}
+            style={{
+              position: 'absolute', inset: 0, zIndex: 1200,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', background: 'rgba(0,0,0,0.05)',
+            }}
+          >
+            <div style={{
+              pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: 8,
+              background: C.accent, color: '#fff', fontWeight: 800, fontSize: 13,
+              padding: '11px 18px', borderRadius: 100, boxShadow: '0 2px 14px rgba(0,0,0,0.35)',
+              fontFamily: 'sans-serif',
+            }}>
+              <span style={{ fontSize: 15 }}>📍</span>{pin ? 'Tap to adjust the pin' : 'Tap to set the location'}
+            </div>
           </div>
+        )}
+
+        {/* Unlocked: how-to hint + a way back to locked so the page scrolls again. */}
+        {interactive && (
+          <>
+            <div style={{
+              position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
+              background: 'rgba(26,34,41,0.88)', color: '#fff', fontSize: 11,
+              padding: '4px 10px', borderRadius: 20, zIndex: 1000, pointerEvents: 'none', whiteSpace: 'nowrap',
+            }}>
+              Tap the map to place the pin
+            </div>
+            <button
+              onClick={() => setInteractive(false)}
+              style={{
+                position: 'absolute', top: 8, right: 8, zIndex: 1200,
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: C.surface, border: `1px solid ${C.accent}`, color: C.accent,
+                fontWeight: 800, fontSize: 12, fontFamily: 'sans-serif',
+                padding: '7px 12px', borderRadius: 100, cursor: 'pointer',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
+              }}
+            >✓ Done</button>
+          </>
         )}
       </div>
     </div>
