@@ -18,6 +18,27 @@ dvojice jezdců × jedno `host_location`. Vynuceno triggery + RLS (`validate_con
 
 ---
 
+## ✅ Ranní opravy 2026-06-18 (po Petrově testu pod dvěma účty)
+
+- **Duplicitní žádosti vyřešené.** Petr mohl znovu zaklepat na už schválený/čekající pobyt
+  a vznikla další žádost. Nově:
+  - **DB pojistka (ověřeno naostro):** nová migrace `prevent_duplicate_active_requests.sql`
+    — exclusion constraint `no_overlapping_active_stays` (rozšíření `btree_gist`) brání druhé
+    AKTIVNÍ (PENDING/ACCEPTED) žádosti stejný žadatel × místo × překrývající se datum. Aplikováno
+    na živou DB; funkčně otestováno (druhá překrývající žádost odmítnuta, kód 23P01). Před
+    nasazením jsem uklidil 2 existující duplicity (guest `399aef67…`, nechána nejstarší).
+  - **Klient (`map.tsx`):** host karta u místa s mojí aktivní žádostí už neukazuje „KNOCK ON
+    THE DOOR", ale stav — „⏳ REQUEST SENT — PENDING" nebo „✅ ACCEPTED — YOU'RE BOOKED" + tlačítko
+    „OPEN YOUR CHAT". Pojistky i v `beginRequest`/`sendRequest` a mapování chyby 23P01 na
+    srozumitelnou hlášku. Stav se načítá při startu, při fokusu mapy (po accept v chatu) a po
+    odeslání. (anglický jazyk appky zachován)
+- **Nepřečtené konverzace líp vidět (`requests.tsx`):** náhled poslední zprávy u nepřečtené je
+  teď tmavý a tučný (`C.text`/800) místo šedého; čas navíc v accent barvě. Po přečtení zpět do
+  normálu.
+- tsc + lint + build procházejí.
+
+---
+
 ## ✅ Ověřeno NAOSTRO dnes v noci (živá DB, reální přihlášení klienti)
 
 - **CHAT — hlavní cíl — realtime funguje.** Otestováno dvěma reálnými přihlášenými klienty
