@@ -1339,7 +1339,7 @@ export default function RequestsScreen() {
           <TextInput
             style={[styles.input, { height: Math.max(INPUT_MIN_H, Math.min(INPUT_MAX_H, inputHeight)) }]}
             value={text}
-            onChangeText={setText}
+            onChangeText={(t) => { setText(t); if (t.length === 0) setInputHeight(INPUT_MIN_H) }}
             placeholder="Type a message..."
             placeholderTextColor={C.textDim}
             multiline
