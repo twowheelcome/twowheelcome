@@ -134,6 +134,10 @@ const MEETING_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
   Place: 'map-pin', Bike: 'shield', Sleep: 'moon', Services: 'coffee', Return: 'tag',
 }
 
+// Message input auto-grows between one compact line and a comfortable few lines.
+const INPUT_MIN_H = 38
+const INPUT_MAX_H = 130
+
 function makeStatus(C: ThemeColors): Record<string, { label: string; color: string; bg: string; border?: string }> {
   return {
     PENDING:  { label: 'Pending',  color: C.warning, bg: C.warningSoft, border: C.warningBorder },
@@ -437,6 +441,7 @@ export default function RequestsScreen() {
   const [messages, setMessages] = useState<MsgRow[]>([])
   const [incomingMsg, setIncomingMsg] = useState<any>(null)  // last realtime message, appended by an effect that reads the live `selected`
   const [text, setText] = useState('')
+  const [inputHeight, setInputHeight] = useState(INPUT_MIN_H)
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
   const [currentUser, setCurrentUser] = useState<any>(null)
@@ -931,6 +936,7 @@ export default function RequestsScreen() {
     const body = text.trim()
     const conversationId = selected.id
     setText('')
+    setInputHeight(INPUT_MIN_H)   // collapse the input back to one line after sending
     const { data: inserted, error } = await supabase.from('messages').insert({
       conversation_id: conversationId,
       sender_id: userId,
@@ -1331,7 +1337,7 @@ export default function RequestsScreen() {
 
         <View style={styles.inputRow}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { height: Math.max(INPUT_MIN_H, Math.min(INPUT_MAX_H, inputHeight)) }]}
             value={text}
             onChangeText={setText}
             placeholder="Type a message..."
@@ -1339,6 +1345,7 @@ export default function RequestsScreen() {
             multiline
             maxLength={2000}
             onKeyPress={handleMessageKeyPress}
+            onContentSizeChange={e => setInputHeight(e.nativeEvent.contentSize.height)}
           />
           <TouchableOpacity
             style={[styles.sendBtn, (!text.trim() || sending) && styles.sendBtnDisabled]}
@@ -1659,15 +1666,15 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     fontWeight: '900',
   },
   inputRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
+    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
     paddingVertical: 8, paddingHorizontal: 12,
     backgroundColor: C.surface,
     borderTopWidth: 1, borderTopColor: C.border,
   },
   input: {
-    flex: 1, backgroundColor: C.elevated, borderRadius: 100,
+    flex: 1, backgroundColor: C.elevated, borderRadius: 20,
     paddingHorizontal: 16, paddingVertical: 8,
-    color: C.text, fontSize: 15, maxHeight: 100, minWidth: 0,
+    color: C.text, fontSize: 15, lineHeight: 20, textAlignVertical: 'top', minWidth: 0,
   },
   sendBtn: {
     width: 38, height: 38, borderRadius: 19,
