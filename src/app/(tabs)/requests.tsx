@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   FlatList, Image, KeyboardAvoidingView, Linking, Platform,
-  ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View,
 } from 'react-native'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
@@ -405,6 +405,8 @@ function makeRc(C: ThemeColors) { return StyleSheet.create({
 export default function RequestsScreen() {
   const C = useTheme()
   const styles = useMemo(() => makeStyles(C), [C])
+  const { width: windowWidth } = useWindowDimensions()
+  const isWideChat = windowWidth >= 700   // desktop / wide web → show the map link as a prominent chip
   const [convs, setConvs] = useState<ConvRow[]>([])
   const [selected, setSelected] = useState<ConvRow | null>(null)
   const [messages, setMessages] = useState<MsgRow[]>([])
@@ -1123,13 +1125,24 @@ export default function RequestsScreen() {
           <UserChip />
         </View>
 
-        {/* Quick link to the conversation's place on the in-app map (approximate area) */}
+        {/* Quick link to the conversation's place on the in-app map (approximate area).
+            Mobile: a full-width bar. Desktop/wide: a centred, prominent chip button. */}
         {Platform.OS === 'web' && selected.location_id ? (
-          <TouchableOpacity style={styles.showMapBar} onPress={showLocationOnMap} accessibilityRole="button">
-            <Text style={styles.showMapBarIcon}>🗺</Text>
-            <Text style={styles.showMapBarText} numberOfLines={1}>Show approximate area on map</Text>
-            <Text style={styles.showMapBarChevron}>›</Text>
-          </TouchableOpacity>
+          isWideChat ? (
+            <View style={styles.showMapChipWrap}>
+              <TouchableOpacity style={styles.showMapChip} onPress={showLocationOnMap} accessibilityRole="button">
+                <Text style={styles.showMapChipIcon}>🗺</Text>
+                <Text style={styles.showMapChipText}>Show approximate area on map</Text>
+                <Text style={styles.showMapChipChevron}>›</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.showMapBar} onPress={showLocationOnMap} accessibilityRole="button">
+              <Text style={styles.showMapBarIcon}>🗺</Text>
+              <Text style={styles.showMapBarText} numberOfLines={1}>Show approximate area on map</Text>
+              <Text style={styles.showMapBarChevron}>›</Text>
+            </TouchableOpacity>
+          )
         ) : null}
 
         <FlatList
@@ -1467,6 +1480,23 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   showMapBarIcon: { fontSize: 15 },
   showMapBarText: { flex: 1, color: C.accent, fontSize: 13, fontWeight: '800' },
   showMapBarChevron: { color: C.accent, fontSize: 18, fontWeight: '800' },
+
+  // Desktop / wide: a centred, prominent chip so the action is obvious.
+  showMapChipWrap: {
+    alignItems: 'center',
+    paddingVertical: 12, paddingHorizontal: 16,
+    borderBottomWidth: 1, borderBottomColor: C.border,
+  },
+  showMapChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 9,
+    backgroundColor: C.accentSoft,
+    borderWidth: 1.5, borderColor: C.accent,
+    borderRadius: 100,
+    paddingHorizontal: 20, paddingVertical: 11,
+  },
+  showMapChipIcon: { fontSize: 16 },
+  showMapChipText: { color: C.accent, fontSize: 14, fontWeight: '800' },
+  showMapChipChevron: { color: C.accent, fontSize: 18, fontWeight: '800' },
 
   // Messages
   msgList: { padding: 16, gap: 8, paddingBottom: 8 },
