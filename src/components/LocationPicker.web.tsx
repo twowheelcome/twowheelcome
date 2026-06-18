@@ -222,12 +222,6 @@ export default function LocationPicker({ pin, onChange }: Props) {
               style={{ background: 'none', border: 'none', color: C.textFaint, cursor: 'pointer', padding: '0 10px', fontSize: 14 }}
             >✕</button>
           )}
-          <button
-            onClick={locateMe}
-            disabled={locating}
-            title="Najdi mě"
-            style={{ background: 'none', border: 'none', color: locating ? C.textFaint : C.accent, cursor: 'pointer', padding: '0 10px', fontSize: 16, opacity: locating ? 0.5 : 1 }}
-          >{locating ? '…' : '📍'}</button>
         </div>
         {/* Výsledky */}
         {results.length > 0 && (
@@ -255,6 +249,22 @@ export default function LocationPicker({ pin, onChange }: Props) {
           </div>
         )}
       </div>
+
+      {/* Prominent "use my location" action so it isn't missed */}
+      <button
+        onClick={locateMe}
+        disabled={locating}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          width: '100%', flexShrink: 0,
+          background: C.accentSoft, border: 'none', borderBottom: `1px solid ${C.border}`,
+          color: C.accent, fontWeight: 800, fontSize: 13, fontFamily: 'sans-serif',
+          padding: '11px 14px', cursor: locating ? 'default' : 'pointer', opacity: locating ? 0.6 : 1,
+        }}
+      >
+        <span style={{ fontSize: 15 }}>📍</span>
+        {locating ? 'Getting your location…' : 'Use my current location'}
+      </button>
 
       {/* Mapa */}
       <div style={{ position: 'relative', flex: 1 }}>
