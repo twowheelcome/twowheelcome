@@ -1343,7 +1343,7 @@ export default function RequestsScreen() {
                     <View style={styles.convInfo}>
                       <View style={styles.convTopRow}>
                         <Text style={[styles.convName, isUnread && styles.convNameUnread]}>{name}</Text>
-                        <Text style={styles.convTime}>{fmtDate(conv.last_message_at)}</Text>
+                        <Text style={[styles.convTime, isUnread && styles.convTimeUnread]}>{fmtDate(conv.last_message_at)}</Text>
                       </View>
                       <Text style={styles.convLocation} numberOfLines={1}>📍 {conv.locationLabel}</Text>
                       {preview ? (
@@ -1691,9 +1691,11 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   convName: { color: C.text, fontWeight: '800', fontSize: 16, flex: 1, paddingRight: 8 },
   convNameUnread: { fontWeight: '900' },
   convTime: { color: C.textDim, fontSize: 12 },
+  convTimeUnread: { color: C.accent, fontWeight: '800' },
   convPreview: { color: C.textDim, fontSize: 13, lineHeight: 18 },
   convLocation: { color: C.textMuted, fontSize: 11, lineHeight: 16 },
-  convPreviewUnread: { color: C.textMuted, fontWeight: '600' },
+  // Unread: dark + bold so a new message is obvious at a glance in the list.
+  convPreviewUnread: { color: C.text, fontWeight: '800' },
   convStatusBadge: {
     borderRadius: 100,
     paddingHorizontal: 9,
