@@ -60,12 +60,14 @@ export default function HostMap({
   satellite = false,
   onSatelliteToggle,
   focusPoint = null,
+  onFocusHandled,
 }: {
   hosts: Host[]
   onHostSelect: (host: Host) => void
   satellite?: boolean
   onSatelliteToggle?: () => void
-  focusPoint?: { lat: number; lng: number; label?: string } | null
+  focusPoint?: { lat: number; lng: number } | null
+  onFocusHandled?: () => void
 }) {
   const C = useTheme()
   const mapRef = useRef<HTMLDivElement>(null)
@@ -77,7 +79,6 @@ export default function HostMap({
   const satelliteRef = useRef(satellite)
   const tileLayerRef = useRef<any>(null)
   const overlayLayersRef = useRef<any[]>([])
-  const focusMarkerRef = useRef<any>(null)
   satelliteRef.current = satellite
   const [locating, setLocating] = useState(false)
   const [locateError, setLocateError] = useState('')
@@ -253,25 +254,16 @@ export default function HostMap({
     if (map) setupTileLayers(map, satellite)
   }, [satellite])
 
-  // Centre on an externally-requested point (e.g. an accepted meeting point shared
-  // in chat) and drop a clearly-labelled marker. Only exact, post-acceptance points
-  // reach here, so this never exposes a private location early.
+  // Centre on an externally-requested point (the host's APPROXIMATE area, from the
+  // "Request a stay" screen). The coords are already rounded + fuzzed and the host's
+  // own pin + dashed 500m circle mark the area, so no extra/precise marker is added.
+  // One-shot: tell the parent it was handled so it won't recentre on a later remount.
   useEffect(() => {
     const map = mapInstanceRef.current
     if (!map || !focusPoint) return
-    if (focusMarkerRef.current) { focusMarkerRef.current.remove(); focusMarkerRef.current = null }
-    const label = escapeHtml(focusPoint.label || 'Meeting point')
-    const icon = L.divIcon({
-      html: `
-        <div style="display:flex;flex-direction:column;align-items:center;">
-          <div style="background:${C.accent};color:#fff;font-weight:800;font-size:12px;padding:3px 9px;border-radius:100px;border:2px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.4);white-space:nowrap;">📍 ${label}</div>
-          <div style="width:16px;height:16px;background:${C.accent};border:3px solid #fff;border-radius:50%;margin-top:3px;box-shadow:0 2px 10px rgba(0,0,0,0.4);"></div>
-        </div>`,
-      className: '', iconSize: [140, 44], iconAnchor: [70, 44],
-    })
-    focusMarkerRef.current = L.marker([focusPoint.lat, focusPoint.lng], { icon, zIndexOffset: 3000 }).addTo(map)
-    map.setView([focusPoint.lat, focusPoint.lng], 16)
-    // C/L are stable for the map's lifetime; only the requested point should retrigger.
+    map.setView([focusPoint.lat, focusPoint.lng], 14)
+    onFocusHandled?.()
+    // C/L stable for the map's lifetime; only a new requested point should retrigger.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusPoint])
 

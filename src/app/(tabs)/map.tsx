@@ -4,7 +4,6 @@ import { supabase } from '../../lib/supabase'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { pendingChatStore } from '../../lib/pendingChatStore'
-import { mapFocusStore, type MapFocus } from '../../lib/mapFocusStore'
 import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
 import { AppHeader } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
@@ -69,8 +68,9 @@ export default function MapScreen() {
   const myActiveByLocationRef = useRef<Record<string, string>>({})
   // location_id -> conversation_id, so "Open your chat" deep-links to that exact thread.
   const [myConvByLocation, setMyConvByLocation] = useState<Record<string, string>>({})
-  // A point to centre the map on, requested from a chat's "Show on map" action.
-  const [focusPoint, setFocusPoint] = useState<MapFocus | null>(null)
+  // An approximate point to centre the map on, requested from the "Request a stay"
+  // screen's "Show on map". One-shot: cleared once HostMap has centred on it.
+  const [focusPoint, setFocusPoint] = useState<{ lat: number; lng: number } | null>(null)
 
   const activeCount = filterParkings.length + filterSleep.length + filterAmenities.length + (filterMinGuests > 0 ? 1 : 0) + filterPricings.length
 
@@ -221,10 +221,6 @@ export default function MapScreen() {
     useCallback(() => {
       const uid = currentUserIdRef.current
       if (uid) void loadMyRequests(uid)
-      // Honour a "Show on map" request from a chat (consumed on every focus, so it
-      // works whether the Map tab was already mounted or not).
-      const focus = mapFocusStore.consume()
-      if (focus) setFocusPoint(focus)
     }, [loadMyRequests])
   )
 
@@ -449,6 +445,20 @@ export default function MapScreen() {
               </View>
             </View>
             <SafetyBlock parkings={selectedParkings} />
+            {Platform.OS === 'web' && selected.location_lat && selected.location_lng && (
+              <TouchableOpacity
+                style={styles.showMapBtn}
+                onPress={() => {
+                  // Approximate area only (the map's coords are already rounded + fuzzed).
+                  // We're on the Map tab, so centre directly instead of a cross-tab hop.
+                  setFocusPoint({ lat: selected.location_lat, lng: selected.location_lng })
+                  setRequesting(false)
+                  setShowHostProfile(false)
+                }}
+              >
+                <Text style={styles.showMapBtnText}>🗺  Show approximate area on map</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.card}>
@@ -864,6 +874,7 @@ export default function MapScreen() {
             satellite={satelliteMap}
             onSatelliteToggle={() => setSatelliteMap(v => !v)}
             focusPoint={focusPoint}
+            onFocusHandled={() => setFocusPoint(null)}
           />
           {loadError && (
             <View style={styles.loadErrorBanner}>
@@ -1062,6 +1073,8 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   lastReviewAuthor: { color: C.textDim, fontSize: 11, marginTop: 4 },
   ownBadge:         { color: C.accent, fontSize: 13 },
   cardLocation:     { color: C.textDim, fontSize: 12, marginTop: 3 },
+  showMapBtn:       { marginTop: 12, borderRadius: 100, borderWidth: 1.5, borderColor: C.accent, backgroundColor: C.accentSoft, paddingVertical: 11, alignItems: 'center' },
+  showMapBtnText:   { color: C.accent, fontSize: 13, fontWeight: '800' },
   pricePill:        { borderRadius: 100, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4 },
   pricePillText:    { fontSize: 11, fontWeight: '600' },
   detail:           { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.border, gap: 10 },
