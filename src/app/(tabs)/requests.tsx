@@ -197,9 +197,9 @@ function extractCoords(body: string | null): { lat: number; lng: number } | null
 
 function isAcceptedAutoMessage(body: string | null): boolean {
   if (!body) return false
-  return body === ACCEPTED_AUTO_BODY
-    || body === ACCEPTED_AUTO_BODY_LEGACY
-    || body.toLowerCase().startsWith('accepted.')
+  // Match only the exact system auto-messages — a user typing "Accepted. ..." must
+  // render as a normal bubble, not get swallowed into the system card.
+  return body === ACCEPTED_AUTO_BODY || body === ACCEPTED_AUTO_BODY_LEGACY
 }
 
 function isExactPointMessage(body: string | null): boolean {
@@ -461,6 +461,8 @@ export default function RequestsScreen() {
   const loadUserIdRef = useRef<string | null>(null)
   const respondingRef = useRef(false)   // guard against double-tap accept/decline
   const sendingMsgRef = useRef(false)   // guard against double-tap send message
+  const sendingCoordsRef = useRef(false)   // guard against double-tap send coordinates
+  const submittingReviewRef = useRef(false)   // guard against double-tap submit review
   const listChannelRef = useRef<any>(null)   // realtime for the whole conversation list
   const subscribingListRef = useRef(false)   // guard so we never create two channels at once
   const selectedConvIdRef = useRef<string | null>(null)
@@ -894,11 +896,13 @@ export default function RequestsScreen() {
   }
 
   async function submitReview() {
+    if (submittingReviewRef.current) return   // guard against a double-tap inserting twice
     const req = messages.find(m => m.request?.id === reviewRequestId)?.request
     if (!req || !currentUser || !reviewStars) return
     const userId = currentUser.id
     if (currentUserIdRef.current !== userId) return
     const revieweeId = userId === req.host_id ? req.guest_id : req.host_id
+    submittingReviewRef.current = true
     setSubmittingReview(true)
     const { error } = await supabase.from('reviews').insert({
       stay_request_id: req.id,
@@ -907,6 +911,7 @@ export default function RequestsScreen() {
       rating: reviewStars,
       body: reviewBody.trim() || null,
     })
+    submittingReviewRef.current = false
     setSubmittingReview(false)
     if (!error) setMyReview({ rating: reviewStars, body: reviewBody })
   }
@@ -992,9 +997,11 @@ export default function RequestsScreen() {
   }
 
   async function sendCoordinates(req: RequestData) {
+    if (sendingCoordsRef.current) return   // guard against a double-tap sending two pins
     if (!selected || !currentUser || currentUser.id !== req.host_id) return
     const userId = currentUser.id
     if (currentUserIdRef.current !== userId || (selected.user_a !== userId && selected.user_b !== userId)) return
+    sendingCoordsRef.current = true
     setSendingCoordsFor(req.id)
 
     let loc: any = null
@@ -1045,6 +1052,7 @@ export default function RequestsScreen() {
       setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100)
     }
 
+    sendingCoordsRef.current = false
     setSendingCoordsFor(null)
   }
 

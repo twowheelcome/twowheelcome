@@ -47,6 +47,9 @@ export default function RootLayout() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
         const user = session.user
+        // Register the push token on a fresh in-session login too (mount only covers
+        // cold starts). registerPushToken is idempotent and non-fatal.
+        registerPushToken(user.id)
         const metaName = user.user_metadata?.full_name as string | undefined
         if (metaName) {
           const { data: prof } = await supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle()

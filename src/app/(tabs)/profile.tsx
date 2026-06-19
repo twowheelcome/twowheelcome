@@ -72,7 +72,7 @@ export default function ProfileScreen() {
     userIdRef.current = resolvedUser.id
     setUser(resolvedUser)
     const [p, h, r] = await Promise.all([
-      supabase.from('profiles').select('id, full_name, bio, bike_model, avatar_url').eq('id', resolvedUser.id).single(),
+      supabase.from('profiles').select('id, full_name, bio, bike_model, avatar_url').eq('id', resolvedUser.id).maybeSingle(),
       supabase.from('host_locations').select('*').eq('user_id', resolvedUser.id).order('created_at', { ascending: true }),
       supabase.from('reviews').select('rating, body, created_at, reviewer:profiles!reviewer_id(full_name)').eq('reviewee_id', resolvedUser.id).order('created_at', { ascending: false }),
     ])
