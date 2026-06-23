@@ -125,11 +125,16 @@ Deno.serve(async req => {
 
   const { data: profiles } = await admin
     .from('profiles')
-    .select('id, full_name, push_token')
+    .select('id, full_name, push_token, notify_email, notify_push')
     .in('id', [request.host_id, request.guest_id])
 
   const hostProfile  = profiles?.find(p => p.id === request.host_id)
   const guestProfile = profiles?.find(p => p.id === request.guest_id)
+  // Respect each recipient's notification preferences (default on when unset).
+  const hostWantsEmail  = hostProfile?.notify_email  !== false
+  const hostWantsPush   = hostProfile?.notify_push   !== false
+  const guestWantsEmail = guestProfile?.notify_email !== false
+  const guestWantsPush  = guestProfile?.notify_push  !== false
   const hostName  = hostProfile?.full_name  || 'your host'
   const guestName = guestProfile?.full_name || 'A rider'
   const safeHostName = escapeHtml(hostName)
@@ -147,7 +152,7 @@ Deno.serve(async req => {
 
   if (event === 'new_request') {
     await Promise.all([
-      host?.email ? sendEmail(
+      host?.email && hostWantsEmail ? sendEmail(
         host.email,
         `🚪 Someone's knocking! — TWOwheelCOME`,
         `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#1a1a1a;color:#eee;padding:32px;border-radius:12px">
@@ -158,7 +163,7 @@ Deno.serve(async req => {
           <a href="${webChatUrl}" style="display:inline-block;margin-top:16px;background:#C47050;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Open messages →</a>
         </div>`
       ) : Promise.resolve(),
-      hostProfile?.push_token ? sendPush(
+      hostProfile?.push_token && hostWantsPush ? sendPush(
         hostProfile.push_token,
         '🚪 Someone\'s knocking!',
         `${guestName} wants to stay — ${request.arrival_date}${request.arrival_time ? ' ~' + request.arrival_time : ''} → ${request.departure_date}`,
@@ -169,7 +174,7 @@ Deno.serve(async req => {
 
   if (event === 'accepted') {
     await Promise.all([
-      guest?.email ? sendEmail(
+      guest?.email && guestWantsEmail ? sendEmail(
         guest.email,
         `✅ Request accepted — TWOwheelCOME`,
         `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#1a1a1a;color:#eee;padding:32px;border-radius:12px">
@@ -180,7 +185,7 @@ Deno.serve(async req => {
           <a href="${webChatUrl}" style="display:inline-block;margin-top:16px;background:#76C085;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Open messages →</a>
         </div>`
       ) : Promise.resolve(),
-      guestProfile?.push_token ? sendPush(
+      guestProfile?.push_token && guestWantsPush ? sendPush(
         guestProfile.push_token,
         'Request accepted',
         `${hostName} accepted. Exact spot comes in chat.`,
@@ -191,7 +196,7 @@ Deno.serve(async req => {
 
   if (event === 'rejected') {
     await Promise.all([
-      guest?.email ? sendEmail(
+      guest?.email && guestWantsEmail ? sendEmail(
         guest.email,
         `Knock declined — TWOwheelCOME`,
         `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#1a1a1a;color:#eee;padding:32px;border-radius:12px">
@@ -200,7 +205,7 @@ Deno.serve(async req => {
           <a href="${webChatUrl}" style="display:inline-block;margin-top:16px;background:#C47050;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Open messages →</a>
         </div>`
       ) : Promise.resolve(),
-      guestProfile?.push_token ? sendPush(
+      guestProfile?.push_token && guestWantsPush ? sendPush(
         guestProfile.push_token,
         'No luck this time 🤙',
         `${hostName} can't host right now. Try another host on the map.`,

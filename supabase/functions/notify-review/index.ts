@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
 
   const [{ data: existingReviews }, { data: profiles }] = await Promise.all([
     admin.from('reviews').select('stay_request_id, reviewer_id').in('stay_request_id', stayIds),
-    admin.from('profiles').select('id, full_name, push_token').in('id', userIds),
+    admin.from('profiles').select('id, full_name, push_token, notify_email, notify_push').in('id', userIds),
   ])
 
   const emailMap: Record<string, string> = {}
@@ -105,16 +105,17 @@ Deno.serve(async (req) => {
       ? '/(tabs)/requests?openConv=' + encodeURIComponent(stay.conversation_id) + '&reviewRequest=' + encodeURIComponent(stay.id)
       : '/(tabs)/requests'
 
+    // Respect each recipient's notification preferences (default on when unset).
     if (!reviewedSet.has(stay.id + ':' + stay.guest_id)) {
       const email = emailMap[stay.guest_id]
-      if (email) tasks.push(sendEmail(email, 'How was your stay? - TWOwheelCOME', guestHtml(hostName, webUrl)))
-      if (guestProfile?.push_token) tasks.push(sendPush(guestProfile.push_token, 'How was your stay?', 'Leave a review for ' + (hostProfile?.full_name || 'your host'), pushUrl))
+      if (email && guestProfile?.notify_email !== false) tasks.push(sendEmail(email, 'How was your stay? - TWOwheelCOME', guestHtml(hostName, webUrl)))
+      if (guestProfile?.push_token && guestProfile?.notify_push !== false) tasks.push(sendPush(guestProfile.push_token, 'How was your stay?', 'Leave a review for ' + (hostProfile?.full_name || 'your host'), pushUrl))
     }
 
     if (!reviewedSet.has(stay.id + ':' + stay.host_id)) {
       const email = emailMap[stay.host_id]
-      if (email) tasks.push(sendEmail(email, 'How was your guest? - TWOwheelCOME', hostHtml(guestName, webUrl)))
-      if (hostProfile?.push_token) tasks.push(sendPush(hostProfile.push_token, 'How was your guest?', 'Leave a review for ' + (guestProfile?.full_name || 'your guest'), pushUrl))
+      if (email && hostProfile?.notify_email !== false) tasks.push(sendEmail(email, 'How was your guest? - TWOwheelCOME', hostHtml(guestName, webUrl)))
+      if (hostProfile?.push_token && hostProfile?.notify_push !== false) tasks.push(sendPush(hostProfile.push_token, 'How was your guest?', 'Leave a review for ' + (guestProfile?.full_name || 'your guest'), pushUrl))
     }
   }
 

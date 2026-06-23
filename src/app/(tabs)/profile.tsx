@@ -417,6 +417,16 @@ export default function ProfileScreen() {
             </View>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/notifications')}>
+            <View style={styles.menuTextWrap}>
+              <Text style={styles.menuTitle}>Notifications</Text>
+              <Text style={styles.menuSub}>Email and push alerts</Text>
+            </View>
+            <View style={styles.menuIcon}>
+              <Feather name="bell" size={18} color={C.accent} />
+            </View>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/privacy')}>
             <View style={styles.menuTextWrap}>
               <Text style={styles.menuTitle}>Privacy</Text>
