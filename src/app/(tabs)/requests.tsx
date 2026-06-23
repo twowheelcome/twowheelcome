@@ -453,6 +453,7 @@ export default function RequestsScreen() {
   const [reviewDraftStars, setReviewDraftStars] = useState<Record<string, number>>({})
   const [reviewDraftBody, setReviewDraftBody] = useState<Record<string, string>>({})
   const [submittingStayId, setSubmittingStayId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)   // accept/decline failure banner
   const [respondingFor, setRespondingFor] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<ConversationFilter>('all')
   const flatRef = useRef<FlatList<MsgRow>>(null)
@@ -859,6 +860,7 @@ export default function RequestsScreen() {
     openingRef.current = true
     setTimeout(() => { openingRef.current = false }, 800)
     void markRead(conv.id, conv.last_message_at)
+    setActionError(null)
     setMessages([])
     const { data: msgData } = await supabase
       .from('messages')
@@ -869,13 +871,15 @@ export default function RequestsScreen() {
       .eq('conversation_id', conv.id)
       .order('created_at', { ascending: true })
 
-    if (currentUserIdRef.current !== userId) return
+    // Bail if a different conversation was opened (or the user changed) while we awaited,
+    // so a slower fetch can't drop its messages into the wrong open thread.
+    if (currentUserIdRef.current !== userId || selectedConvIdRef.current !== conv.id) return
     if (!msgData || msgData.length === 0) { setMessages([]); return }
 
     const senderIds = [...new Set(msgData.map((m: any) => m.sender_id))]
     const { data: senderProfiles } = await supabase
       .from('profiles').select('id, full_name').in('id', senderIds)
-    if (currentUserIdRef.current !== userId) return
+    if (currentUserIdRef.current !== userId || selectedConvIdRef.current !== conv.id) return
     const senderMap: Record<string, string | null> = {}
     senderProfiles?.forEach((p: any) => { senderMap[p.id] = p.full_name })
 
@@ -900,7 +904,7 @@ export default function RequestsScreen() {
         .select('stay_request_id, rating, body, created_at')
         .eq('reviewer_id', currentUser.id)
         .in('stay_request_id', ended.map(r => r.id))
-      if (currentUserIdRef.current !== userId) return
+      if (currentUserIdRef.current !== userId || selectedConvIdRef.current !== conv.id) return
       const map: Record<string, { rating: number; body: string; created_at: string }> = {}
       revs?.forEach((r: any) => { map[r.stay_request_id] = { rating: r.rating, body: r.body ?? '', created_at: r.created_at } })
       setMyReviewsByStay(map)
@@ -1079,11 +1083,16 @@ export default function RequestsScreen() {
     if (!currentUser || currentUserIdRef.current !== currentUser.id) return
     const userId = currentUser.id
     if (selected && selected.user_a !== userId && selected.user_b !== userId) return
-    const currentReq = messages.find(m => m.request?.id === requestId)?.request
     respondingRef.current = true
     setRespondingFor(requestId)
+    setActionError(null)
     const { error } = await supabase.from('stay_requests').update({ status }).eq('id', requestId)
-    if (error) { respondingRef.current = false; setRespondingFor(null); return }
+    if (error) {
+      respondingRef.current = false
+      setRespondingFor(null)
+      setActionError(`Couldn't ${status === 'ACCEPTED' ? 'accept' : 'decline'} the request. Check your connection and try again.`)
+      return
+    }
     setMessages(prev => prev.map(m =>
       m.request?.id === requestId
         ? { ...m, request: { ...m.request!, status } }
@@ -1109,24 +1118,16 @@ export default function RequestsScreen() {
           request:stay_requests!request_id(${REQUEST_SELECT})
         `)
         .single()
-      const normalizedInserted = inserted
-        ? normalizeMsg({ ...inserted, sender: { full_name: null } })
-        : {
-          id: `local-${requestId}-${Date.now()}`,
-          conversation_id: selected.id,
-          sender_id: currentUser.id,
-          sender_name: null,
-          body: autoBody,
-          photo_url: null,
-          request_id: requestId,
-          request: currentReq ? { ...currentReq, status } : null,
-          created_at: new Date().toISOString(),
-        }
-      setMessages(prev => prev.find(m => m.id === normalizedInserted.id) ? prev : [...prev, normalizedInserted])
-      await supabase
-        .from('conversations')
-        .update({ last_message_at: new Date().toISOString() })
-        .eq('id', selected.id)
+      // Only append the real persisted auto-message — never a fake local-only one (the
+      // status change itself already shows via the request card + realtime update).
+      if (inserted) {
+        const normalizedInserted = normalizeMsg({ ...inserted, sender: { full_name: null } })
+        setMessages(prev => prev.find(m => m.id === normalizedInserted.id) ? prev : [...prev, normalizedInserted])
+        await supabase
+          .from('conversations')
+          .update({ last_message_at: new Date().toISOString() })
+          .eq('id', selected.id)
+      }
     }
 
     setConvs(prev => prev.map(c =>
@@ -1369,6 +1370,13 @@ export default function RequestsScreen() {
               </Text>
             </TouchableOpacity>
           </View>
+        ) : null}
+
+        {actionError ? (
+          <TouchableOpacity style={styles.actionError} onPress={() => setActionError(null)} accessibilityRole="button">
+            <Text style={styles.actionErrorText}>⚠️ {actionError}</Text>
+            <Text style={styles.actionErrorDismiss}>✕</Text>
+          </TouchableOpacity>
         ) : null}
 
         <View style={styles.inputRow}>
@@ -1701,6 +1709,13 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
   },
+  actionError: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 16, paddingVertical: 10,
+    backgroundColor: C.errorSoft, borderTopWidth: 1, borderTopColor: C.errorBorder,
+  },
+  actionErrorText: { flex: 1, color: C.error, fontSize: 13, lineHeight: 18 },
+  actionErrorDismiss: { color: C.error, fontSize: 14, fontWeight: '800' },
   inputRow: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 8,
     paddingVertical: 8, paddingHorizontal: 12,
