@@ -130,24 +130,29 @@ Verified live against the DB, then aligned the app to what the DB already allows
 - **When accepted elsewhere, other pending knocks are *left as-is*** (manual withdraw is
   enough). Auto-cancel-on-accept was considered and intentionally **not** implemented.
 
-### Open finding — one host, multiple riders, same night (C, report only)
-**State (verified live):** two *different* riders can both knock for the same place + same
-night, and the host can **accept both** → the place is silently **double-booked**. The
-exclusion constraint is per-guest, so it does not stop cross-rider same-night collisions,
-and nothing else does either. No code changed — Petr decides.
-**Options:**
-1. *Auto-reject the others on accept* — when a host accepts one request for a night, a
-   trigger/RPC flips every other still-pending request that overlaps that night to
-   REJECTED (with an auto chat note). Cleanest guarantee; needs a clear "spot taken" message.
-2. *Block at accept time* — keep multiple pendings, but refuse the second ACCEPT that
-   overlaps an already-accepted night (partial exclusion constraint on host+dates where
-   status='ACCEPTED', or a trigger). Host curates; riders aren't touched until accept.
-3. *Leave it (status quo)* — rely on the host to not over-accept; simplest, but the
-   double-booking footgun stays.
-Recommendation: option 1 or 2; both keep B1/B2/B3 intact.
+### One host, multiple riders, same night — Variant A + guest cleanup (C, 2026-06-23)
+**Was (verified live):** two *different* riders could both knock for the same place + same
+night and the host could **accept both** → silent **double-booking** (the exclusion
+constraint is per-guest). **Petr chose Variant A + guest-side auto-cleanup**, scoped to
+date overlap so multi-night trips keep their other nights.
+**Implemented (atomic AFTER UPDATE trigger `cascade_on_accept`, fires only on the
+transition into ACCEPTED → no recursion):**
+- **Host side** — every *other* rider's overlapping PENDING request at the same location
+  → REJECTED, with a 🔒 "spot taken" system message in each conversation.
+- **Guest side** — the accepted rider's *own* overlapping PENDING requests at *other*
+  hosts → CANCELLED (frees those slots), with a system message.
+- **Non-overlapping requests (other nights) are untouched.**
+Overlap = `daterange(arrival, departure, '[]') &&` (same as the exclusion constraint). The
+guest-side cancel (actor is the host) is permitted via a narrow, transaction-local
+`app.cascade` flag that only this trigger sets and the validator honours like the service
+role. System messages surface as the last conversation-list message through existing
+realtime — no client change. **Fixed & verified live** (rolled back): accept → other rider
+rejected, own overlapping request elsewhere cancelled, other-night request stays PENDING;
+one system message per affected conversation.
+*Not added: email/push for the auto-rejected/cancelled riders (in-chat system message only)
+— easy follow-up if Petr wants it.*
 
 ### Still open for Petr (no code changed — needs his decision/testing)
-- **C (above)** — pick how to handle one-host-multiple-riders-same-night.
 - **M9 / delete-account** — wrap become-host save and account deletion in transactional RPCs (like `create_knock`).
 - **M6** — timezone-correct dates end-to-end (client + trigger + cron + RLS).
 - **Rate-limiting** — edge-function throttling (CORS itself is now fixed, see S4).
