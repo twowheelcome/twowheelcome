@@ -4,12 +4,29 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const ALLOWED_ORIGINS = new Set([
+  'https://twowheelcome.com',
+  'https://www.twowheelcome.com',
+  'https://twowheelcome.vercel.app',
+  'https://twowheelcome-twowheelcome-7088s-projects.vercel.app',
+  'https://twowheelcome-git-main-twowheelcome-7088s-projects.vercel.app',
+  'http://localhost:8081',
+  'http://localhost:19006',
+  'http://localhost:3000',
+])
+
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('Origin') ?? ''
+  return {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.has(origin) ? origin : 'https://www.twowheelcome.com',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  }
 }
 
 Deno.serve(async req => {
+  const CORS = corsHeaders(req)
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS })
 
   // Verify caller is authenticated
