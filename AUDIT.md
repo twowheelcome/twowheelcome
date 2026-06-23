@@ -98,6 +98,14 @@ are all correct.
 
 ---
 
-*Fixed & verified: C1, C2, S1, S2, M1, M2, M3, M4. Everything still under "Propose" is
-left for Petr's review/testing per the no-blind-risky-changes rule — next up per his
-call: H1/H3 (chat error/open-race), H2 (reset-password), or the remaining RPCs.*
+### Post-audit fixes (Petr's follow-ups)
+- **Per-stay reviews (new).** Repeat stays in the same (per-location) conversation didn't
+  each get a review prompt — the chat tracked a single review slot. The DB
+  (`unique(stay_request_id, reviewer_id)`) and the daily reminder cron were already
+  per-stay; the chat now lists every completed stay with its own prompt → "you rated … ·
+  dates" bubble. **Fixed & verified** live (two stays → two independent reviews, duplicate
+  blocked, host/guest independent, anon blocked).
+
+*Fixed & verified: C1, C2, per-stay reviews, S1, S2, M1, M2, M3, M4. Everything still
+under "Propose" is left for Petr's review/testing per the no-blind-risky-changes rule —
+in progress: H1/H3 (chat error/open-race), H2 (reset-password), and the safe 🟠 items.*
