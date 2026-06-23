@@ -38,7 +38,7 @@ are all correct.
 | # | Issue | Impact | Status |
 |---|---|---|---|
 | C1 | **Chat: a rapid 2nd inbound message dropped the 1st from the open thread.** `requests.tsx` — the realtime append used a single `incomingMsg` state slot consumed by an effect keyed on `[incomingMsg, selected]`; when message B arrived while message A's enrichment fetch was still in flight, the effect cleanup set `cancelled=true` for A, discarding its append. The list preview still updated, so the row showed B while the thread body silently lost A (A stayed in the DB, reappearing on reopen). | Intermittent silent message loss when two messages arrived within ~100–300 ms. | **Fixed & verified.** Each realtime INSERT is now appended independently in the channel handler (no single-slot, no cancel), guarded by `selectedConvIdRef`; `mergeMessage()` de-dupes by id and keeps `created_at` order via a functional updater. Verified live with two clients sending two back-to-back messages → both land in order; single-message + accept/reject regression still pass. |
-| C2 | **Stay-request flow isn't transactional.** `map.tsx` inserts `conversations`, then `stay_requests`, then `messages` as separate calls. If the request insert fails (non-duplicate reason) an **orphan empty conversation** is left; if the first-message insert fails it's **swallowed** (no error check) and the host gets a request with no chat body, yet the guest sees a success toast. | Orphan empty threads; a request can land with no message; failures hidden. | **Propose.** Proper fix = a Postgres RPC (`create_knock`) doing all three in one transaction. Needs DB work + testing. |
+| C2 | **Stay-request flow wasn't transactional.** `map.tsx` inserted `conversations`, then `stay_requests`, then `messages` as separate calls; a failure between them left an orphan empty conversation or a request with no chat body (and the success toast could still show). | Orphan empty threads; a request landing with no message; hidden failures. | **Fixed & verified.** New SECURITY DEFINER RPC `create_knock` does all three in one transaction (all-or-nothing), pins `guest_id` to `auth.uid()`, re-checks host/location ownership, and lets the triggers + exclusion constraint roll the whole thing back on overlap. Client now calls the RPC. Verified live: success creates all three atomically; an overlapping knock is blocked (23P01) leaving **nothing** behind; self/foreign-host rejected; zero orphan conversations. (No orphans existed to clean.) |
 
 ### 🟠 HIGH
 
@@ -75,7 +75,7 @@ are all correct.
 ## 2) Prioritized improvement suggestions (benefit / effort)
 
 1. ~~Fix C1 (message drop)~~ — **done** (see §1). Petr to click-confirm: two rapid messages between two accounts both appear in the open thread without reopening.
-2. **Transactional knock + delete-account + save-listings via Postgres RPCs** — *high / medium.* Removes orphan conversations (C2), partial deletes, and partial saves (M9). One `SECURITY DEFINER` function each, wrapped in a transaction.
+2. **Transactional RPCs** — knock is **done** (`create_knock`, C2). Still worth the same treatment for **delete-account** (partial/orphaned deletes) and **save-listings** (M9, partial saves). *high / medium.*
 3. **reset-password hardening (H2)** — *high / medium.* Verify the session is a real recovery session; handle native deep-link token exchange.
 4. **Surface errors instead of swallowing** (H1, M7, M8) + split avatar/name/bike error states — *medium / low.*
 5. **Decide knock-per-location vs per-date (H4)** and **guest-cancel of a pending request** (RLS currently host-only despite a comment saying guests can cancel) — *medium / low, product.*
@@ -98,6 +98,6 @@ are all correct.
 
 ---
 
-*Fixed & verified: C1, S1, S2, M1, M2, M3, M4. Everything still under "Propose" is
+*Fixed & verified: C1, C2, S1, S2, M1, M2, M3, M4. Everything still under "Propose" is
 left for Petr's review/testing per the no-blind-risky-changes rule — next up per his
-call: C2 (transactional knock), then H2 (reset-password), etc.*
+call: H1/H3 (chat error/open-race), H2 (reset-password), or the remaining RPCs.*
