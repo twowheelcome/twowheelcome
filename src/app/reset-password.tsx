@@ -10,6 +10,7 @@ export default function ResetPasswordScreen() {
 
   const [ready, setReady] = useState(false)
   const [hasSession, setHasSession] = useState(false)
+  const [isRecovery, setIsRecovery] = useState(false)   // a genuine PASSWORD_RECOVERY event fired
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
@@ -17,13 +18,16 @@ export default function ResetPasswordScreen() {
   const [done, setDone] = useState(false)
 
   useEffect(() => {
-    // On web the recovery token in the URL is consumed automatically and a
-    // PASSWORD_RECOVERY / session becomes available. Accept any active session.
+    // On web the recovery token in the URL is consumed automatically: a
+    // PASSWORD_RECOVERY event fires and a session becomes available. We track the
+    // recovery event explicitly (the trustworthy signal); a session is still required
+    // for updateUser, which is always scoped to the caller's own account.
     supabase.auth.getSession().then(({ data: { session } }) => {
       setHasSession(!!session)
       setReady(true)
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') setIsRecovery(true)
       setHasSession(!!session)
       setReady(true)
     })
@@ -43,7 +47,14 @@ export default function ResetPasswordScreen() {
     }
     setDone(true)
     setLoading(false)
-    setTimeout(() => router.replace('/(tabs)/map'), 1200)
+    if (isRecovery) {
+      // A reset via the email link shouldn't silently log you into the app — clear the
+      // short-lived recovery session and have the user sign in with the new password.
+      await supabase.auth.signOut()
+      setTimeout(() => router.replace('/'), 1400)
+    } else {
+      setTimeout(() => router.replace('/(tabs)/map'), 1200)
+    }
   }
 
   return (
@@ -57,7 +68,9 @@ export default function ResetPasswordScreen() {
         <Text style={styles.note}>Loading…</Text>
       ) : done ? (
         <View style={styles.msgSuccess}>
-          <Text style={styles.msgSuccessText}>Password updated. Taking you to the map…</Text>
+          <Text style={styles.msgSuccessText}>
+            {isRecovery ? 'Password updated. Please log in with your new password.' : 'Password updated. Taking you to the map…'}
+          </Text>
         </View>
       ) : !hasSession ? (
         <View style={styles.form}>
