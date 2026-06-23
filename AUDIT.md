@@ -37,7 +37,7 @@ are all correct.
 
 | # | Issue | Impact | Status |
 |---|---|---|---|
-| C1 | **Chat: a rapid 2nd inbound message can drop the 1st from the open thread.** `requests.tsx` — the realtime append uses a single `incomingMsg` state slot; when message B arrives while message A's enrichment fetch is still in flight, the effect cleanup cancels A's append. The conversation-list preview still updates, so the row shows B while the thread body silently lost A. (A is in the DB and reappears on reopening the chat.) | Intermittent silent message loss in the core feature when two messages arrive within ~100–300 ms. | **Propose (do NOT blind-fix).** This is in the most sensitive realtime path that has regressed before; the fix (append optimistically from the raw payload via `selectedConvIdRef`, then enrich — or drain a queue instead of a single slot) needs Petr's two-account testing. Recommended fix detailed in §2. |
+| C1 | **Chat: a rapid 2nd inbound message dropped the 1st from the open thread.** `requests.tsx` — the realtime append used a single `incomingMsg` state slot consumed by an effect keyed on `[incomingMsg, selected]`; when message B arrived while message A's enrichment fetch was still in flight, the effect cleanup set `cancelled=true` for A, discarding its append. The list preview still updated, so the row showed B while the thread body silently lost A (A stayed in the DB, reappearing on reopen). | Intermittent silent message loss when two messages arrived within ~100–300 ms. | **Fixed & verified.** Each realtime INSERT is now appended independently in the channel handler (no single-slot, no cancel), guarded by `selectedConvIdRef`; `mergeMessage()` de-dupes by id and keeps `created_at` order via a functional updater. Verified live with two clients sending two back-to-back messages → both land in order; single-message + accept/reject regression still pass. |
 | C2 | **Stay-request flow isn't transactional.** `map.tsx` inserts `conversations`, then `stay_requests`, then `messages` as separate calls. If the request insert fails (non-duplicate reason) an **orphan empty conversation** is left; if the first-message insert fails it's **swallowed** (no error check) and the host gets a request with no chat body, yet the guest sees a success toast. | Orphan empty threads; a request can land with no message; failures hidden. | **Propose.** Proper fix = a Postgres RPC (`create_knock`) doing all three in one transaction. Needs DB work + testing. |
 
 ### 🟠 HIGH
@@ -74,7 +74,7 @@ are all correct.
 
 ## 2) Prioritized improvement suggestions (benefit / effort)
 
-1. **Fix C1 (message drop)** — *high / medium.* Append the incoming message immediately from the realtime payload using `selectedConvIdRef.current` (no shared single-slot cancel), then enrich (sender name / request join) in a follow-up `setMessages` patch. Dedup by id. Test with two accounts sending back-to-back messages.
+1. ~~Fix C1 (message drop)~~ — **done** (see §1). Petr to click-confirm: two rapid messages between two accounts both appear in the open thread without reopening.
 2. **Transactional knock + delete-account + save-listings via Postgres RPCs** — *high / medium.* Removes orphan conversations (C2), partial deletes, and partial saves (M9). One `SECURITY DEFINER` function each, wrapped in a transaction.
 3. **reset-password hardening (H2)** — *high / medium.* Verify the session is a real recovery session; handle native deep-link token exchange.
 4. **Surface errors instead of swallowing** (H1, M7, M8) + split avatar/name/bike error states — *medium / low.*
@@ -98,5 +98,6 @@ are all correct.
 
 ---
 
-*Fixed this pass (all verified, committed): S1, S2, M1, M2, M3, M4. Everything under
-"Propose" was intentionally left for Petr's review per the no-blind-risky-changes rule.*
+*Fixed & verified: C1, S1, S2, M1, M2, M3, M4. Everything still under "Propose" is
+left for Petr's review/testing per the no-blind-risky-changes rule — next up per his
+call: C2 (transactional knock), then H2 (reset-password), etc.*
