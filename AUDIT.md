@@ -22,7 +22,7 @@ or a product decision.
 | S1 | **`host_profiles` table had RLS OFF + full anon grants** (legacy, unused) | Any anonymous client could **read a host's EXACT GPS + notes** (and write/delete). Verified live: anon read 1 row with full-precision coordinates. | **Fixed** — `lockdown_legacy_tables.sql` revokes grants + enables RLS on `host_profiles` and `bikes`; applied + verified anon now denied. |
 | S2 | **`notify-review` cron silently failing** | The daily review-reminder cron sends only `x-cron-secret` (no JWT) but the function had `verify_jwt=true`, so the platform rejected every call → reminders never sent. | **Fixed** — redeployed `notify-review` with `--no-verify-jwt`; the function's own `CRON_SECRET` check is the gate (verified it 401s without the secret). |
 | S3 | `request-photos` storage bucket allowed **anonymous enumeration** | Verified: any anon client could **list and download every bike photo** in the bucket (the public SELECT policy covered both buckets), not just guess a random URL. | **Fixed** — `restrict_request_photos_listing.sql` drops request-photos from the public SELECT (list) policy (avatars stay listable). Verified live: anon can no longer list request-photos, and the chat's public object URL still serves (200) — image display unaffected. *(Residual: a photo is still downloadable if you know its exact unguessable path; full private-bucket + signed URLs remains a larger propose.)* |
-| S4 | Edge functions use **CORS `*`** | Baseline says no wildcard in prod. Practical risk low — auth is Bearer-token, not cookies, so a hostile origin can't ride a user's credentials. | **Propose (left as-is).** Whitelisting is risky to change blind: the app is called from multiple origins (apex + www + any preview deploy) and a too-narrow list would break `functions.invoke`. Needs the real origin list. |
+| S4 | Edge functions use **CORS `*`** | Baseline says no wildcard in prod. Practical risk low — auth is Bearer-token, not cookies, so a hostile origin can't ride a user's credentials. | **Fixed & verified.** `notify-request` + `delete-account` now reflect an allowlisted Origin (apex, www, the project's `*.vercel.app` deploy URLs, localhost dev) and fall back to `https://www.twowheelcome.com` for anything else. `notify-review` is cron-only (no browser origin). Verified live: a legit Origin is reflected; `evil.example.com` gets the mismatch and is blocked. |
 | S5 | No **rate limiting** on edge functions; no server-side length cap on review text | Abuse/spam surface. Idempotency table already caps repeat notifications. | **Partially fixed.** Added a DB length cap on review body (defense-in-depth vs the client's 500-char limit). Rate limiting needs a design decision (left as propose). |
 
 **Verified SAFE (no leak):** anon cannot read `stay_requests`, `messages`, `conversations`,
@@ -106,14 +106,49 @@ are all correct.
   dates" bubble. **Fixed & verified** live (two stays → two independent reviews, duplicate
   blocked, host/guest independent, anon blocked).
 
-*Fixed & verified: C1, C2, per-stay reviews, H1, H3, M5, M7, S1, S2, S3, S5 (cap). Hardened: H2.
+*Fixed & verified: C1, C2, per-stay reviews, H1, H3, H4, M5, M7, S1, S2, S3, S4 (CORS), S5 (cap). Hardened: H2.
 Assessed & deferred (not safe to change blind / product calls): M6 (timezone — system-wide UTC),
-S4 (CORS — origin list), H4 (knock per-location vs per-date), M8 (error-surfacing UI),
-M9 + delete-account (transactional RPCs). Remaining "Propose" items await Petr's call.*
+M8 (error-surfacing UI), M9 + delete-account (transactional RPCs). Remaining "Propose" items await Petr's call.*
+
+### Request model — multi-location, repeat knocks, withdraw (2026-06-23)
+Verified live against the DB, then aligned the app to what the DB already allows.
+- **B1 — knock at multiple hosts at once.** Already worked: the exclusion constraint is
+  scoped per `(guest, location)`, so a rider shopping around several hosts (even on the
+  same dates) is fine. No change. **Verified live.**
+- **B2 — repeat knock at the *same* host on free dates (was H4).** The DB only blocks
+  *date-overlapping* active requests; the app blocked *any* second knock per location.
+  Relaxed the app: the host card now shows the existing request as context and still
+  offers "Knock again — other dates"; an overlapping repeat is caught by the submit-time
+  date check + the exclusion constraint. **Fixed & verified live** (non-overlapping repeat
+  allowed, overlapping repeat blocked with 23P01).
+- **B3 — rider withdraws a pending request.** New `PENDING → CANCELLED` transition by the
+  guest (RLS already permitted the guest's update; the `validate_stay_request_write`
+  trigger now allows it; only the guest, only while pending). `CANCELLED` sits outside the
+  exclusion constraint, so the slot frees and the rider can re-knock the same nights. The
+  conversation and its history stay intact; a "Withdraw request" button shows on the guest's
+  pending card. **Fixed & verified live** (guest cancel OK, host cancel blocked, slot freed).
+- **When accepted elsewhere, other pending knocks are *left as-is*** (manual withdraw is
+  enough). Auto-cancel-on-accept was considered and intentionally **not** implemented.
+
+### Open finding — one host, multiple riders, same night (C, report only)
+**State (verified live):** two *different* riders can both knock for the same place + same
+night, and the host can **accept both** → the place is silently **double-booked**. The
+exclusion constraint is per-guest, so it does not stop cross-rider same-night collisions,
+and nothing else does either. No code changed — Petr decides.
+**Options:**
+1. *Auto-reject the others on accept* — when a host accepts one request for a night, a
+   trigger/RPC flips every other still-pending request that overlaps that night to
+   REJECTED (with an auto chat note). Cleanest guarantee; needs a clear "spot taken" message.
+2. *Block at accept time* — keep multiple pendings, but refuse the second ACCEPT that
+   overlaps an already-accepted night (partial exclusion constraint on host+dates where
+   status='ACCEPTED', or a trigger). Host curates; riders aren't touched until accept.
+3. *Leave it (status quo)* — rely on the host to not over-accept; simplest, but the
+   double-booking footgun stays.
+Recommendation: option 1 or 2; both keep B1/B2/B3 intact.
 
 ### Still open for Petr (no code changed — needs his decision/testing)
-- **H4** — is one active request *per location* intended, or should a rider be able to knock for a different, non-overlapping date at the same host? (UI blocks per-location; DB blocks per-overlap.)
+- **C (above)** — pick how to handle one-host-multiple-riders-same-night.
 - **M9 / delete-account** — wrap become-host save and account deletion in transactional RPCs (like `create_knock`).
 - **M6** — timezone-correct dates end-to-end (client + trigger + cron + RLS).
-- **S4 / rate-limiting** — CORS origin whitelist and edge-function throttling.
+- **Rate-limiting** — edge-function throttling (CORS itself is now fixed, see S4).
 - **M8** — split the shared avatar/name/bike error state and surface save failures.
