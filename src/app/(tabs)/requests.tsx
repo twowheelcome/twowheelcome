@@ -439,7 +439,6 @@ export default function RequestsScreen() {
   const [convs, setConvs] = useState<ConvRow[]>([])
   const [selected, setSelected] = useState<ConvRow | null>(null)
   const [messages, setMessages] = useState<MsgRow[]>([])
-  const [incomingMsg, setIncomingMsg] = useState<any>(null)  // last realtime message, appended by an effect that reads the live `selected`
   const [text, setText] = useState('')
   const [inputHeight, setInputHeight] = useState(INPUT_MIN_H)
   const [sending, setSending] = useState(false)
@@ -557,34 +556,6 @@ export default function RequestsScreen() {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentUser])
   )
-
-  // Append an incoming realtime message into the OPEN conversation. Runs off the
-  // live `selected` state (not a ref), so it always targets the conversation that
-  // is actually rendered — this is the fix for "new message doesn't show live".
-  useEffect(() => {
-    const m = incomingMsg
-    if (!m || !selected || m.conversation_id !== selected.id) return
-    let cancelled = false
-    void (async () => {
-      void markRead(selected.id, m.created_at)
-      const { data } = await supabase
-        .from('messages')
-        .select(`
-          id, conversation_id, sender_id, body, photo_url, request_id, created_at,
-          request:stay_requests!request_id(${REQUEST_SELECT})
-        `)
-        .eq('id', m.id)
-        .single()
-      if (cancelled || !data) return
-      const { data: sp } = await supabase.from('profiles').select('full_name').eq('id', data.sender_id).single()
-      if (cancelled) return
-      setMessages(prev => prev.find(x => x.id === data.id)
-        ? prev
-        : [...prev, normalizeMsg({ ...data, sender: { full_name: sp?.full_name ?? null } })])
-      if (nearBottomRef.current) setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 60)
-    })()
-    return () => { cancelled = true }
-  }, [incomingMsg, selected])
 
   // Fetch one conversation by id, shaped like a list row. Used when the openConv
   // deep-link arrives before the list has loaded, so opening never races the list.
@@ -768,6 +739,45 @@ export default function RequestsScreen() {
       .upsert({ user_id: userId, conversation_id: convId, last_read_at: isoTime }, { onConflict: 'user_id,conversation_id' })
   }
 
+  // Add a message to the open thread: de-dupe by id, keep created_at order (so two
+  // realtime events that arrive close together can't land out of order).
+  function mergeMessage(prev: MsgRow[], msg: MsgRow): MsgRow[] {
+    if (prev.some(x => x.id === msg.id)) return prev
+    const next = [...prev, msg]
+    next.sort((a, b) => a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : (a.id < b.id ? -1 : 1))
+    return next
+  }
+
+  // Append a realtime INSERT into the OPEN conversation. Each message is handled
+  // independently here (not via a shared single-slot state), so two messages arriving
+  // back-to-back can no longer cancel each other's append — both are added, de-duped
+  // by id. The raw payload renders immediately; the sender name + stay-request card are
+  // enriched in a follow-up patch by id. selectedConvIdRef (a ref) avoids stale closures.
+  function appendRealtimeMessage(m: any) {
+    if (selectedConvIdRef.current !== m.conversation_id) return
+    const userId = currentUserIdRef.current
+    setMessages(prev => mergeMessage(prev, normalizeMsg({ ...m, sender: { full_name: null } })))
+    void markRead(m.conversation_id, m.created_at)
+    if (nearBottomRef.current) setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 60)
+    void (async () => {
+      const { data } = await supabase
+        .from('messages')
+        .select(`
+          id, conversation_id, sender_id, body, photo_url, request_id, created_at,
+          request:stay_requests!request_id(${REQUEST_SELECT})
+        `)
+        .eq('id', m.id)
+        .maybeSingle()
+      if (!data) return
+      const { data: sp } = await supabase.from('profiles').select('full_name').eq('id', data.sender_id).maybeSingle()
+      if (currentUserIdRef.current !== userId || selectedConvIdRef.current !== data.conversation_id) return
+      const enriched = normalizeMsg({ ...data, sender: { full_name: sp?.full_name ?? null } })
+      setMessages(prev => prev.some(x => x.id === enriched.id)
+        ? prev.map(x => x.id === enriched.id ? enriched : x)
+        : mergeMessage(prev, enriched))
+    })()
+  }
+
   // Live-update the conversation LIST: any new message (in any of my conversations)
   // moves it to the top, refreshes the preview, and lights up the unread dot.
   // ONE realtime channel for the whole screen: it updates the conversation list
@@ -809,10 +819,9 @@ export default function RequestsScreen() {
           })
           if (isNew && currentUserIdRef.current === userId) void loadConvs(userId)
 
-          // (2) Hand the raw message to an effect that reads the live `selected` state
-          // and appends it to the open thread. Driving this off React state (not a ref)
-          // guarantees we compare against the conversation that is actually on screen.
-          setIncomingMsg(m)
+          // (2) Append straight into the open thread (independent per message, so two
+          // rapid messages can't cancel each other).
+          appendRealtimeMessage(m)
         })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'stay_requests' }, (payload) => {
           if (currentUserIdRef.current !== userId) return
