@@ -338,66 +338,34 @@ export default function MapScreen() {
         setSending(false)
         return
       }
-      const [ua, ub] = [userId, selected.user_id].sort()
-      let convId: string
-      const { data: existing } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('user_a', ua)
-        .eq('user_b', ub)
-        .eq('location_id', selected.id)
-        .maybeSingle()
-
-      if (existing) {
-        convId = existing.id
-        await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', convId)
-      } else {
-        const { data: newConv, error: convErr } = await supabase
-          .from('conversations')
-          .insert({ user_a: ua, user_b: ub, location_id: selected.id })
-          .select('id')
-          .single()
-        if (convErr || !newConv) { setSendError(convErr?.message || 'Conversation error'); setSending(false); return }
-        convId = newConv.id
-      }
-
-      const { data: reqData, error: reqErr } = await supabase
-        .from('stay_requests')
-        .insert({
-          guest_id: userId,
-          host_id: selected.user_id,
-          location_id: selected.id,
-          status: 'PENDING',
-          guests_count: guests,
-          message: message.trim(),
-          arrival_date: arrivalDate,
-          departure_date: departureDate,
-          arrival_time: arrivalTime.trim() || null,
-          conversation_id: convId,
-          photo_url: uploadedPhotoUrl,
-        })
-        .select('id')
-        .single()
-      if (reqErr || !reqData) {
-        // The DB blocks a second active request for the same stay (overlapping dates).
-        const dupe = reqErr?.code === '23P01' || /no_overlapping_active_stays|exclusion/i.test(reqErr?.message || '')
+      // One atomic DB call: find/create the conversation, insert the stay request, and
+      // insert the first message — all-or-nothing, so a mid-way failure can't leave an
+      // orphan conversation or a request with no message. Overlap raises 23P01 inside
+      // the transaction and rolls everything back.
+      const { data: knock, error: knockErr } = await supabase.rpc('create_knock', {
+        p_host_id: selected.user_id,
+        p_location_id: selected.id,
+        p_guests: guests,
+        p_message: message.trim(),
+        p_arrival: arrivalDate,
+        p_departure: departureDate,
+        p_arrival_time: arrivalTime.trim() || null,
+        p_photo_url: uploadedPhotoUrl,
+      })
+      const row = Array.isArray(knock) ? knock[0] : knock
+      if (knockErr || !row?.conversation_id) {
+        const dupe = knockErr?.code === '23P01' || /no_overlapping_active_stays|exclusion/i.test(knockErr?.message || '')
         if (dupe) setMyActiveByLocation(prev => ({ ...prev, [selected.id]: prev[selected.id] || 'PENDING' }))
         setSendError(dupe
           ? 'You already have an active request for these dates. Open your chat to follow up.'
-          : (reqErr?.message || 'Request error'))
+          : (knockErr?.message || 'Request error'))
         setSending(false)
         return
       }
-
-      await supabase.from('messages').insert({
-        conversation_id: convId,
-        sender_id: userId,
-        body: message.trim(),
-        request_id: reqData.id,
-      })
+      const convId: string = row.conversation_id
 
       supabase.functions.invoke('notify-request', {
-        body: { request_id: reqData.id, event: 'new_request' },
+        body: { request_id: row.request_id, event: 'new_request' },
       }).catch(() => {})
 
       setMyActiveByLocation(prev => ({ ...prev, [selected.id]: 'PENDING' }))
