@@ -59,7 +59,7 @@ are all correct.
 | M4 | **Push token not registered on in-session login** (only at cold start). | **Fixed** — also register on `SIGNED_IN`. |
 | M5 | `extractCoords` over-matched any "number, number" in normal chat (e.g. "see you at 8, 30 min") → a spurious **"Open navigation"** button. | **Fixed** — requires a decimal part on both numbers (real coords always have one). Verified against a case set; the exact-meeting-point format still parses. |
 | M6 | **Date defaults use UTC** (`toISOString().split('T')[0]`) → off-by-one calendar day for negative-UTC timezones near midnight. | **Assessed → deferred (not safe to change blind).** The *whole* system is UTC-consistent — the `validate_stay_request_write` trigger requires `arrival_date >= (now() AT TIME ZONE 'utc')::date`, and the cron, `hasStayEnded`, and review RLS all use UTC. Switching only the client to local dates would *desync from the trigger* and make a UTC-evening user's local "today" get rejected. A correct fix is timezone-aware end-to-end and needs testing across zones — left for Petr. |
-| M7 | `sendCoordinates` does **nothing visible** if the location row/coords are missing (host taps, brief spinner, no pin sent, no error); also `lat && lng` truthiness treats coordinate `0` as missing. | **Propose** (add a user error + `!= null` guard; low risk but worth a glance). |
+| M7 | `sendCoordinates` did **nothing visible** if the location had no coords (host taps, brief spinner, no pin, no error); `lat && lng` truthiness also treated coordinate `0` as missing. | **Fixed** — `!= null` guard (handles a real `0` coordinate) and an explicit error banner when the place has no pin. |
 | M8 | `markRead` / `submitReview` / avatar+name+bike saves **swallow DB errors** with no user feedback (shared `avatarError` state mislabels name/bike failures as avatar errors). | **Propose** (UX/error surfacing; needs placement decisions). |
 | M9 | become-host **save isn't transactional** (delete-removed-locations then upsert are separate calls; a failure between them loses removed rows and doesn't save edits). | **Propose** (RPC/transaction; needs testing). |
 
@@ -106,6 +106,14 @@ are all correct.
   dates" bubble. **Fixed & verified** live (two stays → two independent reviews, duplicate
   blocked, host/guest independent, anon blocked).
 
-*Fixed & verified: C1, C2, per-stay reviews, S1, S2, M1, M2, M3, M4. Everything still
-under "Propose" is left for Petr's review/testing per the no-blind-risky-changes rule —
-in progress: H1/H3 (chat error/open-race), H2 (reset-password), and the safe 🟠 items.*
+*Fixed & verified: C1, C2, per-stay reviews, H1, H3, M5, M7, S1, S2, S3, S5 (cap). Hardened: H2.
+Assessed & deferred (not safe to change blind / product calls): M6 (timezone — system-wide UTC),
+S4 (CORS — origin list), H4 (knock per-location vs per-date), M8 (error-surfacing UI),
+M9 + delete-account (transactional RPCs). Remaining "Propose" items await Petr's call.*
+
+### Still open for Petr (no code changed — needs his decision/testing)
+- **H4** — is one active request *per location* intended, or should a rider be able to knock for a different, non-overlapping date at the same host? (UI blocks per-location; DB blocks per-overlap.)
+- **M9 / delete-account** — wrap become-host save and account deletion in transactional RPCs (like `create_knock`).
+- **M6** — timezone-correct dates end-to-end (client + trigger + cron + RLS).
+- **S4 / rate-limiting** — CORS origin whitelist and edge-function throttling.
+- **M8** — split the shared avatar/name/bike error state and surface save failures.

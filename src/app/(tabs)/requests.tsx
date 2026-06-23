@@ -1038,7 +1038,7 @@ export default function RequestsScreen() {
         .maybeSingle()
       loc = data
     }
-    if (loc?.location_lat && loc?.location_lng) {
+    if (loc?.location_lat != null && loc?.location_lng != null) {
       const coords = `${Number(loc.location_lat).toFixed(6)}, ${Number(loc.location_lng).toFixed(6)}`
       const place = [loc.location_city, loc.location_country].filter(Boolean).join(', ')
       const recap = summarizeLocation(loc)
@@ -1074,6 +1074,9 @@ export default function RequestsScreen() {
         .update({ last_message_at: new Date().toISOString() })
         .eq('id', selected.id)
       setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100)
+    } else {
+      // No coordinates on the location — tell the host instead of silently doing nothing.
+      setActionError("This place has no map pin yet, so there's no exact point to send. Set its location in your listing first.")
     }
 
     sendingCoordsRef.current = false
