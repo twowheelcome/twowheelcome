@@ -4,7 +4,7 @@ import {
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { Feather } from '@expo/vector-icons'
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
+import { router, useFocusEffect } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { unreadStore } from '../../lib/unreadStore'
@@ -446,10 +446,13 @@ export default function RequestsScreen() {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [readMap, setReadMap] = useState<Record<string, string>>({})  // conversation_id -> my last_read_at
   const [sendingCoordsFor, setSendingCoordsFor] = useState<string | null>(null)
-  const [myReview, setMyReview] = useState<{ rating: number; body: string } | null>(null)
-  const [reviewStars, setReviewStars] = useState(0)
-  const [reviewBody, setReviewBody] = useState('')
-  const [submittingReview, setSubmittingReview] = useState(false)
+  // Reviews are per stay (per stay_request), not per conversation — a conversation is
+  // reused for repeat stays, and each completed stay is reviewed independently.
+  const [endedStays, setEndedStays] = useState<RequestData[]>([])
+  const [myReviewsByStay, setMyReviewsByStay] = useState<Record<string, { rating: number; body: string; created_at: string }>>({})
+  const [reviewDraftStars, setReviewDraftStars] = useState<Record<string, number>>({})
+  const [reviewDraftBody, setReviewDraftBody] = useState<Record<string, string>>({})
+  const [submittingStayId, setSubmittingStayId] = useState<string | null>(null)
   const [respondingFor, setRespondingFor] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<ConversationFilter>('all')
   const flatRef = useRef<FlatList<MsgRow>>(null)
@@ -467,10 +470,6 @@ export default function RequestsScreen() {
   const selectedConvIdRef = useRef<string | null>(null)
   const locCoordsRef = useRef<{ lat: number; lng: number } | null>(null)  // open conversation's approximate map point
 
-  // reviewRequest can still arrive as a route param; the conversation to open now
-  // comes via pendingChatStore (see useFocusEffect) so it survives tab re-focus.
-  const { reviewRequest: reviewRequestParam } = useLocalSearchParams<{ reviewRequest?: string }>()
-  const [reviewRequestId, setReviewRequestId] = useState<string | null>(null)
 
   function clearConversationState() {
     if (listChannelRef.current) {
@@ -484,11 +483,11 @@ export default function RequestsScreen() {
     setText('')
     setSending(false)
     setSendingCoordsFor(null)
-    setMyReview(null)
-    setReviewStars(0)
-    setReviewBody('')
-    setReviewRequestId(null)
-    setSubmittingReview(false)
+    setEndedStays([])
+    setMyReviewsByStay({})
+    setReviewDraftStars({})
+    setReviewDraftBody({})
+    setSubmittingStayId(null)
     setRespondingFor(null)
   }
 
@@ -549,7 +548,7 @@ export default function RequestsScreen() {
       if (pending) {
         void (async () => {
           const conv = convs.find(c => c.id === pending.convId) ?? await fetchConvById(pending.convId, userId)
-          if (conv && currentUserIdRef.current === userId) openConv(conv, pending.reviewRequestId)
+          if (conv && currentUserIdRef.current === userId) openConv(conv)
         })()
       }
       // convs/fetchConvById/openConv intentionally excluded; this must run on focus only.
@@ -848,7 +847,7 @@ export default function RequestsScreen() {
     }
   }
 
-  async function openConv(conv: ConvRow, preferredReviewRequestId?: string | null) {
+  async function openConv(conv: ConvRow) {
     const userId = currentUserIdRef.current
     if (!userId || (conv.user_a !== userId && conv.user_b !== userId)) return
     setSelected(conv)
@@ -883,46 +882,56 @@ export default function RequestsScreen() {
     const normalized = msgData.map((m: any) => normalizeMsg({ ...m, sender: { full_name: senderMap[m.sender_id] ?? null } }))
     setMessages(normalized)
 
-    // Reviews are always tied to a concrete stay, never merely to a chat.
-    const endedRequests = normalized
-      .map(m => m.request)
-      .filter((req): req is RequestData => !!req && req.status === 'ACCEPTED' && hasStayEnded(req))
-    const acceptedReq = endedRequests.find(req => req.id === (preferredReviewRequestId ?? reviewRequestParam))
-      ?? [...endedRequests].reverse()[0]
-    setReviewRequestId(acceptedReq?.id ?? null)
-    setMyReview(null); setReviewStars(0); setReviewBody('')
-    if (acceptedReq && currentUser) {
-      const { data: rev } = await supabase
+    // Every completed (accepted + ended) stay in this conversation is independently
+    // reviewable — repeat stays reuse the conversation but each is its own stay_request.
+    const ended = Array.from(
+      new Map(
+        normalized
+          .map(m => m.request)
+          .filter((req): req is RequestData => !!req && req.status === 'ACCEPTED' && hasStayEnded(req))
+          .map(r => [r.id, r])
+      ).values()
+    ).sort((a, b) => a.departure_date < b.departure_date ? -1 : a.departure_date > b.departure_date ? 1 : 0)
+    setEndedStays(ended)
+    setReviewDraftStars({}); setReviewDraftBody({}); setMyReviewsByStay({})
+    if (ended.length && currentUser) {
+      const { data: revs } = await supabase
         .from('reviews')
-        .select('rating, body')
-        .eq('stay_request_id', acceptedReq.id)
+        .select('stay_request_id, rating, body, created_at')
         .eq('reviewer_id', currentUser.id)
-        .maybeSingle()
-      if (rev) { setMyReview({ rating: rev.rating, body: rev.body ?? '' }); setReviewStars(rev.rating) }
+        .in('stay_request_id', ended.map(r => r.id))
+      if (currentUserIdRef.current !== userId) return
+      const map: Record<string, { rating: number; body: string; created_at: string }> = {}
+      revs?.forEach((r: any) => { map[r.stay_request_id] = { rating: r.rating, body: r.body ?? '', created_at: r.created_at } })
+      setMyReviewsByStay(map)
     }
 
     setTimeout(() => flatRef.current?.scrollToEnd({ animated: false }), 100)
   }
 
-  async function submitReview() {
+  async function submitReview(stayId: string) {
     if (submittingReviewRef.current) return   // guard against a double-tap inserting twice
-    const req = messages.find(m => m.request?.id === reviewRequestId)?.request
-    if (!req || !currentUser || !reviewStars) return
+    const req = endedStays.find(r => r.id === stayId)
+    const stars = reviewDraftStars[stayId] || 0
+    if (!req || !currentUser || !stars) return
     const userId = currentUser.id
     if (currentUserIdRef.current !== userId) return
     const revieweeId = userId === req.host_id ? req.guest_id : req.host_id
+    const body = (reviewDraftBody[stayId] || '').trim()
     submittingReviewRef.current = true
-    setSubmittingReview(true)
+    setSubmittingStayId(stayId)
     const { error } = await supabase.from('reviews').insert({
-      stay_request_id: req.id,
+      stay_request_id: stayId,
       reviewer_id: userId,
       reviewee_id: revieweeId,
-      rating: reviewStars,
-      body: reviewBody.trim() || null,
+      rating: stars,
+      body: body || null,
     })
     submittingReviewRef.current = false
-    setSubmittingReview(false)
-    if (!error) setMyReview({ rating: reviewStars, body: reviewBody })
+    setSubmittingStayId(null)
+    if (!error) {
+      setMyReviewsByStay(prev => ({ ...prev, [stayId]: { rating: stars, body, created_at: new Date().toISOString() } }))
+    }
   }
 
   function normalizeMsg(m: any): MsgRow {
@@ -1157,7 +1166,6 @@ export default function RequestsScreen() {
           <HeaderBackButton onPress={() => {
             setSelected(null)
             selectedConvIdRef.current = null
-            setMyReview(null); setReviewStars(0); setReviewBody('')
           }} />
           <View style={styles.chatAvatar}>
             {selected.other.avatar_url ? (
@@ -1189,47 +1197,58 @@ export default function RequestsScreen() {
           }}
           scrollEventThrottle={16}
 	          ListFooterComponent={(() => {
-	            const acceptedReq = messages.find(m => m.request?.id === reviewRequestId)?.request
-	            if (!acceptedReq) return null
-	            const isReviewingGuest = currentUser?.id === acceptedReq.host_id
-	            if (myReview) return (
-	              <View style={styles.reviewDone}>
-	                <Text style={styles.reviewDoneText}>
-                  {'⭐'.repeat(myReview.rating)}{'☆'.repeat(5 - myReview.rating)}{'  '}Your review submitted
-                </Text>
-              </View>
-            )
+	            if (!endedStays.length) return null
+	            // One row per completed stay: a rating prompt until you've rated it, then a
+	            // "you rated …" bubble. Each user only sees their OWN review status here.
 	            return (
-	              <View style={styles.reviewCard}>
-	                <Text style={styles.reviewTitle}>
-	                  {isReviewingGuest ? '⭐ RATE THIS GUEST' : '⭐ RATE THIS STAY'}
-	                </Text>
-                <View style={styles.reviewStars}>
-                  {[1,2,3,4,5].map(n => (
-                    <TouchableOpacity key={n} onPress={() => setReviewStars(n)} hitSlop={8}>
-                      <Text style={[styles.reviewStar, n <= reviewStars && styles.reviewStarActive]}>★</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-	                <TextInput
-	                  style={styles.reviewInput}
-	                  placeholder={isReviewingGuest ? 'How was this guest? (optional)' : 'How was this stay? (optional)'}
-                  placeholderTextColor={C.placeholder}
-                  value={reviewBody}
-                  onChangeText={setReviewBody}
-                  multiline
-                  maxLength={500}
-                />
-                <TouchableOpacity
-                  style={[styles.reviewSubmit, (!reviewStars || submittingReview) && styles.reviewSubmitDisabled]}
-                  onPress={submitReview}
-                  disabled={!reviewStars || submittingReview}
-                >
-                  <Text style={styles.reviewSubmitText}>{submittingReview ? 'Submitting...' : 'SUBMIT REVIEW'}</Text>
-                </TouchableOpacity>
-              </View>
-            )
-          })()}
+	              <View>
+	                {endedStays.map(stay => {
+	                  const mine = myReviewsByStay[stay.id]
+	                  const isReviewingGuest = currentUser?.id === stay.host_id
+	                  const dates = `${fmtDateStr(stay.arrival_date)}–${fmtDateStr(stay.departure_date)}`
+	                  if (mine) return (
+	                    <View key={stay.id} style={styles.reviewDone}>
+	                      <Text style={styles.reviewDoneText}>
+	                        {'⭐'.repeat(mine.rating)}{'☆'.repeat(5 - mine.rating)}{'  '}{isReviewingGuest ? 'You rated this guest' : 'You rated this stay'} · {dates}
+	                      </Text>
+	                      {mine.body ? <Text style={styles.reviewDoneBody}>“{mine.body}”</Text> : null}
+	                    </View>
+	                  )
+	                  const stars = reviewDraftStars[stay.id] || 0
+	                  return (
+	                    <View key={stay.id} style={styles.reviewCard}>
+	                      <Text style={styles.reviewTitle}>
+	                        {isReviewingGuest ? '⭐ RATE THIS GUEST' : '⭐ RATE THIS STAY'} · {dates}
+	                      </Text>
+	                      <View style={styles.reviewStars}>
+	                        {[1,2,3,4,5].map(n => (
+	                          <TouchableOpacity key={n} onPress={() => setReviewDraftStars(p => ({ ...p, [stay.id]: n }))} hitSlop={8}>
+	                            <Text style={[styles.reviewStar, n <= stars && styles.reviewStarActive]}>★</Text>
+	                          </TouchableOpacity>
+	                        ))}
+	                      </View>
+	                      <TextInput
+	                        style={styles.reviewInput}
+	                        placeholder={isReviewingGuest ? 'How was this guest? (optional)' : 'How was this stay? (optional)'}
+	                        placeholderTextColor={C.placeholder}
+	                        value={reviewDraftBody[stay.id] || ''}
+	                        onChangeText={t => setReviewDraftBody(p => ({ ...p, [stay.id]: t }))}
+	                        multiline
+	                        maxLength={500}
+	                      />
+	                      <TouchableOpacity
+	                        style={[styles.reviewSubmit, (!stars || submittingStayId === stay.id) && styles.reviewSubmitDisabled]}
+	                        onPress={() => submitReview(stay.id)}
+	                        disabled={!stars || submittingStayId === stay.id}
+	                      >
+	                        <Text style={styles.reviewSubmitText}>{submittingStayId === stay.id ? 'Submitting...' : 'SUBMIT REVIEW'}</Text>
+	                      </TouchableOpacity>
+	                    </View>
+	                  )
+	                })}
+	              </View>
+	            )
+	          })()}
 	          renderItem={({ item: m }) => {
 	            const isMine = m.sender_id === currentUser?.id
 	            const isHost = m.request ? currentUser?.id === m.request.host_id : false
@@ -1834,5 +1853,6 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     backgroundColor: C.accentSoft, borderRadius: 14, borderWidth: 1, borderColor: C.accentBorder,
     padding: 12, alignItems: 'center', marginTop: 16,
   },
-  reviewDoneText: { color: C.accent, fontSize: 13, fontWeight: '600' },
+  reviewDoneText: { color: C.accent, fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  reviewDoneBody: { color: C.textMuted, fontSize: 12, fontStyle: 'italic', marginTop: 4, textAlign: 'center' },
 }) }
