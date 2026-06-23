@@ -143,6 +143,7 @@ function makeStatus(C: ThemeColors): Record<string, { label: string; color: stri
     PENDING:  { label: 'Pending',  color: C.warning, bg: C.warningSoft, border: C.warningBorder },
     ACCEPTED: { label: 'Accepted', color: C.success, bg: C.successSoft, border: C.successBorder },
     REJECTED: { label: 'Rejected', color: C.error, bg: C.errorSoft, border: C.errorBorder },
+    CANCELLED: { label: 'Withdrawn', color: C.textMuted, bg: C.surface, border: C.border },
   }
 }
 
@@ -260,7 +261,7 @@ async function openNavigation(lat: number, lng: number) {
 // ── RequestCard ───────────────────────────────────────────────────────────
 
 function RequestCard({
-  req, body, isHost, onRespond, responding, onShowMap,
+  req, body, isHost, onRespond, responding, onShowMap, onWithdraw, withdrawing,
 }: {
   req: RequestData
   body: string | null
@@ -268,6 +269,8 @@ function RequestCard({
   onRespond: (id: string, status: 'ACCEPTED' | 'REJECTED') => void
   responding?: boolean
   onShowMap?: () => void
+  onWithdraw?: (id: string) => void
+  withdrawing?: boolean
 }) {
   const C = useTheme()
   const rc = useMemo(() => makeRc(C), [C])
@@ -383,6 +386,18 @@ function RequestCard({
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Guest can withdraw their own request while it is still pending */}
+      {isGuest && req.status === 'PENDING' && onWithdraw && (
+        <TouchableOpacity
+          style={[rc.withdrawBtn, withdrawing && rc.actionDisabled]}
+          onPress={() => onWithdraw(req.id)}
+          disabled={withdrawing}
+          accessibilityRole="button"
+        >
+          <Text style={rc.withdrawTxt}>{withdrawing ? '...' : 'Withdraw request'}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   )
 }
@@ -431,6 +446,8 @@ function makeRc(C: ThemeColors) { return StyleSheet.create({
   acceptTxt: { color: C.white, fontWeight: '700', fontSize: 13 },
   rejectBtn: { flex: 1, borderRadius: 100, padding: 13, alignItems: 'center', borderWidth: 1, borderColor: C.error },
   rejectTxt: { color: C.error, fontWeight: '700', fontSize: 13 },
+  withdrawBtn: { borderRadius: 100, padding: 11, alignItems: 'center', borderWidth: 1, borderColor: C.border },
+  withdrawTxt: { color: C.textMuted, fontWeight: '700', fontSize: 13 },
 }) }
 
 // ── Main Screen ───────────────────────────────────────────────────────────
@@ -457,6 +474,7 @@ export default function RequestsScreen() {
   const [submittingStayId, setSubmittingStayId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)   // accept/decline failure banner
   const [respondingFor, setRespondingFor] = useState<string | null>(null)
+  const [withdrawingFor, setWithdrawingFor] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<ConversationFilter>('all')
   const flatRef = useRef<FlatList<MsgRow>>(null)
   const nearBottomRef = useRef(true)   // is the user near the bottom of the thread?
@@ -465,6 +483,7 @@ export default function RequestsScreen() {
   const currentUserIdRef = useRef<string | null>(null)
   const loadUserIdRef = useRef<string | null>(null)
   const respondingRef = useRef(false)   // guard against double-tap accept/decline
+  const withdrawingRef = useRef(false)   // guard against double-tap withdraw
   const sendingMsgRef = useRef(false)   // guard against double-tap send message
   const sendingCoordsRef = useRef(false)   // guard against double-tap send coordinates
   const submittingReviewRef = useRef(false)   // guard against double-tap submit review
@@ -1143,6 +1162,38 @@ export default function RequestsScreen() {
     setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100)
   }
 
+  // The guest withdraws their own still-pending request. Status -> CANCELLED frees
+  // the date slot (it sits outside the exclusion constraint), so they can knock
+  // again for the same nights. The conversation and its history stay intact.
+  async function withdrawRequest(requestId: string) {
+    if (withdrawingRef.current || withdrawingFor) return
+    if (!currentUser || currentUserIdRef.current !== currentUser.id) return
+    withdrawingRef.current = true
+    setWithdrawingFor(requestId)
+    setActionError(null)
+    const { error } = await supabase
+      .from('stay_requests')
+      .update({ status: 'CANCELLED' })
+      .eq('id', requestId)
+      .eq('status', 'PENDING')
+    if (error) {
+      withdrawingRef.current = false
+      setWithdrawingFor(null)
+      setActionError("Couldn't withdraw the request. Check your connection and try again.")
+      return
+    }
+    setMessages(prev => prev.map(m =>
+      m.request?.id === requestId
+        ? { ...m, request: { ...m.request!, status: 'CANCELLED' } }
+        : m
+    ))
+    setConvs(prev => prev.map(c =>
+      c.id === selected?.id ? { ...c, requestStatus: 'CANCELLED' } : c
+    ))
+    withdrawingRef.current = false
+    setWithdrawingFor(null)
+  }
+
   // ── Chat view ────────────────────────────────────────────────────────────
 
   if (selected) {
@@ -1271,6 +1322,8 @@ export default function RequestsScreen() {
 	                    isHost={isHost}
 	                    onRespond={respondToRequest}
 	                    responding={respondingFor === m.request.id}
+	                    onWithdraw={withdrawRequest}
+	                    withdrawing={withdrawingFor === m.request.id}
 	                    onShowMap={Platform.OS === 'web' && m.request.location_id ? showLocationOnMap : undefined}
 	                  />
                 </View>

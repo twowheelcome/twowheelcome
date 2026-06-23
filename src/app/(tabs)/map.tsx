@@ -246,16 +246,10 @@ export default function MapScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hosts, knockHost, knockLocation])
 
-  function beginRequest(targetLocationId?: string) {
-    // Already have an active request for this place — show the host card (with its
-    // status) instead of opening a fresh request form. Read from the ref so the
-    // knock deep-link (which sets `selected` in the same tick) checks the right place.
-    const locId = targetLocationId ?? selected?.id
-    if (locId && myActiveByLocationRef.current[locId]) {
-      setRequesting(false)
-      setShowHostProfile(true)
-      return
-    }
+  function beginRequest(_targetLocationId?: string) {
+    // A rider may have an active request here already and still knock for OTHER, non-
+    // overlapping dates (matches the DB: only date-overlapping active requests are
+    // blocked, and that's enforced at submit). So we always open the form.
     setArrivalChip('tonight')
     setArrivalDate(new Date().toISOString().split('T')[0])
     setDepartureDate(new Date(Date.now() + 86400000).toISOString().split('T')[0])
@@ -740,9 +734,10 @@ export default function MapScreen() {
 
               {/* CTAs */}
               {!isOwn ? (
-                myStatus ? (
-                  // Already knocking here — show the stay's status, never a duplicate knock.
-                  <>
+                <>
+                  {myStatus ? (
+                    // Existing stay here is just context now — the rider can still knock
+                    // again for other, non-overlapping dates (overlap is caught at submit).
                     <View style={{
                       borderRadius: 16, paddingVertical: 13, paddingHorizontal: 16, alignItems: 'center', gap: 3,
                       backgroundColor: myStatus === 'ACCEPTED' ? C.successSoft : C.warningSoft,
@@ -757,8 +752,19 @@ export default function MapScreen() {
                           : 'Waiting for the host to reply. Follow up in your chat.'}
                       </Text>
                     </View>
+                  ) : null}
+                  <TouchableOpacity
+                    style={{ height: 54, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 }}
+                    onPress={() => { setShowHostProfile(false); beginRequest() }}
+                  >
+                    <Text style={{ fontSize: 17 }}>🏠</Text>
+                    <Text style={{ color: C.white, fontSize: 15, fontWeight: '900', letterSpacing: 1 }}>
+                      {myStatus ? 'KNOCK AGAIN — OTHER DATES' : 'KNOCK ON THE DOOR'}
+                    </Text>
+                  </TouchableOpacity>
+                  {myStatus ? (
                     <TouchableOpacity
-                      style={{ height: 54, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' }}
+                      style={{ height: 46, borderRadius: 100, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
                       onPress={() => {
                         setShowHostProfile(false)
                         const convId = myConvByLocation[selected.id]
@@ -766,38 +772,19 @@ export default function MapScreen() {
                         router.push('/(tabs)/requests')
                       }}
                     >
-                      <Text style={{ color: C.white, fontSize: 15, fontWeight: '900', letterSpacing: 1 }}>OPEN YOUR CHAT</Text>
+                      <Text style={{ color: C.text, fontSize: 14, fontWeight: '700' }}>Open your chat</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={{ height: 46, borderRadius: 100, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
-                      onPress={() => {
-                        setShowHostProfile(false)
-                        router.push({ pathname: '/host/[id]', params: { id: selected.user_id, location: selected.id } })
-                      }}
-                    >
-                      <Text style={{ color: C.text, fontSize: 14, fontWeight: '700' }}>View full profile</Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <>
-                    <TouchableOpacity
-                      style={{ height: 54, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10 }}
-                      onPress={() => { setShowHostProfile(false); beginRequest() }}
-                    >
-                      <Text style={{ fontSize: 17 }}>🏠</Text>
-                      <Text style={{ color: C.white, fontSize: 15, fontWeight: '900', letterSpacing: 1 }}>KNOCK ON THE DOOR</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={{ height: 46, borderRadius: 100, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
-                      onPress={() => {
-                        setShowHostProfile(false)
-                        router.push({ pathname: '/host/[id]', params: { id: selected.user_id, location: selected.id } })
-                      }}
-                    >
-                      <Text style={{ color: C.text, fontSize: 14, fontWeight: '700' }}>View full profile</Text>
-                    </TouchableOpacity>
-                  </>
-                )
+                  ) : null}
+                  <TouchableOpacity
+                    style={{ height: 46, borderRadius: 100, backgroundColor: C.surface, borderWidth: 1.5, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
+                    onPress={() => {
+                      setShowHostProfile(false)
+                      router.push({ pathname: '/host/[id]', params: { id: selected.user_id, location: selected.id } })
+                    }}
+                  >
+                    <Text style={{ color: C.text, fontSize: 14, fontWeight: '700' }}>View full profile</Text>
+                  </TouchableOpacity>
+                </>
               ) : (
                 <TouchableOpacity
                   style={{ height: 54, borderRadius: 100, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
@@ -928,7 +915,7 @@ export default function MapScreen() {
                   )}
                   {!isOwn ? (
                     <TouchableOpacity style={styles.requestButton} onPress={() => { setSelected(host); beginRequest(host.id) }}>
-                      <Text style={styles.requestButtonText}>{myActiveByLocation[host.id] ? (myActiveByLocation[host.id] === 'ACCEPTED' ? "You're booked" : 'Request pending') : 'Ask to stay'}</Text>
+                      <Text style={styles.requestButtonText}>{myActiveByLocation[host.id] ? 'Knock again' : 'Ask to stay'}</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity style={styles.editButton} onPress={() => router.push('/become-host')}>
