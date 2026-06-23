@@ -186,7 +186,9 @@ function fmtTime(iso: string) {
 }
 
 function extractCoords(body: string | null): { lat: number; lng: number } | null {
-  const match = body?.match(/(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/)
+  // Require decimals on BOTH numbers so casual text like "see you at 8, 30 min" doesn't
+  // get mistaken for coordinates (which always carry a fractional part in practice).
+  const match = body?.match(/(-?\d+\.\d+),\s*(-?\d+\.\d+)/)
   if (!match) return null
   const lat = Number(match[1])
   const lng = Number(match[2])
