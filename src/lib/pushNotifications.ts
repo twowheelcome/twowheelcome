@@ -37,7 +37,9 @@ export async function registerPushToken(userId: string): Promise<void> {
     if (!projectId) return
 
     const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId })
-    await supabase.from('profiles').upsert({ id: userId, push_token: token })
+    // push_token is column-protected (not publicly readable), so write it through the
+    // SECURITY DEFINER RPC (pins auth.uid()) instead of a direct upsert.
+    await supabase.rpc('set_push_token', { p_token: token })
   } catch {
     // Non-fatal — push token is optional
   }
