@@ -110,7 +110,7 @@ export default function ProfileScreen() {
     setSavingName(true)
     const { error } = await supabase.from('profiles').upsert({ id: user.id, full_name: nameInput.trim() })
     setSavingName(false)
-    if (error) { setAvatarError(error.message); return }
+    if (error) { console.warn('save name error:', error.message); setAvatarError('Could not save your name. Please try again.'); return }
     setProfile((p: any) => ({ ...p, full_name: nameInput.trim() }))
     setEditingName(false)
     refreshUserChip()
@@ -144,15 +144,16 @@ export default function ProfileScreen() {
       const ext = extHint ?? ((file as File).name?.split('.').pop() || 'jpg')
       const path = `${user.id}/avatar.${ext}`
       const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: (file as File).type || `image/${ext}` })
-      if (upErr) { setAvatarError(upErr.message); return }
+      if (upErr) { console.warn('avatar upload error:', upErr.message); setAvatarError('Could not upload the photo. Please try again.'); return }
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
       const url = `${publicUrl}?t=${Date.now()}`
       const { error: dbErr } = await supabase.from('profiles').upsert({ id: user.id, avatar_url: url })
-      if (dbErr) { setAvatarError(dbErr.message); return }
+      if (dbErr) { console.warn('avatar save error:', dbErr.message); setAvatarError('Could not update your profile photo. Please try again.'); return }
       setProfile((p: any) => ({ ...p, avatar_url: url }))
       refreshUserChip()
     } catch (e: unknown) {
-      setAvatarError(e instanceof Error ? e.message : 'Upload failed')
+      console.warn('avatar exception:', e instanceof Error ? e.message : e)
+      setAvatarError('Could not upload the photo. Please try again.')
     } finally {
       setUploadingAvatar(false)
     }
@@ -164,7 +165,7 @@ export default function ProfileScreen() {
     setAvatarError(null)
     const { error } = await supabase.from('profiles').upsert({ id: user.id, bike_model: bikeModel.trim() })
     setSavingBike(false)
-    if (error) { setAvatarError(error.message); return }
+    if (error) { console.warn('save bike error:', error.message); setAvatarError('Could not save your bike. Please try again.'); return }
     setProfile((p: any) => ({ ...p, bike_model: bikeModel.trim() }))
     setEditingBike(false)
   }
@@ -188,7 +189,8 @@ export default function ProfileScreen() {
       await supabase.auth.signOut()
       router.replace('/')
     } catch (e: any) {
-      setDeleteError(e?.message || 'Failed to delete account. Try again.')
+      console.warn('delete account error:', e?.message)
+      setDeleteError('Could not delete your account right now. Please try again.')
       setDeleting(false)
     }
   }

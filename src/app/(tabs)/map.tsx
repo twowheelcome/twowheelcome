@@ -350,9 +350,15 @@ export default function MapScreen() {
       if (knockErr || !row?.conversation_id) {
         const dupe = knockErr?.code === '23P01' || /no_overlapping_active_stays|exclusion/i.test(knockErr?.message || '')
         if (dupe) setMyActiveByLocation(prev => ({ ...prev, [selected.id]: prev[selected.id] || 'PENDING' }))
+        // create_knock raises its own user-friendly messages (validation, rate limit) with
+        // errcode P0001/check_violation — surface those; hide any raw Postgres error.
+        const serverFriendly = knockErr?.code === 'P0001' || knockErr?.code === '23514'
+        if (knockErr) console.warn('create_knock error:', knockErr.code, knockErr.message)
         setSendError(dupe
           ? 'You already have an active request for these dates. Open your chat to follow up.'
-          : (knockErr?.message || 'Request error'))
+          : serverFriendly
+          ? (knockErr?.message || 'Could not send your request right now. Please try again.')
+          : 'Could not send your request right now. Please check your connection and try again.')
         setSending(false)
         return
       }
@@ -373,7 +379,8 @@ export default function MapScreen() {
         router.push('/(tabs)/requests')
       }, 1500)
     } catch (e: any) {
-      setSendError(e?.message || 'Unexpected error')
+      console.warn('sendRequest exception:', e?.message)
+      setSendError('Could not send your request right now. Please check your connection and try again.')
     } finally {
       sendingRef.current = false
       setSending(false)

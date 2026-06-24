@@ -122,9 +122,12 @@ export default function AuthScreen() {
     setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
     if (error) {
+      if (error.message) console.warn('login error:', error.message)
       setAuthError(/invalid login credentials/i.test(error.message)
         ? 'Wrong email or password. Please check and try again.'
-        : error.message)
+        : /email not confirmed/i.test(error.message)
+        ? 'Please confirm your email first — check your inbox for the link.'
+        : 'Could not sign in right now. Please try again.')
     }
     setLoading(false)
   }
@@ -142,9 +145,12 @@ export default function AuthScreen() {
       options: { data: { full_name: name } },
     })
     if (error) {
+      if (error.message) console.warn('signup error:', error.message)
       setAuthError(/already registered|already exists|already been registered/i.test(error.message)
         ? 'That email already has an account. Try logging in instead.'
-        : error.message)
+        : /password/i.test(error.message)
+        ? 'Please choose a stronger password (at least 6 characters).'
+        : 'Could not create your account right now. Please try again.')
     } else {
       if (data.user) {
         await supabase.from('profiles').upsert({ id: data.user.id, full_name: name })
@@ -162,7 +168,10 @@ export default function AuthScreen() {
       ? `${window.location.origin}/reset-password`
       : 'twowheelcome://reset-password'
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo })
-    if (error) setAuthError(error.message)
+    if (error) {
+      if (error.message) console.warn('reset password error:', error.message)
+      setAuthError('Could not send the reset link right now. Please try again in a moment.')
+    }
     else setAuthSuccess('If that email is registered, a reset link is on its way. Check your inbox.')
     setLoading(false)
   }

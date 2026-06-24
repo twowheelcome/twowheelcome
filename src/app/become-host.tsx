@@ -224,12 +224,14 @@ export default function BecomeHostScreen() {
 
       const { error } = await supabase.from('host_locations').upsert(rows, { onConflict: 'id' })
       if (error) {
-        setSaveError(error.message)
+        console.warn('save listing error:', error.message)
+        setSaveError('Could not save your listing. Please check your connection and try again.')
       } else {
         setSaveOk(true)
       }
     } catch (e: any) {
-      setSaveError(e?.message || 'Unexpected error, please try again.')
+      console.warn('save listing exception:', e?.message)
+      setSaveError('Could not save your listing. Please check your connection and try again.')
     } finally {
       setSaving(false)
     }

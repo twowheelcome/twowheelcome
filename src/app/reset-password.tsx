@@ -41,7 +41,10 @@ export default function ResetPasswordScreen() {
     setLoading(true)
     const { error: updErr } = await supabase.auth.updateUser({ password })
     if (updErr) {
-      setError(updErr.message)
+      console.warn('reset password update error:', updErr.message)
+      setError(/expired|invalid|token/i.test(updErr.message)
+        ? 'This reset link has expired. Please request a new one.'
+        : 'Could not update your password right now. Please try again.')
       setLoading(false)
       return
     }

@@ -6,6 +6,9 @@ import { ThemeProvider, useTheme } from '../lib/ThemeContext'
 import { supabase } from '../lib/supabase'
 import { registerPushToken } from '../lib/pushNotifications'
 
+// Expo Router uses this exported ErrorBoundary to catch render crashes app-wide.
+export { ErrorBoundary } from '../components/AppErrorBoundary'
+
 SplashScreen.preventAutoHideAsync()
 
 function AppStack() {
