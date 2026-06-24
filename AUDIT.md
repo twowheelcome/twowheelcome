@@ -1,5 +1,56 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> ## Production hardening — full re-audit (2026-06-25)
+> Goal: make the app bulletproof. Worked autonomously, every fix **verified live**
+> against the production DB (anon / foreign-authenticated / service-role contexts, all
+> rolled back), committed in small batches.
+>
+> **Security — fixed & verified:**
+> - 🔴 **CRITICAL: anon write-through-view RLS bypass.** `host_locations_public` is a
+>   `security_invoker=false` view owned by postgres, and anon/authenticated held
+>   INSERT/UPDATE/DELETE grants on it — so writes ran as postgres and bypassed the base
+>   table's RLS. Proven live that an anonymous user could UPDATE any host's listing.
+>   Locked the view to SELECT-only.
+> - 🔴 **Broken `Withdraw` was also an RLS gap:** `sr_update` was host-only, so a guest
+>   couldn't cancel their own pending request (silent no-op). Rewrote the policy so the
+>   guest may PENDING→CANCELLED, host keeps PENDING→ACCEPTED/REJECTED.
+> - **push_token harvest:** `profiles` is world-readable, exposing every user's Expo push
+>   token (→ push spam via Expo's public API). Revoked column SELECT from anon/auth;
+>   client now writes it through a SECURITY DEFINER RPC (`set_push_token`).
+> - **Full cross-user RLS matrix re-verified** (anon + foreign user): no one can read or
+>   write another user's conversations, messages, profile, host_location, host_profile,
+>   conversation_reads, or forge a review. Public reads (profiles, map view) intact.
+> - SECURITY DEFINER funcs (`create_knock`, `cascade_on_accept`, `delete_account_data`,
+>   `set_push_token`) all pin `auth.uid()` / are service-role-only — caller can't be
+>   spoofed. Edge functions: Bearer/secret gated, CORS allowlisted, service key server-only.
+> - Storage: per-user-folder writes enforced; anon can't upload. **Open item:** the
+>   `request-photos` bucket is `public=true` (readable by URL) — flagged for Petr (private
+>   bucket + signed URLs is a UX/perf decision).
+>
+> **Reliability / integrity — fixed & verified:**
+> - **Account deletion is now atomic.** Was ~8 separate service-role statements (a failure
+>   midway = half-deleted account). Moved all DB cleanup into one transactional RPC
+>   `delete_account_data`; verified the victim's data is fully removed, the other party's
+>   messages/profile preserved, shared conversation anonymized, **no orphans**.
+>
+> **Abuse / rate-limiting — fixed & verified:**
+> - Knocks capped at 15/rider/hour (also caps notification cost at the source);
+>   chat messages capped at 30/sender/minute. Both exempt service-role + the accept-cascade.
+>
+> **Robustness — fixed:**
+> - App-wide **React error boundary** (friendly fallback instead of a white screen).
+> - No more raw DB/storage/auth error strings in the UI (auth, become-host, profile,
+>   account delete, knock) — clear messages + console logging; loading flags always reset.
+>
+> **Waiting on Petr (product/UX decisions, not security defaults):**
+> - `request-photos` public bucket → private + signed URLs (yes/no).
+> - Rate-limit numbers (15/h knocks, 30/min messages) — confirm or tune.
+>
+> Consolidated regression (rolled back) green: create_knock → accept+cascade → withdraw,
+> reviews per-stay, RLS matrix, rate limits, atomic delete. See dated sections below for history.
+
+---
+
 Deep pass while Petr is away. Rule followed: **only fixed unambiguous issues verifiable
 without his manual/visual testing** (logic, RLS/DB, security, error handling, dead code).
 Risky refactors and visual/product changes are **proposed, not applied**.
