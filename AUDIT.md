@@ -23,9 +23,11 @@
 > - SECURITY DEFINER funcs (`create_knock`, `cascade_on_accept`, `delete_account_data`,
 >   `set_push_token`) all pin `auth.uid()` / are service-role-only — caller can't be
 >   spoofed. Edge functions: Bearer/secret gated, CORS allowlisted, service key server-only.
-> - Storage: per-user-folder writes enforced; anon can't upload. **Open item:** the
->   `request-photos` bucket is `public=true` (readable by URL) — flagged for Petr (private
->   bucket + signed URLs is a UX/perf decision).
+> - Storage: per-user-folder writes enforced; anon can't upload. **`request-photos` is now
+>   private** — bucket flipped to private, photo_url stores the object path, a storage SELECT
+>   policy limits read/sign to the stay request's two participants, and the client renders
+>   via 1h signed URLs (placeholder on failure). Verified: old public URL → HTTP 400, signed
+>   URL → 200 image, anon/foreign blocked from the object and bucket listing.
 >
 > **Reliability / integrity — fixed & verified:**
 > - **Account deletion is now atomic.** Was ~8 separate service-role statements (a failure
@@ -42,12 +44,14 @@
 > - No more raw DB/storage/auth error strings in the UI (auth, become-host, profile,
 >   account delete, knock) — clear messages + console logging; loading flags always reset.
 >
-> **Waiting on Petr (product/UX decisions, not security defaults):**
-> - `request-photos` public bucket → private + signed URLs (yes/no).
-> - Rate-limit numbers (15/h knocks, 30/min messages) — confirm or tune.
+> **Waiting on Petr:**
+> - Visual click-through of knock photos in chat (signed-URL render is verified at the
+>   network layer — 200 image — but the on-screen render wasn't run in a browser).
+> - Rate-limit numbers (15/h knocks, 30/min messages) — **confirmed by Petr as defaults.**
 >
 > Consolidated regression (rolled back) green: create_knock → accept+cascade → withdraw,
-> reviews per-stay, RLS matrix, rate limits, atomic delete. See dated sections below for history.
+> reviews per-stay, RLS matrix, rate limits, atomic delete, private-photo signing.
+> See dated sections below for history.
 
 ---
 
