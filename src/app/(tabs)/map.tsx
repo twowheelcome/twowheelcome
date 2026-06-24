@@ -314,7 +314,9 @@ export default function MapScreen() {
           const name = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
           const { error } = await supabase.storage.from('request-photos').upload(name, photoFile)
           if (!error) {
-            uploadedPhotoUrl = supabase.storage.from('request-photos').getPublicUrl(name).data.publicUrl
+            // request-photos is a private bucket — store the object PATH, not a public URL.
+            // The photo is rendered via a short-lived signed URL (see RequestPhoto).
+            uploadedPhotoUrl = name
             upErr = null
             break
           }

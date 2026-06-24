@@ -13,6 +13,7 @@ import { mapFocusStore } from '../../lib/mapFocusStore'
 import { fuzzCoords } from '../../lib/geo'
 import { UserChip } from '../../components/UserChip'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
+import { RequestPhoto } from '../../components/RequestPhoto'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -362,9 +363,9 @@ function RequestCard({
         </View>
       ) : null}
 
-      {/* Photo */}
+      {/* Photo (private bucket → short-lived signed URL) */}
       {req.photo_url ? (
-        <Image source={{ uri: req.photo_url }} style={rc.photo} resizeMode="cover" />
+        <RequestPhoto path={req.photo_url} style={rc.photo} />
       ) : null}
 
       {/* Host actions */}
@@ -1400,7 +1401,7 @@ export default function RequestsScreen() {
                     </TouchableOpacity>
                   ) : null}
                   {m.photo_url ? (
-                    <Image source={{ uri: m.photo_url }} style={styles.bubblePhoto} resizeMode="cover" />
+                    <RequestPhoto path={m.photo_url} style={styles.bubblePhoto} />
                   ) : null}
                   <Text style={[styles.bubbleTime, isMine && styles.bubbleTimeMine]}>{fmtTime(m.created_at)}</Text>
                 </View>
