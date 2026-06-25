@@ -77,6 +77,12 @@ type MsgRow = {
   created_at: string
 }
 
+// A chat timeline entry: a message, an inline "you rated …" review, or a day separator.
+type ChatItem =
+  | { kind: 'day'; id: string; label: string }
+  | { kind: 'msg'; id: string; created_at: string; msg: MsgRow }
+  | { kind: 'review'; id: string; created_at: string; stay: RequestData; review: { rating: number; body: string; created_at: string }; reviewingGuest: boolean }
+
 type ConversationFilter = 'all' | 'knocks' | 'hosting'
 type ExactPointSummary = {
   coords: { lat: number; lng: number }
@@ -185,6 +191,26 @@ function fmtDate(iso: string): string {
 
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+}
+
+// Day grouping for chat date separators. Group by the user's LOCAL day (consistent with
+// fmtTime, which also shows local time) so the header never lands off-by-one vs. the
+// times printed under each message.
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December']
+function localDayKey(d: Date): string {
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+}
+function dayHeaderLabel(iso: string): string {
+  const d = new Date(iso)
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(today.getDate() - 1)
+  const k = localDayKey(d)
+  if (k === localDayKey(today)) return 'Today'
+  if (k === localDayKey(yesterday)) return 'Yesterday'
+  // Manual format ("18 June 2026") so it never depends on the runtime's Intl/ICU data.
+  return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`
 }
 
 function extractCoords(body: string | null): { lat: number; lng: number } | null {
@@ -477,7 +503,7 @@ export default function RequestsScreen() {
   const [respondingFor, setRespondingFor] = useState<string | null>(null)
   const [withdrawingFor, setWithdrawingFor] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<ConversationFilter>('all')
-  const flatRef = useRef<FlatList<MsgRow>>(null)
+  const flatRef = useRef<FlatList<ChatItem>>(null)
   const nearBottomRef = useRef(true)   // is the user near the bottom of the thread?
   const autoStickRef = useRef(true)    // keep pinning to bottom as content lays out
   const openingRef = useRef(false)     // briefly true right after opening a conversation
@@ -1214,6 +1240,30 @@ export default function RequestsScreen() {
       }
     }
 
+    // Merge the message timeline with the user's own submitted reviews, both ordered by
+    // created_at, and inject a day-separator before the first item of each local day. The
+    // submitted review thus behaves like a normal bubble (scrolls up as new messages come),
+    // instead of a pinned footer. The footer keeps only the still-pending rating prompts.
+    const chatItems: ChatItem[] = (() => {
+      const content: Exclude<ChatItem, { kind: 'day' }>[] =
+        messages.map((m): Exclude<ChatItem, { kind: 'day' }> => ({ kind: 'msg', id: m.id, created_at: m.created_at, msg: m }))
+      for (const stay of endedStays) {
+        const mine = myReviewsByStay[stay.id]
+        if (mine?.created_at) {
+          content.push({ kind: 'review', id: `review-${stay.id}`, created_at: mine.created_at, stay, review: mine, reviewingGuest: currentUser?.id === stay.host_id })
+        }
+      }
+      content.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      const out: ChatItem[] = []
+      let lastDay = ''
+      for (const it of content) {
+        const k = localDayKey(new Date(it.created_at))
+        if (k !== lastDay) { out.push({ kind: 'day', id: `day-${k}`, label: dayHeaderLabel(it.created_at) }); lastDay = k }
+        out.push(it)
+      }
+      return out
+    })()
+
     return (
       <KeyboardAvoidingView
         style={styles.container}
@@ -1241,8 +1291,8 @@ export default function RequestsScreen() {
 
         <FlatList
           ref={flatRef}
-          data={messages}
-          keyExtractor={m => m.id}
+          data={chatItems}
+          keyExtractor={it => it.id}
           contentContainerStyle={styles.msgList}
           onContentSizeChange={() => { if (autoStickRef.current) flatRef.current?.scrollToEnd({ animated: false }) }}
           onScroll={(e) => {
@@ -1255,23 +1305,15 @@ export default function RequestsScreen() {
           }}
           scrollEventThrottle={16}
 	          ListFooterComponent={(() => {
-	            if (!endedStays.length) return null
-	            // One row per completed stay: a rating prompt until you've rated it, then a
-	            // "you rated …" bubble. Each user only sees their OWN review status here.
+	            // Only still-pending rating prompts live in the footer. A submitted review is
+	            // rendered inline in the timeline (see chatItems), not here.
+	            const pending = endedStays.filter(stay => !myReviewsByStay[stay.id])
+	            if (!pending.length) return null
 	            return (
 	              <View>
-	                {endedStays.map(stay => {
-	                  const mine = myReviewsByStay[stay.id]
+	                {pending.map(stay => {
 	                  const isReviewingGuest = currentUser?.id === stay.host_id
 	                  const dates = `${fmtDateStr(stay.arrival_date)}–${fmtDateStr(stay.departure_date)}`
-	                  if (mine) return (
-	                    <View key={stay.id} style={styles.reviewDone}>
-	                      <Text style={styles.reviewDoneText}>
-	                        {'⭐'.repeat(mine.rating)}{'☆'.repeat(5 - mine.rating)}{'  '}{isReviewingGuest ? 'You rated this guest' : 'You rated this stay'} · {dates}
-	                      </Text>
-	                      {mine.body ? <Text style={styles.reviewDoneBody}>“{mine.body}”</Text> : null}
-	                    </View>
-	                  )
 	                  const stars = reviewDraftStars[stay.id] || 0
 	                  return (
 	                    <View key={stay.id} style={styles.reviewCard}>
@@ -1307,7 +1349,27 @@ export default function RequestsScreen() {
 	              </View>
 	            )
 	          })()}
-	          renderItem={({ item: m }) => {
+	          renderItem={({ item }) => {
+	            if (item.kind === 'day') {
+	              return (
+	                <View style={styles.dayDivider}>
+	                  <Text style={styles.dayDividerText}>{item.label}</Text>
+	                </View>
+	              )
+	            }
+	            if (item.kind === 'review') {
+	              const dates = `${fmtDateStr(item.stay.arrival_date)}–${fmtDateStr(item.stay.departure_date)}`
+	              return (
+	                <View style={styles.reviewDone}>
+	                  <Text style={styles.reviewDoneText}>
+	                    {'⭐'.repeat(item.review.rating)}{'☆'.repeat(5 - item.review.rating)}{'  '}{item.reviewingGuest ? 'You rated this guest' : 'You rated this stay'} · {dates}
+	                  </Text>
+	                  {item.review.body ? <Text style={styles.reviewDoneBody}>“{item.review.body}”</Text> : null}
+	                  <Text style={styles.reviewDoneTime}>{fmtTime(item.review.created_at)}</Text>
+	                </View>
+	              )
+	            }
+	            const m = item.msg
 	            const isMine = m.sender_id === currentUser?.id
 	            const isHost = m.request ? currentUser?.id === m.request.host_id : false
 	            const navCoords = extractCoords(m.body)
@@ -1925,8 +1987,16 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   reviewSubmitText: { color: C.white, fontWeight: '700', fontSize: 13, letterSpacing: 1 },
   reviewDone: {
     backgroundColor: C.accentSoft, borderRadius: 14, borderWidth: 1, borderColor: C.accentBorder,
-    padding: 12, alignItems: 'center', marginTop: 16,
+    padding: 12, alignItems: 'center', alignSelf: 'center', maxWidth: '92%',
   },
   reviewDoneText: { color: C.accent, fontSize: 13, fontWeight: '700', textAlign: 'center' },
   reviewDoneBody: { color: C.textMuted, fontSize: 12, fontStyle: 'italic', marginTop: 4, textAlign: 'center' },
+  reviewDoneTime: { color: C.textDim, fontSize: 10, marginTop: 6, textAlign: 'center' },
+  // Day separator in the chat timeline.
+  dayDivider: { alignItems: 'center', justifyContent: 'center', paddingVertical: 6 },
+  dayDividerText: {
+    color: C.textMuted, fontSize: 11, fontWeight: '800', letterSpacing: 0.5,
+    backgroundColor: C.surface, borderWidth: 1, borderColor: C.border,
+    borderRadius: 100, paddingHorizontal: 12, paddingVertical: 4, overflow: 'hidden',
+  },
 }) }
