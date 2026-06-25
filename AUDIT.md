@@ -53,6 +53,13 @@
 > reviews per-stay, RLS matrix, rate limits, atomic delete, private-photo signing.
 > See dated sections below for history.
 >
+> **UI follow-up (2026-06-25): arrival time removed.** Matchmaking model — the time is
+> agreed in chat, only the night matters. Removed the 'Est. arrival time' form field
+> (state/default/validation), the 'Arrival approx.' row on both request cards, and the
+> arrival_time bit from notify-request emails/push. create_knock now passes null;
+> `arrival_time` column stays nullable. Date chips unchanged. Verified live (rolled back):
+> a knock with no time succeeds (arrival_time NULL); history/reviews unaffected.
+>
 > **UI follow-ups (2026-06-25).** (a) Knock photos are now downscaled + JPEG-compressed
 > client-side before upload (expo-image-manipulator, longest side 1400px / q0.7, ~100–300 KB),
 > best-effort with fallback to the original; private bucket + signed-URL render unchanged.
