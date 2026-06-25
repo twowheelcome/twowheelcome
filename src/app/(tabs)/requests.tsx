@@ -316,7 +316,6 @@ function RequestCard({
   const facts = ([
     place ? { icon: 'map-pin', value: place } : null,
     { icon: 'calendar', value: `${fmtDateStr(req.arrival_date)} → ${fmtDateStr(req.departure_date)}` },
-    { icon: 'clock', value: req.arrival_time ? `Arrival approx. ${req.arrival_time}` : 'Arrival time not set' },
     { icon: 'users', value: `${guestsLabel}${vehicle ? ` · ${vehicle}` : ''}` },
     parking ? { icon: 'shield', value: parking } : null,
     sleep ? { icon: 'moon', value: sleep } : null,

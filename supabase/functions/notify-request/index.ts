@@ -141,7 +141,7 @@ Deno.serve(async req => {
   const safeGuestName = escapeHtml(guestName)
   const safeMessage = escapeHtml(request.message)
 
-  const dateInfo = escapeHtml(`${request.arrival_date}${request.arrival_time ? ' ~' + request.arrival_time : ''} → ${request.departure_date}`)
+  const dateInfo = escapeHtml(`${request.arrival_date} → ${request.departure_date}`)
   const conversationId = typeof request.conversation_id === 'string' ? request.conversation_id : ''
   const webChatUrl = conversationId
     ? `${APP_URL}/requests?openConv=${encodeURIComponent(conversationId)}`
@@ -166,7 +166,7 @@ Deno.serve(async req => {
       hostProfile?.push_token && hostWantsPush ? sendPush(
         hostProfile.push_token,
         '🚪 Someone\'s knocking!',
-        `${guestName} wants to stay — ${request.arrival_date}${request.arrival_time ? ' ~' + request.arrival_time : ''} → ${request.departure_date}`,
+        `${guestName} wants to stay — ${request.arrival_date} → ${request.departure_date}`,
         pushChatUrl,
       ) : Promise.resolve(),
     ])

@@ -13,11 +13,6 @@ import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
 
 
-function defaultArrivalTime() {
-  const d = new Date(Date.now() + 3600000)
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
-
 function placeLabel(city?: string | null, country?: string | null): string {
   return [city, country].filter(Boolean).join(', ') || 'Location on the map'
 }
@@ -44,7 +39,6 @@ export default function MapScreen() {
   const [arrivalChip, setArrivalChip] = useState<'tonight' | 'tomorrow' | 'other'>('tonight')
   const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().split('T')[0])
   const [departureDate, setDepartureDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0])
-  const [arrivalTime, setArrivalTime] = useState(() => defaultArrivalTime())
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [HostMap, setHostMap] = useState<any>(null)
   const [showFilters, setShowFilters] = useState(false)
@@ -254,7 +248,6 @@ export default function MapScreen() {
     setArrivalChip('tonight')
     setArrivalDate(new Date().toISOString().split('T')[0])
     setDepartureDate(new Date(Date.now() + 86400000).toISOString().split('T')[0])
-    setArrivalTime(defaultArrivalTime())
     setPhotoFile(null)
     setRequesting(true)
   }
@@ -273,10 +266,6 @@ export default function MapScreen() {
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(arrivalDate) || !/^\d{4}-\d{2}-\d{2}$/.test(departureDate) || departureDate <= arrivalDate) {
       setSendError('Choose a valid stay period. Checkout must be after arrival.')
-      return
-    }
-    if (arrivalTime.trim() && !/^([01]\d|2[0-3]):[0-5]\d$/.test(arrivalTime.trim())) {
-      setSendError('Use a valid arrival time in 24-hour HH:MM format.')
       return
     }
     // Model A: a rider may knock freely (overlapping, adjacent, multiple places). The DB
@@ -327,7 +316,7 @@ export default function MapScreen() {
         p_message: message.trim(),
         p_arrival: arrivalDate,
         p_departure: departureDate,
-        p_arrival_time: arrivalTime.trim() || null,
+        p_arrival_time: null,
         p_photo_url: uploadedPhotoUrl,
       })
       const row = Array.isArray(knock) ? knock[0] : knock
@@ -452,16 +441,6 @@ export default function MapScreen() {
                 )}
               </View>
             )}
-            <View style={{ gap: 6 }}>
-              <Text style={styles.dateFieldLabel}>EST. ARRIVAL TIME</Text>
-              {Platform.OS === 'web' ? (
-                <input type="time" value={arrivalTime}
-                  onChange={(e: any) => setArrivalTime(e.target.value)}
-                  style={{ background: C.bg, border: `1px solid ${C.borderMid}`, borderRadius: 8, padding: '10px 12px', color: arrivalTime ? C.text : C.textFaint, fontSize: 16, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any} />
-              ) : (
-                <TextInput style={styles.dateInput} value={arrivalTime} onChangeText={setArrivalTime} placeholder="e.g. 17:00" placeholderTextColor="#777" />
-              )}
-            </View>
           </View>
 
           {Platform.OS === 'web' && (
