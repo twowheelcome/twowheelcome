@@ -270,18 +270,19 @@ export default function MapScreen() {
       setSendError('Write the host a message. At least a few words. 😄')
       return
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(arrivalDate) || !/^\d{4}-\d{2}-\d{2}$/.test(departureDate) || departureDate < arrivalDate) {
-      setSendError('Choose a valid stay period. Departure cannot be before arrival.')
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(arrivalDate) || !/^\d{4}-\d{2}-\d{2}$/.test(departureDate) || departureDate <= arrivalDate) {
+      setSendError('Choose a valid stay period. Checkout must be after arrival.')
       return
     }
     if (arrivalTime.trim() && !/^([01]\d|2[0-3]):[0-5]\d$/.test(arrivalTime.trim())) {
       setSendError('Use a valid arrival time in 24-hour HH:MM format.')
       return
     }
-    // Authoritative, date-aware guard that mirrors the DB exclusion constraint: never
-    // try to create a second active request that overlaps an existing one for this
-    // place. Two ranges overlap iff existing.arrival <= new.departure AND
-    // existing.departure >= new.arrival. This catches it before the insert so the
+    // Authoritative, date-aware guard that mirrors the DB exclusion constraint (half-open
+    // ranges, checkout day excluded): never try to create a second active request that
+    // overlaps an existing one for this place. Two [arrival, departure) ranges overlap iff
+    // existing.arrival < new.departure AND existing.departure > new.arrival — so adjacent
+    // nights (checkout == next check-in) do NOT clash. Catches it before the insert so the
     // user never sees the raw constraint error, on web and native alike.
     {
       const { data: clash } = await supabase
@@ -290,8 +291,8 @@ export default function MapScreen() {
         .eq('guest_id', userId)
         .eq('location_id', selected.id)
         .in('status', ['PENDING', 'ACCEPTED'])
-        .lte('arrival_date', departureDate)
-        .gte('departure_date', arrivalDate)
+        .lt('arrival_date', departureDate)
+        .gt('departure_date', arrivalDate)
         .limit(1)
       if (currentUserIdRef.current !== userId) return
       if (clash && clash.length > 0) {
