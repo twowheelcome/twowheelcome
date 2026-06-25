@@ -53,6 +53,14 @@
 > reviews per-stay, RLS matrix, rate limits, atomic delete, private-photo signing.
 > See dated sections below for history.
 >
+> **UI follow-ups (2026-06-25).** (a) Knock photos are now downscaled + JPEG-compressed
+> client-side before upload (expo-image-manipulator, longest side 1400px / q0.7, ~100–300 KB),
+> best-effort with fallback to the original; private bucket + signed-URL render unchanged.
+> (b) Tapping a host pin shows the host's complete public offer (sleep, amenities, pricing,
+> vehicles, note) via a shared HostOffer block — public `host_locations_public` data only,
+> exact GPS still hidden until accept. Compression runs in-browser (web-only photo path), so
+> the actual size reduction is for Petr to confirm visually; the upload/fallback is verified.
+>
 > **Model A — request logic simplified (2026-06-25).** Switched to matchmaking, not strict
 > booking. Riders knock freely (overlapping, adjacent, multiple places, even while accepted
 > elsewhere): dropped the per-rider exclusion constraint and the guest-side accept-cascade,
