@@ -7,6 +7,8 @@ import { pendingChatStore } from '../../lib/pendingChatStore'
 import { mapFocusStore } from '../../lib/mapFocusStore'
 import { fuzzCoords } from '../../lib/geo'
 import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
+import { HostOffer } from '../../components/HostOffer'
+import { compressBikePhoto } from '../../lib/compressImage'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
 
@@ -286,11 +288,14 @@ export default function MapScreen() {
     try {
       let uploadedPhotoUrl: string | null = null
       if (photoFile) {
-        const ext = photoFile.name.split('.').pop() || 'jpg'
+        // Downscale + compress before upload (best-effort; falls back to the original).
+        const uploadBlob = await compressBikePhoto(photoFile)
+        const ext = uploadBlob === photoFile ? (photoFile.name.split('.').pop() || 'jpg') : 'jpg'
+        const contentType = (uploadBlob as Blob).type || 'image/jpeg'
         let upErr: unknown = null
         for (let attempt = 0; attempt < 2; attempt++) {
           const name = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-          const { error } = await supabase.storage.from('request-photos').upload(name, photoFile)
+          const { error } = await supabase.storage.from('request-photos').upload(name, uploadBlob, { contentType })
           if (!error) {
             // request-photos is a private bucket — store the object PATH, not a public URL.
             // The photo is rendered via a short-lived signed URL (see RequestPhoto).
@@ -388,6 +393,7 @@ export default function MapScreen() {
               </View>
             </View>
             <SafetyBlock parkings={selectedParkings} />
+            <HostOffer loc={selected} />
           </View>
 
           <View style={styles.card}>
@@ -704,6 +710,7 @@ export default function MapScreen() {
               </View>
 
               <SafetyBlock parkings={parkings} />
+              <HostOffer loc={selected} />
 
               {/* CTAs */}
               {!isOwn ? (
