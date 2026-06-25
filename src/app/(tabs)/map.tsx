@@ -31,7 +31,6 @@ export default function MapScreen() {
   const [showHostProfile, setShowHostProfile] = useState(false)
   const [requesting, setRequesting] = useState(false)
   const [message, setMessage] = useState('')
-  const [guests, setGuests] = useState(1)
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState('')
   const [sendSuccess, setSendSuccess] = useState(false)
@@ -278,31 +277,9 @@ export default function MapScreen() {
       setSendError('Use a valid arrival time in 24-hour HH:MM format.')
       return
     }
-    // Authoritative, date-aware guard that mirrors the DB exclusion constraint (half-open
-    // ranges, checkout day excluded): never try to create a second active request that
-    // overlaps an existing one for this place. Two [arrival, departure) ranges overlap iff
-    // existing.arrival < new.departure AND existing.departure > new.arrival — so adjacent
-    // nights (checkout == next check-in) do NOT clash. Catches it before the insert so the
-    // user never sees the raw constraint error, on web and native alike.
-    {
-      const { data: clash } = await supabase
-        .from('stay_requests')
-        .select('id, status')
-        .eq('guest_id', userId)
-        .eq('location_id', selected.id)
-        .in('status', ['PENDING', 'ACCEPTED'])
-        .lt('arrival_date', departureDate)
-        .gt('departure_date', arrivalDate)
-        .limit(1)
-      if (currentUserIdRef.current !== userId) return
-      if (clash && clash.length > 0) {
-        setMyActiveByLocation(prev => ({ ...prev, [selected.id]: clash[0].status === 'ACCEPTED' ? 'ACCEPTED' : (prev[selected.id] || 'PENDING') }))
-        setSendError(clash[0].status === 'ACCEPTED'
-          ? "You're already booked here for these dates. Open your chat for the details."
-          : 'You already have an active request for these dates. Open your chat to follow up.')
-        return
-      }
-    }
+    // Model A: a rider may knock freely (overlapping, adjacent, multiple places). The DB
+    // only blocks an exact-duplicate pending request and double-booking a host's bed; both
+    // surface as friendly messages after the create_knock call below.
     setSendError('')
     sendingRef.current = true
     setSending(true)
@@ -337,12 +314,11 @@ export default function MapScreen() {
       }
       // One atomic DB call: find/create the conversation, insert the stay request, and
       // insert the first message — all-or-nothing, so a mid-way failure can't leave an
-      // orphan conversation or a request with no message. Overlap raises 23P01 inside
-      // the transaction and rolls everything back.
+      // orphan conversation or a request with no message.
       const { data: knock, error: knockErr } = await supabase.rpc('create_knock', {
         p_host_id: selected.user_id,
         p_location_id: selected.id,
-        p_guests: guests,
+        p_guests: 1,
         p_message: message.trim(),
         p_arrival: arrivalDate,
         p_departure: departureDate,
@@ -351,14 +327,15 @@ export default function MapScreen() {
       })
       const row = Array.isArray(knock) ? knock[0] : knock
       if (knockErr || !row?.conversation_id) {
-        const dupe = knockErr?.code === '23P01' || /no_overlapping_active_stays|exclusion/i.test(knockErr?.message || '')
+        // The only DB block on knocking now is an exact-duplicate pending request (23505).
+        const dupe = knockErr?.code === '23505'
         if (dupe) setMyActiveByLocation(prev => ({ ...prev, [selected.id]: prev[selected.id] || 'PENDING' }))
         // create_knock raises its own user-friendly messages (validation, rate limit) with
         // errcode P0001/check_violation — surface those; hide any raw Postgres error.
         const serverFriendly = knockErr?.code === 'P0001' || knockErr?.code === '23514'
         if (knockErr) console.warn('create_knock error:', knockErr.code, knockErr.message)
         setSendError(dupe
-          ? 'You already have an active request for these dates. Open your chat to follow up.'
+          ? "You've already sent this exact request. Open your chat to follow up."
           : serverFriendly
           ? (knockErr?.message || 'Could not send your request right now. Please try again.')
           : 'Could not send your request right now. Please check your connection and try again.')
@@ -411,20 +388,6 @@ export default function MapScreen() {
               </View>
             </View>
             <SafetyBlock parkings={selectedParkings} />
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.sectionLabel}>NUMBER OF RIDERS</Text>
-            <View style={styles.counter}>
-              <TouchableOpacity style={styles.counterBtn} onPress={() => setGuests(Math.max(1, guests - 1))}>
-                <Text style={styles.counterBtnText}>−</Text>
-              </TouchableOpacity>
-              <Text style={styles.counterValue}>{guests}</Text>
-              <TouchableOpacity style={styles.counterBtn} onPress={() => setGuests(Math.min(selected.max_guests || 4, guests + 1))}>
-                <Text style={styles.counterBtnText}>+</Text>
-              </TouchableOpacity>
-              <Text style={styles.counterMax}>max {selected.max_guests || 4}</Text>
-            </View>
           </View>
 
           <View style={styles.card}>

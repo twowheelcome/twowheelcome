@@ -1141,7 +1141,13 @@ export default function RequestsScreen() {
     if (error) {
       respondingRef.current = false
       setRespondingFor(null)
-      setActionError(`Couldn't ${status === 'ACCEPTED' ? 'accept' : 'decline'} the request. Check your connection and try again.`)
+      // Host-bed protection: can't accept a second rider for a night already taken here.
+      const doubleBooked = status === 'ACCEPTED'
+        && (error.code === '23P01' || /no_double_booked_accepted|exclusion/i.test(error.message || ''))
+      if (error.message) console.warn('respondToRequest error:', error.code, error.message)
+      setActionError(doubleBooked
+        ? "You've already accepted a rider for these nights at this place."
+        : `Couldn't ${status === 'ACCEPTED' ? 'accept' : 'decline'} the request. Check your connection and try again.`)
       return
     }
     setMessages(prev => prev.map(m =>
