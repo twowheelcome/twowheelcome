@@ -52,6 +52,14 @@
 > Consolidated regression (rolled back) green: create_knock → accept+cascade → withdraw,
 > reviews per-stay, RLS matrix, rate limits, atomic delete, private-photo signing.
 > See dated sections below for history.
+>
+> **Follow-up fix (2026-06-25): back-to-back nights.** Stays are checkout-exclusive
+> (departure = arrival+1), but every overlap test used an inclusive daterange `[]`, so a
+> stay ending the day another began was wrongly flagged as overlapping — a rider couldn't
+> book tomorrow at a host they had today. Switched the exclusion constraint, the
+> accept-cascade, and the client pre-check to half-open `[)` (checkout day free), and made
+> a stay require ≥1 night (closes the empty-range loophole). Verified live (rolled back):
+> today + tomorrow both pass, real overlaps blocked, cascade rejects only true overlaps.
 
 ---
 
