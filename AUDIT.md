@@ -53,6 +53,18 @@
 > reviews per-stay, RLS matrix, rate limits, atomic delete, private-photo signing.
 > See dated sections below for history.
 >
+> **Model A — request logic simplified (2026-06-25).** Switched to matchmaking, not strict
+> booking. Riders knock freely (overlapping, adjacent, multiple places, even while accepted
+> elsewhere): dropped the per-rider exclusion constraint and the guest-side accept-cascade,
+> and removed the request form's rider-count stepper (always 1). The only rules left are
+> host-side: a new `no_double_booked_accepted` EXCLUDE stops two ACCEPTED stays overlapping
+> at one location (checkout-exclusive `[)`), the host-side cascade still auto-rejects other
+> riders' pending requests for the same place+night on accept, and a `uniq_pending_knock`
+> partial index blocks exact-duplicate pending requests. Withdraw unchanged. Client shows
+> friendly messages for the dup (23505) and double-book (23P01) blocks. Verified live
+> (rolled back): adjacent + overlapping knocks pass, exact-dup blocked, accepted@A + knock@B
+> same night allowed, second accept for the same place+night blocked, withdraw works.
+>
 > **Follow-up fix (2026-06-25): back-to-back nights.** Stays are checkout-exclusive
 > (departure = arrival+1), but every overlap test used an inclusive daterange `[]`, so a
 > stay ending the day another began was wrongly flagged as overlapping — a rider couldn't
