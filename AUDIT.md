@@ -53,6 +53,12 @@
 > reviews per-stay, RLS matrix, rate limits, atomic delete, private-photo signing.
 > See dated sections below for history.
 >
+> **Fix (2026-06-26): host sheet close + reviews round-trip.** The pin-tap host detail sheet
+> got an explicit ✕ close button (the backdrop tap is hard to reach when the sheet is tall on
+> a phone; harmless on desktop). And opening Reviews from the sheet no longer strands the user
+> on the bare map on back — a reopenHostSheetRef flag reopens the still-selected host's sheet
+> on the map's next focus, so pin → detail → (Reviews → back = detail) → (✕ = map).
+>
 > **UI (2026-06-26): host bottom-sheet reviews row.** The map pin-tap host sheet gained a
 > 'Reviews' folder row (⭐ avg · n reviews → /reviews?user=<hostId>, 'No reviews yet' when
 > empty/non-clickable) and dropped the redundant 'View full profile' button (its only extra
