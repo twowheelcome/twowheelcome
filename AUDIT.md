@@ -54,8 +54,10 @@
 > See dated sections below for history.
 >
 > **Additions (2026-06-26): price currency + privacy notes.** Listing price gained a currency
-> (`price_currency`, default EUR, CHECK to a small European set; currency-chip selector in
-> become-host, shown as '20 EUR / night' everywhere the price appears). Plus two decent
+> (`price_currency`, default EUR, currency-chip selector in become-host, shown as '20 EUR /
+> night' everywhere the price appears). Currency set is global majors —
+> EUR/USD/GBP/CHF/JPY/CAD/AUD/CZK (CHECK enforces it; USD passes, a non-major like SEK is
+> blocked) — and the price carries an 'indicative — agreed in chat' note for riders. Plus two decent
 > privacy notes: at the photo upload (don't reveal exact address/house from the street) and at
 > the map pin picker (public pin is fuzzed/approximate; exact coords are sent in chat after
 > accepting). Verified live: currency saves through RLS, an invalid currency is CHECK-blocked,
