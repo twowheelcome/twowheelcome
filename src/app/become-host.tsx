@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Image, Platform } from 'react-native'
+import * as ImagePicker from 'expo-image-picker'
 import { supabase } from '../lib/supabase'
 import { router } from 'expo-router'
 import type { Pin } from '../components/LocationPicker'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
+import { compressBikePhoto } from '../lib/compressImage'
+
+const LISTING_BUCKET = 'listing-photos'
+const MAX_LISTING_PHOTOS = 3
 
 function makePARKING(C: ThemeColors) {
   return [
@@ -50,6 +55,9 @@ interface Location {
   maxGuests: number
   pricings: string[]
   notes: string
+  photos: string[]        // public listing-photos object paths (max 3)
+  priceAmount: string     // kept as a string for the input; numeric on save
+  priceUnit: string       // e.g. "Kč / night"
 }
 
 function makeId(): string {
@@ -66,7 +74,7 @@ function makeId(): string {
 // for the new rows and violate the NOT NULL constraint. A stable id also prevents
 // duplicate inserts on a second save.
 function emptyLocation(): Location {
-  return { id: makeId(), name: '', pin: null, parkings: [], sleepTypes: [], amenities: [], maxGuests: 2, pricings: ['free'], notes: '' }
+  return { id: makeId(), name: '', pin: null, parkings: [], sleepTypes: [], amenities: [], maxGuests: 2, pricings: ['free'], notes: '', photos: [], priceAmount: '', priceUnit: '' }
 }
 
 function toggle(arr: string[], value: string): string[] {
@@ -104,6 +112,9 @@ export default function BecomeHostScreen() {
         maxGuests: d.max_guests || 2,
         pricings: d.pricings?.length ? d.pricings : (d.pricing ? [d.pricing] : ['free']),
         notes: d.notes || '',
+        photos: Array.isArray(d.photos) ? d.photos : [],
+        priceAmount: d.price_amount != null ? String(d.price_amount) : '',
+        priceUnit: d.price_unit || '',
       })))
     }
   }, [])
@@ -132,6 +143,56 @@ export default function BecomeHostScreen() {
 
   function updateLocation(index: number, patch: Partial<Location>) {
     setLocations(prev => prev.map((loc, i) => i === index ? { ...loc, ...patch } : loc))
+  }
+
+  const [uploadingPhotoFor, setUploadingPhotoFor] = useState<string | null>(null)
+
+  function listingPhotoUrl(path: string): string {
+    return supabase.storage.from(LISTING_BUCKET).getPublicUrl(path).data.publicUrl
+  }
+
+  async function pickImageBlob(): Promise<Blob | null> {
+    if (Platform.OS === 'web') {
+      return new Promise(resolve => {
+        const input = (globalThis as any).document.createElement('input')
+        input.type = 'file'
+        input.accept = 'image/*'
+        input.onchange = () => resolve(input.files?.[0] ?? null)
+        input.click()
+      })
+    }
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (perm.status !== 'granted') return null
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9 })
+    if (res.canceled || !res.assets[0]) return null
+    return await (await fetch(res.assets[0].uri)).blob()
+  }
+
+  async function addPhoto(index: number) {
+    const loc = locations[index]
+    const uid = currentUserIdRef.current
+    if (!loc || !uid || loc.photos.length >= MAX_LISTING_PHOTOS) return
+    setSaveError('')
+    setUploadingPhotoFor(loc.id ?? String(index))
+    try {
+      const raw = await pickImageBlob()
+      if (!raw) return
+      const blob = await compressBikePhoto(raw as File)   // web compresses; native falls back to original
+      const path = `${uid}/${makeId()}.jpg`
+      const { error } = await supabase.storage.from(LISTING_BUCKET).upload(path, blob, { contentType: (blob as Blob).type || 'image/jpeg' })
+      if (error) { console.warn('listing photo upload error:', error.message); setSaveError('Could not upload the photo. Please try again.'); return }
+      setLocations(prev => prev.map((l, i) => i === index ? { ...l, photos: [...l.photos, path].slice(0, MAX_LISTING_PHOTOS) } : l))
+    } catch (e: any) {
+      console.warn('listing photo exception:', e?.message)
+      setSaveError('Could not upload the photo. Please try again.')
+    } finally {
+      setUploadingPhotoFor(null)
+    }
+  }
+
+  function removePhoto(index: number, path: string) {
+    setLocations(prev => prev.map((l, i) => i === index ? { ...l, photos: l.photos.filter(p => p !== path) } : l))
+    void supabase.storage.from(LISTING_BUCKET).remove([path]).catch(() => {})
   }
 
   function addLocation() {
@@ -220,6 +281,10 @@ export default function BecomeHostScreen() {
           pricings: l.pricings,
           pricing: l.pricings[0] || 'free',
           notes: l.notes.trim(),
+          photos: l.photos.slice(0, MAX_LISTING_PHOTOS),
+          // Price only applies to a Paid listing; otherwise stored as null.
+          price_amount: l.pricings.includes('fixed') && l.priceAmount.trim() !== '' ? Number(l.priceAmount) : null,
+          price_unit: l.pricings.includes('fixed') && l.priceUnit.trim() !== '' ? l.priceUnit.trim() : null,
         }))
 
       const { error } = await supabase.from('host_locations').upsert(rows, { onConflict: 'id' })
@@ -369,6 +434,54 @@ export default function BecomeHostScreen() {
             })}
           </View>
 
+          {/* Price — only for a Paid listing, so riders know the cost before they knock */}
+          {loc.pricings.includes('fixed') && (
+            <View style={styles.priceRow}>
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="500"
+                placeholderTextColor="#666"
+                keyboardType="numeric"
+                value={loc.priceAmount}
+                onChangeText={t => updateLocation(index, { priceAmount: t.replace(/[^0-9.]/g, '') })}
+                maxLength={9}
+              />
+              <TextInput
+                style={[styles.input, { flex: 2 }]}
+                placeholder="Kč / night"
+                placeholderTextColor="#666"
+                value={loc.priceUnit}
+                onChangeText={t => updateLocation(index, { priceUnit: t })}
+                maxLength={40}
+              />
+            </View>
+          )}
+
+          {/* Listing photos (public, max 3) */}
+          <Text style={styles.label}>📸 PHOTOS OF THE PLACE (optional, up to {MAX_LISTING_PHOTOS})</Text>
+          <View style={styles.photoRow}>
+            {loc.photos.map(path => (
+              <View key={path} style={styles.photoThumb}>
+                <Image source={{ uri: listingPhotoUrl(path) }} style={styles.photoImg} resizeMode="cover" />
+                <TouchableOpacity style={styles.photoRemove} onPress={() => removePhoto(index, path)} hitSlop={6} accessibilityLabel="Remove photo">
+                  <Text style={styles.photoRemoveText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+            {loc.photos.length < MAX_LISTING_PHOTOS && (
+              <TouchableOpacity
+                style={styles.photoAdd}
+                onPress={() => addPhoto(index)}
+                disabled={uploadingPhotoFor === (loc.id ?? String(index))}
+              >
+                {uploadingPhotoFor === (loc.id ?? String(index))
+                  ? <ActivityIndicator color={C.accent} />
+                  : <Text style={styles.photoAddText}>＋</Text>}
+              </TouchableOpacity>
+            )}
+          </View>
+          <Text style={styles.privateNote}>👀 Public — riders see these. Show where the bike sleeps (yard, garage…), not your house number.</Text>
+
           {/* Public description */}
           <Text style={styles.label}>✍️ DESCRIPTION FOR RIDERS</Text>
           <TextInput
@@ -472,6 +585,15 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
 
   textarea: { backgroundColor: C.elevated, borderRadius: 12, padding: 14, color: C.text, fontSize: 16, borderWidth: 1, borderColor: C.border, minHeight: 110, textAlignVertical: 'top', lineHeight: 22 },
   privateNote: { color: C.textDim, fontSize: 12, lineHeight: 18 },
+  input: { backgroundColor: C.elevated, borderRadius: 12, padding: 14, color: C.text, fontSize: 16, borderWidth: 1, borderColor: C.border },
+  priceRow: { flexDirection: 'row', gap: 8 },
+  photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  photoThumb: { width: 88, height: 88, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: C.border },
+  photoImg: { width: '100%', height: '100%' },
+  photoRemove: { position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
+  photoRemoveText: { color: '#fff', fontSize: 12, fontWeight: '900' },
+  photoAdd: { width: 88, height: 88, borderRadius: 12, borderWidth: 1.5, borderColor: C.border, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: C.elevated },
+  photoAddText: { color: C.accent, fontSize: 30, fontWeight: '300' },
 
   addBtn: { borderWidth: 1, borderColor: C.accent, borderRadius: 100, padding: 14, alignItems: 'center', borderStyle: 'dashed' },
   addBtnText: { color: C.accent, fontWeight: '700', fontSize: 14, letterSpacing: 1 },
