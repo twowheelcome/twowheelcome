@@ -9,6 +9,12 @@ import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { UserChip, refreshUserChip } from '../../components/UserChip'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+function fmtReviewDate(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
+}
+
 export default function ProfileScreen() {
   const C = useTheme()
   const styles = useMemo(() => makeStyles(C), [C])
@@ -74,17 +80,27 @@ export default function ProfileScreen() {
     const [p, h, r] = await Promise.all([
       supabase.from('profiles').select('id, full_name, bio, bike_model, avatar_url').eq('id', resolvedUser.id).maybeSingle(),
       supabase.from('host_locations').select('*').eq('user_id', resolvedUser.id).order('created_at', { ascending: true }),
-      supabase.from('reviews').select('rating, body, created_at, reviewer:profiles!reviewer_id(full_name)').eq('reviewee_id', resolvedUser.id).order('created_at', { ascending: false }),
+      // Reviews received by this user. reviewer_id has no FK to profiles, so a PostgREST
+      // embed fails — fetch the reviewers' names in a separate query (like the public profile).
+      supabase.from('reviews').select('rating, body, created_at, reviewer_id').eq('reviewee_id', resolvedUser.id).order('created_at', { ascending: false }),
     ])
     if (userIdRef.current !== resolvedUser.id) return
     setProfile(p.data)
     setHostLocations(h.data || [])
     setNameInput(p.data?.full_name || '')
     setBikeModel(p.data?.bike_model || '')
-    setReviews((r.data || []).map((rev: any) => ({
+    const revRows = (r.data || []) as any[]
+    const reviewerIds = [...new Set(revRows.map(rev => rev.reviewer_id).filter(Boolean))]
+    const reviewerMap: Record<string, string> = {}
+    if (reviewerIds.length) {
+      const { data: reviewerProfiles } = await supabase.from('profiles').select('id, full_name').in('id', reviewerIds)
+      if (userIdRef.current !== resolvedUser.id) return
+      reviewerProfiles?.forEach((rp: any) => { reviewerMap[rp.id] = rp.full_name })
+    }
+    setReviews(revRows.map(rev => ({
       rating: rev.rating,
       body: rev.body,
-      reviewer_name: rev.reviewer?.full_name ?? null,
+      reviewer_name: reviewerMap[rev.reviewer_id] ?? null,
       created_at: rev.created_at,
     })))
 
@@ -382,6 +398,7 @@ export default function ProfileScreen() {
                   <Text style={styles.reviewItemStars}>{'⭐'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}</Text>
                 </View>
                 {rev.body ? <Text style={styles.reviewItemBody}>“{rev.body}”</Text> : null}
+                {rev.created_at ? <Text style={styles.reviewItemDate}>{fmtReviewDate(rev.created_at)}</Text> : null}
               </View>
             ))}
           </View>
@@ -644,6 +661,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   reviewItemName: { color: C.text, fontSize: 14, fontWeight: '700' },
   reviewItemStars: { fontSize: 13 },
   reviewItemBody: { color: C.textMuted, fontSize: 13, lineHeight: 19, fontStyle: 'italic' },
+  reviewItemDate: { color: C.textDim, fontSize: 11, marginTop: 4 },
 
   deleteBtn: { alignItems: 'center', paddingVertical: 6, marginTop: 4 },
   deleteBtnText: { color: C.error, fontSize: 13, textDecorationLine: 'underline' },
