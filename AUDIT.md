@@ -53,6 +53,15 @@
 > reviews per-stay, RLS matrix, rate limits, atomic delete, private-photo signing.
 > See dated sections below for history.
 >
+> **Feature (2026-06-26): reach the other person's profile from a conversation.** A host
+> couldn't check an incoming rider's reputation before accepting. The chat header (avatar +
+> name) is now tappable → opens the other party's public profile (`/host/<id>`), both
+> directions. Also fixed: that page 404'd ("Rider not found") for anyone without a listing
+> because it required a host_location; a profile alone is now enough, so a pure rider's
+> reputation (avg/count/received reviews) shows — host-offer + knock CTA render only when a
+> location exists. Privacy unchanged (coarse public view; reviews already world-readable).
+> Verified: a real rider with reviews but no location now resolves to a viewable profile.
+>
 > **Bug fix (2026-06-26): received reviews invisible on own profile.** The own profile
 > loaded "reviews about me" via a PostgREST embed (`reviewer:profiles!reviewer_id`) needing
 > a `reviews.reviewer_id → profiles` FK that doesn't exist, so the query errored → reviews
