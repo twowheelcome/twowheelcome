@@ -64,7 +64,9 @@ export default function PublicHostProfile() {
 
     const loc = locRes.data
 
-    if (!prof || !loc) { setNotFound(true); setLoading(false); return }
+    // A profile is enough — riders with no listing still have a reputation to show.
+    // The host-offer sections and the knock CTA below only render when there's a location.
+    if (!prof) { setNotFound(true); setLoading(false); return }
 
     setProfile(prof)
     setLocation(loc)
@@ -117,7 +119,7 @@ export default function PublicHostProfile() {
     )
   }
 
-  const parkings: string[] = location.parkings?.length ? location.parkings : (location.parking ? [location.parking] : [])
+  const parkings: string[] = location?.parkings?.length ? location.parkings : (location?.parking ? [location.parking] : [])
   const initials = (profile.full_name || '?').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
 
   return (
@@ -138,7 +140,7 @@ export default function PublicHostProfile() {
               </Text>
             )}
             {profile.bike_model && <Text style={styles.meta}>🏍 {profile.bike_model}</Text>}
-            {location.location_city && (
+            {location?.location_city && (
               <Text style={styles.meta}>📍 {location.location_city}, {location.location_country}</Text>
             )}
           </View>
@@ -178,7 +180,7 @@ export default function PublicHostProfile() {
         )}
 
         {/* What the host wrote about this place (public description) */}
-        {location.notes ? (
+        {location?.notes ? (
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>About this place</Text>
             <Text style={styles.bio}>{location.notes}</Text>
@@ -186,7 +188,7 @@ export default function PublicHostProfile() {
         ) : null}
 
         {/* Sleep */}
-        {location.sleep_types?.length > 0 && (
+        {location?.sleep_types?.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Where you sleep</Text>
             <View style={styles.chips}>
@@ -200,7 +202,7 @@ export default function PublicHostProfile() {
         )}
 
         {/* Amenities */}
-        {location.amenities?.length > 0 && (
+        {location?.amenities?.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Amenities</Text>
             <View style={styles.chips}>
@@ -213,7 +215,9 @@ export default function PublicHostProfile() {
           </View>
         )}
 
-        <Text style={styles.maxGuests}>👥 Up to {location.max_guests} {location.max_guests === 1 ? 'rider' : 'riders'}</Text>
+        {location && (
+          <Text style={styles.maxGuests}>👥 Up to {location.max_guests} {location.max_guests === 1 ? 'rider' : 'riders'}</Text>
+        )}
 
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Reviews from riders</Text>
@@ -234,18 +238,23 @@ export default function PublicHostProfile() {
           )}
         </View>
 
-        <View style={styles.divider} />
-        <Text style={styles.joinCta}>Want to stay here?</Text>
-        <Text style={styles.joinSub}>Send a stay request to {profile.full_name?.split(' ')[0] || 'this host'} and agree on the details in chat.</Text>
-        <TouchableOpacity
-          style={styles.ctaBtn}
-          onPress={() => {
-            if (isLoggedIn === false) { goToSignup(); return }
-            router.replace({ pathname: '/(tabs)/map', params: { knockHost: profile.id, knockLocation: location.id } })
-          }}
-        >
-          <Text style={styles.ctaBtnText}>{isLoggedIn === false ? 'Join to knock on the door' : 'Knock on the door'}</Text>
-        </TouchableOpacity>
+        {/* Knock CTA only makes sense for a host with a place. */}
+        {location && (
+          <>
+            <View style={styles.divider} />
+            <Text style={styles.joinCta}>Want to stay here?</Text>
+            <Text style={styles.joinSub}>Send a stay request to {profile.full_name?.split(' ')[0] || 'this host'} and agree on the details in chat.</Text>
+            <TouchableOpacity
+              style={styles.ctaBtn}
+              onPress={() => {
+                if (isLoggedIn === false) { goToSignup(); return }
+                router.replace({ pathname: '/(tabs)/map', params: { knockHost: profile.id, knockLocation: location.id } })
+              }}
+            >
+              <Text style={styles.ctaBtnText}>{isLoggedIn === false ? 'Join to knock on the door' : 'Knock on the door'}</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </ScrollView>
     </View>
   )

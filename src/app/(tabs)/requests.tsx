@@ -1280,17 +1280,26 @@ export default function RequestsScreen() {
             setSelected(null)
             selectedConvIdRef.current = null
           }} />
-          <View style={styles.chatAvatar}>
-            {selected.other.avatar_url ? (
-              <Image source={{ uri: selected.other.avatar_url }} style={styles.chatAvatarImg} />
-            ) : (
-              <Text style={styles.chatAvatarText}>{otherName.charAt(0).toUpperCase()}</Text>
-            )}
-          </View>
-          <View style={styles.chatIdentity}>
-            <Text style={styles.chatName}>{otherName}</Text>
-            <Text style={styles.chatLocation} numberOfLines={1}>{selected.locationLabel}</Text>
-          </View>
+          <TouchableOpacity
+            style={styles.chatPeek}
+            activeOpacity={0.7}
+            disabled={!selected.other.id}
+            onPress={() => { if (selected.other.id) router.push({ pathname: '/host/[id]', params: { id: selected.other.id } }) }}
+            accessibilityRole="button"
+            accessibilityLabel={`View ${otherName}'s profile and reviews`}
+          >
+            <View style={styles.chatAvatar}>
+              {selected.other.avatar_url ? (
+                <Image source={{ uri: selected.other.avatar_url }} style={styles.chatAvatarImg} />
+              ) : (
+                <Text style={styles.chatAvatarText}>{otherName.charAt(0).toUpperCase()}</Text>
+              )}
+            </View>
+            <View style={styles.chatIdentity}>
+              <Text style={styles.chatName} numberOfLines={1}>{otherName}{selected.other.id ? '  ›' : ''}</Text>
+              <Text style={styles.chatLocation} numberOfLines={1}>{selected.locationLabel}</Text>
+            </View>
+          </TouchableOpacity>
           <UserChip />
         </View>
 
@@ -1654,6 +1663,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   },
   chatAvatarText: { color: C.accent, fontWeight: '800', fontSize: 15 },
   chatAvatarImg: { width: 38, height: 38, borderRadius: 19 },
+  chatPeek: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   chatIdentity: { flex: 1, paddingHorizontal: 10 },
   chatName: { color: C.text, fontSize: 16, fontWeight: '700' },
   chatLocation: { color: C.textDim, fontSize: 11, marginTop: 1 },
