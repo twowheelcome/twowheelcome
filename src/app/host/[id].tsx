@@ -233,6 +233,9 @@ export default function PublicHostProfile() {
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>What this host wants in return</Text>
             <Text style={styles.bio}>💶 {pricingText(location)}</Text>
+            {location.pricings?.includes('fixed') && location.price_amount != null ? (
+              <Text style={styles.priceHint}>Indicative — the exact amount and currency are agreed in chat (local cash is fine).</Text>
+            ) : null}
           </View>
         ) : null}
 
@@ -301,6 +304,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   meta:         { color: C.textMuted, fontSize: 13 },
 
   bio:          { color: C.text, fontSize: 15, lineHeight: 23 },
+  priceHint:    { color: C.textDim, fontSize: 12, lineHeight: 17, marginTop: 4 },
 
   joinBanner:        { backgroundColor: C.accentSoft, borderColor: C.accentBorder, borderWidth: 1, borderRadius: 22, padding: 18, gap: 10 },
   joinBannerTitle:   { color: C.text, fontSize: 18, fontWeight: '900' },

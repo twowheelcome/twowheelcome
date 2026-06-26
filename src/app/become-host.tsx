@@ -9,7 +9,7 @@ import { compressBikePhoto } from '../lib/compressImage'
 
 const LISTING_BUCKET = 'listing-photos'
 const MAX_LISTING_PHOTOS = 3
-const CURRENCIES = ['EUR', 'CZK', 'GBP', 'CHF', 'PLN', 'HUF', 'DKK', 'SEK', 'NOK', 'RON', 'BGN']
+const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'JPY', 'CAD', 'AUD', 'CZK']
 
 function makePARKING(C: ThemeColors) {
   return [
@@ -462,6 +462,7 @@ export default function BecomeHostScreen() {
                   )
                 })}
               </ScrollView>
+              <Text style={styles.privateNote}>💬 Just a rough guide so riders know what to expect — you settle the exact amount and currency together in chat (local cash is fine).</Text>
             </View>
           )}
 

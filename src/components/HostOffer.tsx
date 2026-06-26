@@ -64,6 +64,9 @@ export function HostOffer({ loc }: { loc: OfferLoc }) {
       {pricings.length > 0 && (
         <View style={s.row}><Text style={s.icon}>💶</Text><Text style={s.value}>{pricingText}</Text></View>
       )}
+      {pricings.includes('fixed') && loc.price_amount != null && (
+        <Text style={s.priceHint}>Indicative — the exact amount and currency are up to you two in chat (local cash is fine).</Text>
+      )}
       {vehicles.length > 0 && (
         <View style={s.row}><Text style={s.icon}>🏍</Text><Text style={s.value}>{mapLabels(vehicles, VEHICLE_LABELS)}</Text></View>
       )}
@@ -90,6 +93,7 @@ function makeStyles(C: ThemeColors) {
     row: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
     icon: { fontSize: 15, width: 20, textAlign: 'center' },
     value: { flex: 1, color: C.text, fontSize: 14, lineHeight: 20 },
+    priceHint: { color: C.textDim, fontSize: 12, lineHeight: 17, marginTop: -4 },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
     chip: { borderRadius: 100, borderWidth: 1, borderColor: C.border, backgroundColor: C.bg, paddingHorizontal: 9, paddingVertical: 4 },
     chipText: { color: C.textMuted, fontSize: 12, fontWeight: '600' },
