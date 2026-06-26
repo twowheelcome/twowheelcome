@@ -709,6 +709,12 @@ export default function MapScreen() {
                 </View>
               </View>
 
+              {!isOwn && (
+                <Text style={{ color: C.textDim, fontSize: 12, lineHeight: 17 }}>
+                  📍 Approximate area only — the host shares the exact spot in chat after accepting your request.
+                </Text>
+              )}
+
               <SafetyBlock parkings={parkings} />
               <HostOffer loc={selected} />
 
