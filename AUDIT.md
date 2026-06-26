@@ -53,6 +53,14 @@
 > reviews per-stay, RLS matrix, rate limits, atomic delete, private-photo signing.
 > See dated sections below for history.
 >
+> **UI (2026-06-26): Reviews folder + Messages returns to list.** (a) Received reviews moved
+> from a long inline list into a 'Reviews' menu folder (subtitle '⭐ avg · N reviews') opening
+> a dedicated /reviews screen — parameterized by ?user=<id> so it serves the own profile and
+> the public /host/<id> profile (host checks a rider's reviews in one tap). (b) Switching tabs
+> and back to Messages now lands on the conversation LIST, not the last open chat; deep-links /
+> 'Open chat' (pendingChatStore) still open a specific chat, and a keepChatOpenRef flag keeps
+> the chat when returning from the profile/map sub-screens.
+>
 > **Feature (2026-06-26): reach the other person's profile from a conversation.** A host
 > couldn't check an incoming rider's reputation before accepting. The chat header (avatar +
 > name) is now tappable → opens the other party's public profile (`/host/<id>`), both
