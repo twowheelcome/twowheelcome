@@ -25,11 +25,10 @@ const PRICING_LABELS: Record<string, string> = { free: 'Free', tip: 'Tip welcome
 
 function pricingText(loc: any): string {
   const pricings: string[] = loc?.pricings?.length ? loc.pricings : (loc?.pricing ? [loc.pricing] : [])
-  const unit = (loc?.price_unit ?? '').trim()
+  const currency = loc?.price_currency || 'EUR'
   return pricings.map((v: string) => {
     if (v === 'fixed') {
-      const amt = loc?.price_amount != null ? `${loc.price_amount}${unit ? ` ${unit}` : ''}` : null
-      return amt ? `Paid — ${amt}` : 'Paid'
+      return loc?.price_amount != null ? `${loc.price_amount} ${currency} / night` : 'Paid'
     }
     return PRICING_LABELS[v] || v
   }).join(' · ')

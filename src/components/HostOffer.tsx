@@ -26,7 +26,7 @@ type OfferLoc = {
   notes?: string | null
   photos?: string[] | null
   price_amount?: number | null
-  price_unit?: string | null
+  price_currency?: string | null
 }
 
 function mapLabels(values: string[], labels: Record<string, string>): string {
@@ -43,12 +43,11 @@ export function HostOffer({ loc }: { loc: OfferLoc }) {
   const notes = loc.notes?.trim()
   const photos = loc.photos ?? []
 
-  // Show the actual amount for a Paid listing so riders know the cost before knocking.
-  const priceUnit = (loc.price_unit ?? '').trim()
+  // Show the actual amount + currency for a Paid listing so riders know the cost before knocking.
+  const currency = loc.price_currency || 'EUR'
   const pricingText = pricings.map(v => {
     if (v === 'fixed') {
-      const amt = loc.price_amount != null ? `${loc.price_amount}${priceUnit ? ` ${priceUnit}` : ''}` : null
-      return amt ? `Paid — ${amt}` : (PRICING_LABELS.fixed || 'Paid')
+      return loc.price_amount != null ? `${loc.price_amount} ${currency} / night` : (PRICING_LABELS.fixed || 'Paid')
     }
     return PRICING_LABELS[v] || v
   }).join(' · ')

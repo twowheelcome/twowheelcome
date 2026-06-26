@@ -9,6 +9,7 @@ import { compressBikePhoto } from '../lib/compressImage'
 
 const LISTING_BUCKET = 'listing-photos'
 const MAX_LISTING_PHOTOS = 3
+const CURRENCIES = ['EUR', 'CZK', 'GBP', 'CHF', 'PLN', 'HUF', 'DKK', 'SEK', 'NOK', 'RON', 'BGN']
 
 function makePARKING(C: ThemeColors) {
   return [
@@ -57,7 +58,7 @@ interface Location {
   notes: string
   photos: string[]        // public listing-photos object paths (max 3)
   priceAmount: string     // kept as a string for the input; numeric on save
-  priceUnit: string       // e.g. "Kč / night"
+  priceCurrency: string   // EUR default; the period is implicitly "per night"
 }
 
 function makeId(): string {
@@ -74,7 +75,7 @@ function makeId(): string {
 // for the new rows and violate the NOT NULL constraint. A stable id also prevents
 // duplicate inserts on a second save.
 function emptyLocation(): Location {
-  return { id: makeId(), name: '', pin: null, parkings: [], sleepTypes: [], amenities: [], maxGuests: 2, pricings: ['free'], notes: '', photos: [], priceAmount: '', priceUnit: '' }
+  return { id: makeId(), name: '', pin: null, parkings: [], sleepTypes: [], amenities: [], maxGuests: 2, pricings: ['free'], notes: '', photos: [], priceAmount: '', priceCurrency: 'EUR' }
 }
 
 function toggle(arr: string[], value: string): string[] {
@@ -114,7 +115,7 @@ export default function BecomeHostScreen() {
         notes: d.notes || '',
         photos: Array.isArray(d.photos) ? d.photos : [],
         priceAmount: d.price_amount != null ? String(d.price_amount) : '',
-        priceUnit: d.price_unit || '',
+        priceCurrency: d.price_currency || 'EUR',
       })))
     }
   }, [])
@@ -284,7 +285,8 @@ export default function BecomeHostScreen() {
           photos: l.photos.slice(0, MAX_LISTING_PHOTOS),
           // Price only applies to a Paid listing; otherwise stored as null.
           price_amount: l.pricings.includes('fixed') && l.priceAmount.trim() !== '' ? Number(l.priceAmount) : null,
-          price_unit: l.pricings.includes('fixed') && l.priceUnit.trim() !== '' ? l.priceUnit.trim() : null,
+          price_currency: l.pricings.includes('fixed') ? (l.priceCurrency || 'EUR') : null,
+          price_unit: null,
         }))
 
       const { error } = await supabase.from('host_locations').upsert(rows, { onConflict: 'id' })
@@ -346,6 +348,7 @@ export default function BecomeHostScreen() {
               : <View style={styles.mapLoading}><ActivityIndicator color={C.accent} /></View>
             }
           </View>
+          <Text style={styles.privateNote}>🔒 Riders only ever see an approximate area — your pin is shown fuzzed on the public map, never the exact spot. You send the precise coordinates yourself in chat, as a next step, after you accept a request.</Text>
 
           {/* Parking */}
           <Text style={styles.label}>🅿️ PARKING</Text>
@@ -436,24 +439,29 @@ export default function BecomeHostScreen() {
 
           {/* Price — only for a Paid listing, so riders know the cost before they knock */}
           {loc.pricings.includes('fixed') && (
-            <View style={styles.priceRow}>
-              <TextInput
-                style={[styles.input, { flex: 1 }]}
-                placeholder="500"
-                placeholderTextColor="#666"
-                keyboardType="numeric"
-                value={loc.priceAmount}
-                onChangeText={t => updateLocation(index, { priceAmount: t.replace(/[^0-9.]/g, '') })}
-                maxLength={9}
-              />
-              <TextInput
-                style={[styles.input, { flex: 2 }]}
-                placeholder="Kč / night"
-                placeholderTextColor="#666"
-                value={loc.priceUnit}
-                onChangeText={t => updateLocation(index, { priceUnit: t })}
-                maxLength={40}
-              />
+            <View style={{ gap: 8 }}>
+              <View style={styles.priceRow}>
+                <TextInput
+                  style={[styles.input, { flex: 1 }]}
+                  placeholder="500"
+                  placeholderTextColor="#666"
+                  keyboardType="numeric"
+                  value={loc.priceAmount}
+                  onChangeText={t => updateLocation(index, { priceAmount: t.replace(/[^0-9.]/g, '') })}
+                  maxLength={9}
+                />
+                <Text style={styles.priceUnitHint}>{loc.priceCurrency} / night</Text>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                {CURRENCIES.map(cur => {
+                  const active = loc.priceCurrency === cur
+                  return (
+                    <TouchableOpacity key={cur} style={[styles.curChip, active && styles.curChipActive]} onPress={() => updateLocation(index, { priceCurrency: cur })}>
+                      <Text style={[styles.curChipText, active && styles.curChipTextActive]}>{cur}</Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </ScrollView>
             </View>
           )}
 
@@ -480,7 +488,7 @@ export default function BecomeHostScreen() {
               </TouchableOpacity>
             )}
           </View>
-          <Text style={styles.privateNote}>👀 Public — riders see these. Show where the bike sleeps (yard, garage…), not your house number.</Text>
+          <Text style={styles.privateNote}>🔒 Privacy — these are public, so avoid shots that reveal your exact address or your house from the street. Show where the bike sleeps (yard, garage…). You share the precise spot only after you accept a request.</Text>
 
           {/* Public description */}
           <Text style={styles.label}>✍️ DESCRIPTION FOR RIDERS</Text>
@@ -586,7 +594,12 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   textarea: { backgroundColor: C.elevated, borderRadius: 12, padding: 14, color: C.text, fontSize: 16, borderWidth: 1, borderColor: C.border, minHeight: 110, textAlignVertical: 'top', lineHeight: 22 },
   privateNote: { color: C.textDim, fontSize: 12, lineHeight: 18 },
   input: { backgroundColor: C.elevated, borderRadius: 12, padding: 14, color: C.text, fontSize: 16, borderWidth: 1, borderColor: C.border },
-  priceRow: { flexDirection: 'row', gap: 8 },
+  priceRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  priceUnitHint: { color: C.textMuted, fontSize: 15, fontWeight: '700', minWidth: 96 },
+  curChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 100, borderWidth: 1, borderColor: C.border, backgroundColor: C.elevated },
+  curChipActive: { borderColor: C.accent, backgroundColor: C.accentSoft },
+  curChipText: { color: C.textMuted, fontSize: 13, fontWeight: '700' },
+  curChipTextActive: { color: C.accent },
   photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   photoThumb: { width: 88, height: 88, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: C.border },
   photoImg: { width: '100%', height: '100%' },
