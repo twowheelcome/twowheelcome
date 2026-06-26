@@ -53,6 +53,11 @@
 > reviews per-stay, RLS matrix, rate limits, atomic delete, private-photo signing.
 > See dated sections below for history.
 >
+> **UI (2026-06-26): host bottom-sheet reviews row.** The map pin-tap host sheet gained a
+> 'Reviews' folder row (⭐ avg · n reviews → /reviews?user=<hostId>, 'No reviews yet' when
+> empty/non-clickable) and dropped the redundant 'View full profile' button (its only extra
+> was reviews, now reachable directly). Knock CTA unchanged.
+>
 > **UI (2026-06-26): Reviews folder + Messages returns to list.** (a) Received reviews moved
 > from a long inline list into a 'Reviews' menu folder (subtitle '⭐ avg · N reviews') opening
 > a dedicated /reviews screen — parameterized by ?user=<id> so it serves the own profile and
