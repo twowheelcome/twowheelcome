@@ -9,12 +9,6 @@ import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { UserChip, refreshUserChip } from '../../components/UserChip'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-function fmtReviewDate(iso: string): string {
-  const d = new Date(iso)
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
-}
-
 export default function ProfileScreen() {
   const C = useTheme()
   const styles = useMemo(() => makeStyles(C), [C])
@@ -387,23 +381,6 @@ export default function ProfileScreen() {
         {/* Listings are managed in "My Listings" (below) so multi-location hosts
             aren't shown a single confusing inline place. */}
 
-        {/* Reviews */}
-        {reviews.length > 0 && (
-          <View style={styles.reviewsSection}>
-            <Text style={styles.reviewsSectionTitle}>REVIEWS</Text>
-            {reviews.map((rev, i) => (
-              <View key={i} style={styles.reviewItem}>
-                <View style={styles.reviewItemHeader}>
-                  <Text style={styles.reviewItemName}>{rev.reviewer_name || 'Rider'}</Text>
-                  <Text style={styles.reviewItemStars}>{'⭐'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}</Text>
-                </View>
-                {rev.body ? <Text style={styles.reviewItemBody}>“{rev.body}”</Text> : null}
-                {rev.created_at ? <Text style={styles.reviewItemDate}>{fmtReviewDate(rev.created_at)}</Text> : null}
-              </View>
-            ))}
-          </View>
-        )}
-
         {/* Pending reviews prompt — symmetric for guests and hosts */}
         {pendingReviews > 0 && (
           <TouchableOpacity style={styles.reviewPrompt} onPress={() => router.push('/history')} activeOpacity={0.85}>
@@ -433,6 +410,18 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.menuIcon}>
               <Feather name="clock" size={18} color={C.accent} />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/reviews')}>
+            <View style={styles.menuTextWrap}>
+              <Text style={styles.menuTitle}>Reviews</Text>
+              <Text style={styles.menuSub}>
+                {avgRating ? `⭐ ${avgRating} · ${reviews.length} ${reviews.length === 1 ? 'review' : 'reviews'}` : 'No reviews yet'}
+              </Text>
+            </View>
+            <View style={styles.menuIcon}>
+              <Feather name="star" size={18} color={C.accent} />
             </View>
           </TouchableOpacity>
 

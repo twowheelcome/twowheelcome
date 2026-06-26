@@ -219,24 +219,22 @@ export default function PublicHostProfile() {
           <Text style={styles.maxGuests}>👥 Up to {location.max_guests} {location.max_guests === 1 ? 'rider' : 'riders'}</Text>
         )}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Reviews from riders</Text>
-          {reviews.length > 0 ? (
-            <>
-              {reviews.map((r: any, i: number) => (
-              <View key={i} style={styles.reviewCard}>
-                <Text style={styles.reviewStars}>{`${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}`}</Text>
-                {r.body ? <Text style={styles.reviewBody}>{`“${r.body}”`}</Text> : null}
-                {r.reviewer_name ? <Text style={styles.reviewAuthor}>{`— ${r.reviewer_name}`}</Text> : null}
-              </View>
-              ))}
-            </>
-          ) : (
-            <View style={styles.reviewCard}>
-              <Text style={styles.reviewEmpty}>No reviews yet.</Text>
-            </View>
-          )}
-        </View>
+        {/* Reviews as a tappable folder, consistent with the profile menu. */}
+        <TouchableOpacity
+          style={styles.reviewsLink}
+          activeOpacity={0.8}
+          onPress={() => router.push({ pathname: '/reviews', params: { user: profile.id } })}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.reviewsLinkTitle}>Reviews from riders</Text>
+            <Text style={styles.reviewsLinkSub}>
+              {reviewCount > 0 && avgRating != null
+                ? `⭐ ${avgRating.toFixed(1)} · ${reviewCount} ${reviewCount === 1 ? 'review' : 'reviews'}`
+                : 'No reviews yet'}
+            </Text>
+          </View>
+          <Text style={styles.reviewsLinkChevron}>›</Text>
+        </TouchableOpacity>
 
         {/* Knock CTA only makes sense for a host with a place. */}
         {location && (
@@ -298,6 +296,10 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   reviewBody:   { color: C.text, fontSize: 14, lineHeight: 20 },
   reviewAuthor: { color: C.textMuted, fontSize: 12 },
   reviewEmpty:  { color: C.textMuted, fontSize: 13, lineHeight: 20 },
+  reviewsLink:  { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: C.border, paddingVertical: 14, paddingHorizontal: 16 },
+  reviewsLinkTitle: { color: C.text, fontSize: 15, fontWeight: '800' },
+  reviewsLinkSub: { color: C.textMuted, fontSize: 13, marginTop: 2 },
+  reviewsLinkChevron: { color: C.textDim, fontSize: 24, fontWeight: '300', marginLeft: 8 },
 
   divider:      { height: 1, backgroundColor: C.border, marginVertical: 8 },
   joinCta:      { color: C.text, fontSize: 18, fontWeight: '900' },
