@@ -53,6 +53,16 @@
 > reviews per-stay, RLS matrix, rate limits, atomic delete, private-photo signing.
 > See dated sections below for history.
 >
+> **Bug fix (2026-06-26): received reviews invisible on own profile.** The own profile
+> loaded "reviews about me" via a PostgREST embed (`reviewer:profiles!reviewer_id`) needing
+> a `reviews.reviewer_id → profiles` FK that doesn't exist, so the query errored → reviews
+> empty → rating/count showed "—" and the REVIEWS list was hidden. Not an RLS problem
+> (`rev_select = true` already makes reviews world-readable; the public `/host/<id>` and the
+> map worked because they fetch reviewer names separately). Fixed the own-profile query to do
+> the same (+ show the review date). Write rules unchanged. Verified live: subject, a foreign
+> rider, and anon all read the subject's received reviews (count 3, avg 3.67); a
+> non-participant review insert stays blocked.
+>
 > **UI follow-up (2026-06-25): arrival time removed.** Matchmaking model — the time is
 > agreed in chat, only the night matters. Removed the 'Est. arrival time' form field
 > (state/default/validation), the 'Arrival approx.' row on both request cards, and the
