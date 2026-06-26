@@ -53,6 +53,16 @@
 > reviews per-stay, RLS matrix, rate limits, atomic delete, private-photo signing.
 > See dated sections below for history.
 >
+> **Feature (2026-06-26): host listing photos + Paid price.** Hosts can upload up to 3 public
+> listing photos per place (compressed via image-manipulator, owner-only write to a new
+> public `listing-photos` bucket, paths in `host_locations.photos` with a CHECK ≤ 3) and, for
+> a Paid listing, enter the amount + unit (`price_amount`/`price_unit`). Riders see both before
+> knocking: a tappable gallery (fullscreen lightbox, same as the bike photo) and 'Paid — 500
+> Kč / night' on the map host sheet, the Request-a-stay window (via HostOffer), and the public
+> /host/<id> profile. Verified live (rolled back): owner saves photos+price through RLS and the
+> public view returns them to anon; storage write is owner-folder-only, read is public; max-3
+> enforced. Image render is for Petr to confirm visually.
+>
 > **Fix (2026-06-26): host sheet close + reviews round-trip.** The pin-tap host detail sheet
 > got an explicit ✕ close button (the backdrop tap is hard to reach when the sheet is tall on
 > a phone; harmless on desktop). And opening Reviews from the sheet no longer strands the user
