@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
+import { ListingGallery } from './ListingGallery'
 
 // The host's full public offer (everything except parking, which SafetyBlock shows on its
 // own). Fed from host_locations_public — public fields only, never the exact address/GPS.
@@ -23,6 +24,9 @@ type OfferLoc = {
   pricing?: string | null
   vehicle_types?: string[] | null
   notes?: string | null
+  photos?: string[] | null
+  price_amount?: number | null
+  price_unit?: string | null
 }
 
 function mapLabels(values: string[], labels: Record<string, string>): string {
@@ -37,17 +41,29 @@ export function HostOffer({ loc }: { loc: OfferLoc }) {
   const pricings = loc.pricings?.length ? loc.pricings : (loc.pricing ? [loc.pricing] : [])
   const vehicles = loc.vehicle_types ?? []
   const notes = loc.notes?.trim()
+  const photos = loc.photos ?? []
 
-  if (!sleep.length && !amenities.length && !pricings.length && !vehicles.length && !notes) return null
+  // Show the actual amount for a Paid listing so riders know the cost before knocking.
+  const priceUnit = (loc.price_unit ?? '').trim()
+  const pricingText = pricings.map(v => {
+    if (v === 'fixed') {
+      const amt = loc.price_amount != null ? `${loc.price_amount}${priceUnit ? ` ${priceUnit}` : ''}` : null
+      return amt ? `Paid — ${amt}` : (PRICING_LABELS.fixed || 'Paid')
+    }
+    return PRICING_LABELS[v] || v
+  }).join(' · ')
+
+  if (!sleep.length && !amenities.length && !pricings.length && !vehicles.length && !notes && !photos.length) return null
 
   return (
     <View style={s.wrap}>
       <Text style={s.title}>WHAT THIS HOST OFFERS</Text>
+      <ListingGallery photos={photos} />
       {sleep.length > 0 && (
         <View style={s.row}><Text style={s.icon}>🛏</Text><Text style={s.value}>{mapLabels(sleep, SLEEP_LABELS)}</Text></View>
       )}
       {pricings.length > 0 && (
-        <View style={s.row}><Text style={s.icon}>💶</Text><Text style={s.value}>{mapLabels(pricings, PRICING_LABELS)}</Text></View>
+        <View style={s.row}><Text style={s.icon}>💶</Text><Text style={s.value}>{pricingText}</Text></View>
       )}
       {vehicles.length > 0 && (
         <View style={s.row}><Text style={s.icon}>🏍</Text><Text style={s.value}>{mapLabels(vehicles, VEHICLE_LABELS)}</Text></View>

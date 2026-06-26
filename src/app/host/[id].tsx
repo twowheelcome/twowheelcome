@@ -4,6 +4,7 @@ import { useLocalSearchParams, router } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { SafetyBlock } from '../../components/SafetyBlock'
+import { ListingGallery } from '../../components/ListingGallery'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
 
@@ -19,6 +20,19 @@ const AMENITY_LABELS: Record<string, string> = {
 }
 const SLEEP_LABELS: Record<string, string> = {
   tent: '⛺ Tent', roof: '🏠 Roof over head', room: '🛏 Private room',
+}
+const PRICING_LABELS: Record<string, string> = { free: 'Free', tip: 'Tip welcome', fixed: 'Paid' }
+
+function pricingText(loc: any): string {
+  const pricings: string[] = loc?.pricings?.length ? loc.pricings : (loc?.pricing ? [loc.pricing] : [])
+  const unit = (loc?.price_unit ?? '').trim()
+  return pricings.map((v: string) => {
+    if (v === 'fixed') {
+      const amt = loc?.price_amount != null ? `${loc.price_amount}${unit ? ` ${unit}` : ''}` : null
+      return amt ? `Paid — ${amt}` : 'Paid'
+    }
+    return PRICING_LABELS[v] || v
+  }).join(' · ')
 }
 
 export default function PublicHostProfile() {
@@ -212,6 +226,22 @@ export default function PublicHostProfile() {
                 </View>
               ))}
             </View>
+          </View>
+        )}
+
+        {/* What this host wants in return (incl. the amount for a Paid listing) */}
+        {location && pricingText(location) ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>What this host wants in return</Text>
+            <Text style={styles.bio}>💶 {pricingText(location)}</Text>
+          </View>
+        ) : null}
+
+        {/* Listing photos (public) */}
+        {location?.photos?.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Photos of the place</Text>
+            <ListingGallery photos={location.photos} />
           </View>
         )}
 
