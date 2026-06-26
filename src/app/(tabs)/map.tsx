@@ -35,6 +35,9 @@ export default function MapScreen() {
   const fileInputRef = useRef<any>(null)
   const handledKnockHostRef = useRef<string | null>(null)
   const currentUserIdRef = useRef<string | null>(null)
+  // Set true before leaving the host sheet for /reviews, so we reopen it on return
+  // instead of dropping the user onto the bare map.
+  const reopenHostSheetRef = useRef(false)
   const sendingRef = useRef(false)
   const [arrivalChip, setArrivalChip] = useState<'tonight' | 'tomorrow' | 'other'>('tonight')
   const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().split('T')[0])
@@ -213,6 +216,12 @@ export default function MapScreen() {
       // works whether the Map tab was already mounted or just re-focused.
       const focus = mapFocusStore.consume()
       if (focus) setFocusPoint(focus)
+      // Coming back from the host's /reviews screen — restore the host detail sheet
+      // (the selected host is still set) instead of leaving the user on the bare map.
+      if (reopenHostSheetRef.current) {
+        reopenHostSheetRef.current = false
+        setShowHostProfile(true)
+      }
     }, [loadMyRequests])
   )
 
@@ -672,6 +681,18 @@ export default function MapScreen() {
               {/* Drag handle */}
               <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: 'center', marginBottom: 4 }} />
 
+              {/* Close — return to the map (the backdrop tap can be hard to reach when the
+                  sheet is tall on a phone). */}
+              <TouchableOpacity
+                onPress={() => setShowHostProfile(false)}
+                style={{ position: 'absolute', top: 14, right: 14, width: 32, height: 32, borderRadius: 16, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center', zIndex: 2 }}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                hitSlop={8}
+              >
+                <Text style={{ color: C.text, fontSize: 15, fontWeight: '800' }}>✕</Text>
+              </TouchableOpacity>
+
               {/* Avatar + info */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                 <View style={[styles.avatar, { width: 56, height: 56, borderRadius: 28 }]}>
@@ -696,7 +717,13 @@ export default function MapScreen() {
                 <TouchableOpacity
                   style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: C.border, paddingVertical: 14, paddingHorizontal: 16 }}
                   activeOpacity={0.8}
-                  onPress={() => { setShowHostProfile(false); router.push({ pathname: '/reviews', params: { user: selected.user_id } }) }}
+                  onPress={() => {
+                    // Close the modal so /reviews is visible above the map, but flag a reopen
+                    // so back returns to this host detail, not the bare map.
+                    reopenHostSheetRef.current = true
+                    setShowHostProfile(false)
+                    router.push({ pathname: '/reviews', params: { user: selected.user_id } })
+                  }}
                 >
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: C.text, fontSize: 15, fontWeight: '800' }}>Reviews</Text>
