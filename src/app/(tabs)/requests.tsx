@@ -516,6 +516,10 @@ export default function RequestsScreen() {
   const listChannelRef = useRef<any>(null)   // realtime for the whole conversation list
   const subscribingListRef = useRef(false)   // guard so we never create two channels at once
   const selectedConvIdRef = useRef<string | null>(null)
+  // Set true right before we leave the open chat for a sub-screen we want to come BACK
+  // into (the other person's profile, or the map preview), so the next focus keeps the
+  // chat instead of resetting to the list. A plain tab switch leaves it false.
+  const keepChatOpenRef = useRef(false)
   const locCoordsRef = useRef<{ lat: number; lng: number } | null>(null)  // open conversation's approximate map point
 
 
@@ -594,10 +598,19 @@ export default function RequestsScreen() {
       loadConvs(userId)
       const pending = pendingChatStore.consume()
       if (pending) {
+        // A deep-link / "Open chat" wins: open that exact conversation.
         void (async () => {
           const conv = convs.find(c => c.id === pending.convId) ?? await fetchConvById(pending.convId, userId)
           if (conv && currentUserIdRef.current === userId) openConv(conv)
         })()
+      } else if (keepChatOpenRef.current) {
+        // Returning from the other person's profile / the map preview — keep the chat.
+        keepChatOpenRef.current = false
+      } else {
+        // Plain (re)focus, e.g. switching back from another tab: land on the LIST, not the
+        // last open chat. The chat is reachable via the list or a deep-link.
+        setSelected(null)
+        selectedConvIdRef.current = null
       }
       // convs/fetchConvById/openConv intentionally excluded; this must run on focus only.
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -675,6 +688,7 @@ export default function RequestsScreen() {
     }
     if (!coords) return
     mapFocusStore.set(coords)
+    keepChatOpenRef.current = true   // come back into this chat, not the list
     router.push('/(tabs)/map')
   }
 
@@ -1284,7 +1298,11 @@ export default function RequestsScreen() {
             style={styles.chatPeek}
             activeOpacity={0.7}
             disabled={!selected.other.id}
-            onPress={() => { if (selected.other.id) router.push({ pathname: '/host/[id]', params: { id: selected.other.id } }) }}
+            onPress={() => {
+              if (!selected.other.id) return
+              keepChatOpenRef.current = true   // come back into this chat after viewing the profile
+              router.push({ pathname: '/host/[id]', params: { id: selected.other.id } })
+            }}
             accessibilityRole="button"
             accessibilityLabel={`View ${otherName}'s profile and reviews`}
           >
