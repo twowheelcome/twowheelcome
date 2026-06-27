@@ -462,7 +462,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Listings are managed in "My Listings" (below) so multi-location hosts
+        {/* Places are managed in "My Places" (below) so multi-location hosts
             aren't shown a single confusing inline place. */}
 
         {/* Pending reviews prompt — symmetric for guests and hosts */}
@@ -478,7 +478,7 @@ export default function ProfileScreen() {
         {/* Menu — compact grouped rows (iOS-settings style) instead of 8 big cards */}
         {([
           { title: 'Your place', rows: [
-            { icon: 'home', label: isHost ? 'My Listings' : 'Become a Host', sub: isHost ? `${activeCount} active${pausedCount ? ` · ${pausedCount} paused` : ''}` : 'Add a listing', onPress: () => router.push('/become-host') },
+            { icon: 'home', label: isHost ? 'My Places' : 'Become a Host', sub: isHost ? `${activeCount} active${pausedCount ? ` · ${pausedCount} paused` : ''}` : 'Add a place', onPress: () => router.push((isHost ? '/my-places' : '/become-host') as never) },
             { icon: 'clock', label: 'History', sub: 'Your past stays', onPress: () => router.push('/history') },
             { icon: 'star', label: 'Reviews', sub: avgRating ? `⭐ ${avgRating} · ${reviews.length} ${reviews.length === 1 ? 'review' : 'reviews'}` : 'No reviews yet', onPress: () => router.push('/reviews') },
           ] },
