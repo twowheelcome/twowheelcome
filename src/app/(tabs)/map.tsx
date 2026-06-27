@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Platform, Modal } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Platform, Modal, Linking } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { supabase } from '../../lib/supabase'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
@@ -21,6 +21,19 @@ import { UserChip } from '../../components/UserChip'
 
 function placeLabel(city?: string | null, country?: string | null): string {
   return [city, country].filter(Boolean).join(', ') || 'Location on the map'
+}
+
+// Open external maps on the host's APPROXIMATE (already fuzzed) coords — a rough pin so a
+// rider knows the area before knocking. The exact point is only shared in chat after accept.
+function openApproxNavigation(lat: number, lng: number) {
+  const coords = `${lat},${lng}`
+  const label = encodeURIComponent('Approximate area')
+  const url = Platform.select({
+    android: `geo:${coords}?q=${coords}(${label})`,
+    ios: `http://maps.apple.com/?ll=${coords}&q=${label}`,
+    default: `https://www.google.com/maps/search/?api=1&query=${coords}`,
+  })!
+  void Linking.openURL(url)
 }
 
 // Local-day YYYY-MM-DD (avoids the UTC off-by-one that toISOString would cause for a
@@ -859,6 +872,17 @@ export default function MapScreen() {
                 <Text style={{ color: C.textDim, fontSize: 12, lineHeight: 17 }}>
                   📍 Approximate area only — the host shares the exact spot in chat after accepting your request.
                 </Text>
+              )}
+
+              {selected.location_lat != null && selected.location_lng != null && (
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: C.accentSoft, borderWidth: 1, borderColor: C.accentBorder, borderRadius: 100, paddingVertical: 11 }}
+                  onPress={() => openApproxNavigation(selected.location_lat, selected.location_lng)}
+                  accessibilityRole="button"
+                >
+                  <Text style={{ fontSize: 14 }}>🧭</Text>
+                  <Text style={{ color: C.accent, fontSize: 13, fontWeight: '800' }}>Navigate to approximate area</Text>
+                </TouchableOpacity>
               )}
 
               <SafetyBlock parkings={parkings} />

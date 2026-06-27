@@ -299,7 +299,7 @@ async function openNavigation(lat: number, lng: number) {
 // ── RequestCard ───────────────────────────────────────────────────────────
 
 function RequestCard({
-  req, body, isHost, onRespond, responding, onShowMap, onWithdraw, withdrawing, onCancelStay, cancelling,
+  req, body, isHost, onRespond, responding, onShowMap, onNavigateApprox, onWithdraw, withdrawing, onCancelStay, cancelling,
 }: {
   req: RequestData
   body: string | null
@@ -307,6 +307,7 @@ function RequestCard({
   onRespond: (id: string, status: 'ACCEPTED' | 'REJECTED') => void
   responding?: boolean
   onShowMap?: () => void
+  onNavigateApprox?: () => void
   onWithdraw?: (id: string) => void
   withdrawing?: boolean
   onCancelStay?: (id: string) => void
@@ -393,12 +394,19 @@ function RequestCard({
         ) : null}
       </View>
 
-      {/* In-app map link for this stay's approximate area */}
+      {/* Approximate area: in-app map + open in external navigation (both fuzzed) */}
       {onShowMap ? (
         <TouchableOpacity style={rc.mapBtn} onPress={onShowMap} accessibilityRole="button">
           <Feather name="map" size={15} color={C.accent} />
           <Text style={rc.mapBtnText}>Show approximate area on map</Text>
           <Feather name="chevron-right" size={16} color={C.accent} />
+        </TouchableOpacity>
+      ) : null}
+      {onNavigateApprox ? (
+        <TouchableOpacity style={rc.mapBtn} onPress={onNavigateApprox} accessibilityRole="button">
+          <Feather name="navigation" size={15} color={C.accent} />
+          <Text style={rc.mapBtnText}>Navigate to approximate area</Text>
+          <Feather name="external-link" size={15} color={C.accent} />
         </TouchableOpacity>
       ) : null}
 
@@ -740,6 +748,23 @@ export default function RequestsScreen() {
     mapFocusStore.set(coords)
     keepChatOpenRef.current = true   // come back into this chat, not the list
     router.push('/(tabs)/map')
+  }
+
+  // Open external maps on the APPROXIMATE (fuzzed) area — available before acceptance so a
+  // rider roughly knows where it is. The exact point stays gated to after the host shares it.
+  async function navigateApproxArea() {
+    const locId = selected?.location_id
+    if (!locId) return
+    let coords = locCoordsRef.current
+    if (!coords) {
+      const { data } = await supabase.from('host_locations_public')
+        .select('location_lat, location_lng').eq('id', locId).maybeSingle()
+      if (data?.location_lat != null && data?.location_lng != null) {
+        coords = fuzzCoords(locId, data.location_lat, data.location_lng)
+        locCoordsRef.current = coords
+      }
+    }
+    if (coords) await openNavigation(coords.lat, coords.lng)
   }
 
   async function loadConvs(userId: string) {
@@ -1680,6 +1705,7 @@ export default function RequestsScreen() {
 	                    onCancelStay={setCancelStayTarget}
 	                    cancelling={cancellingFor === m.request.id}
 	                    onShowMap={Platform.OS === 'web' && m.request.location_id ? showLocationOnMap : undefined}
+	                    onNavigateApprox={m.request.location_id ? navigateApproxArea : undefined}
 	                  />
                 </View>
               )
