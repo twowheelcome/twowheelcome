@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Image, Platform, Modal } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Image, Platform, Modal, Linking } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import QRCode from 'react-native-qrcode-svg'
@@ -10,6 +10,7 @@ import { UserChip, refreshUserChip } from '../../components/UserChip'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { compressBikePhoto } from '../../lib/compressImage'
 import { FONT } from '../../lib/theme'
+import { SUPPORT_URL, hasSupportLink } from '../../lib/support'
 import { LinearGradient } from 'expo-linear-gradient'
 
 export default function ProfileScreen() {
@@ -37,6 +38,7 @@ export default function ProfileScreen() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [supportNote, setSupportNote] = useState(false)
   const userIdRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -215,6 +217,11 @@ export default function ProfileScreen() {
   async function signOut() {
     await supabase.auth.signOut()
     router.replace('/')
+  }
+
+  function openSupport() {
+    if (hasSupportLink()) { Linking.openURL(SUPPORT_URL).catch(() => {}); return }
+    setSupportNote(true)
   }
 
   async function deleteAccount() {
@@ -500,6 +507,12 @@ export default function ProfileScreen() {
           </View>
         ))}
 
+        {/* Low-key, optional — never a paywall */}
+        <TouchableOpacity style={styles.supportRow} onPress={openSupport} activeOpacity={0.7}>
+          <Text style={styles.supportText}>🍺 Support twowheelcome — buy the dev a beer</Text>
+          <Text style={styles.supportSub}>{supportNote ? 'Coming soon — thanks for the thought 🙏' : 'Contribute to development · optional'}</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.signOutBtn} onPress={signOut}>
           <Text style={styles.signOutText}>Sign out</Text>
         </TouchableOpacity>
@@ -679,6 +692,9 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
 
   inlineError: { backgroundColor: C.errorSoft, borderRadius: 10, borderWidth: 1, borderColor: C.errorBorder, padding: 10 },
   inlineErrorText: { color: C.error, fontSize: 13 },
+  supportRow: { alignItems: 'center', gap: 2, paddingVertical: 10, marginTop: 4 },
+  supportText: { color: C.accent, fontSize: 14, fontWeight: '700', fontFamily: FONT.body },
+  supportSub: { color: C.textFaint, fontSize: 12, fontFamily: FONT.body },
   signOutBtn: { alignItems: 'center', paddingVertical: 8 },
   signOutText: { color: C.textFaint, fontSize: 14, textDecorationLine: 'underline' },
 
