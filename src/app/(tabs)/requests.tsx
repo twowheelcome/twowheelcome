@@ -1692,6 +1692,18 @@ export default function RequestsScreen() {
         <View style={styles.center}>
           <Text style={{ color: C.textDim, fontSize: 14 }}>Loading...</Text>
         </View>
+      ) : !currentUser ? (
+        <View style={styles.center}>
+          <Text style={styles.emptyEmoji}>💬</Text>
+          <Text style={styles.emptyTitle}>Log in to see your knocks and chats.</Text>
+          <Text style={styles.emptyText}>Your conversations with hosts and riders live here once you’re signed in.</Text>
+          <TouchableOpacity style={styles.loginCtaBtn} onPress={() => router.push({ pathname: '/' })}>
+            <Text style={styles.loginCtaText}>Log in</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={{ paddingVertical: 8 }} onPress={() => router.push({ pathname: '/', params: { signup: '1' } })}>
+            <Text style={{ color: C.accent, fontSize: 13, fontWeight: '700' }}>New here? Create a free account</Text>
+          </TouchableOpacity>
+        </View>
       ) : convs.length === 0 ? (
         <View style={styles.center}>
           <Text style={styles.emptyEmoji}>🏕️</Text>
@@ -2026,6 +2038,8 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   emptyEmoji: { fontSize: 52, marginBottom: 16 },
   emptyTitle: { color: C.text, fontSize: 18, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
   emptyText: { color: C.textDim, fontSize: 13, textAlign: 'center', lineHeight: 21 },
+  loginCtaBtn: { marginTop: 20, backgroundColor: C.accent, borderRadius: 100, paddingHorizontal: 32, paddingVertical: 13, minWidth: 200, alignItems: 'center' },
+  loginCtaText: { color: C.white, fontSize: 15, fontWeight: '800', letterSpacing: 0.5 },
   convList: {
     width: '100%',
     maxWidth: 920,
