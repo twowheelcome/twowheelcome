@@ -44,7 +44,7 @@ export default function PublicHostProfile() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [profile, setProfile] = useState<any>(null)
-  const [location, setLocation] = useState<any>(null)
+  const [locations, setLocations] = useState<any[]>([])
   const [avgRating, setAvgRating] = useState<number | null>(null)
   const [reviewCount, setReviewCount] = useState(0)
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
@@ -93,30 +93,29 @@ export default function PublicHostProfile() {
   }
 
   const load = useCallback(async (userId: string, locationId?: string) => {
-    // Public profiles only read the coarse, privacy-safe view.
-    const locFrom = (table: string) => {
-      const base = supabase.from(table).select('*').eq('user_id', userId)
-      return locationId
-        ? base.eq('id', locationId).maybeSingle()
-        : base.order('created_at', { ascending: true }).limit(1).maybeSingle()
-    }
-    const [{ data: prof }, locRes, { data: revs }] = await Promise.all([
+    // Public profiles only read the coarse, privacy-safe view. Load ALL of the host's
+    // places (a host can offer several), approximate coords only.
+    const [{ data: prof }, { data: locs }, { data: revs }] = await Promise.all([
       supabase.from('profiles').select('id, full_name, bio, avatar_url').eq('id', userId).maybeSingle(),
-      locFrom('host_locations_public'),
+      supabase.from('host_locations_public').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
       supabase.from('reviews')
         .select('rating, body, reviewer_id')
         .eq('reviewee_id', userId)
         .order('created_at', { ascending: false })
     ])
 
-    const loc = locRes.data
-
     // A profile is enough — riders with no listing still have a reputation to show.
-    // The host-offer sections and the knock CTA below only render when there's a location.
     if (!prof) { setNotFound(true); setLoading(false); return }
 
+    // If we arrived for a specific place (e.g. from a pin), show it first.
+    let ordered = locs || []
+    if (locationId) {
+      const idx = ordered.findIndex((l: any) => l.id === locationId)
+      if (idx > 0) ordered = [ordered[idx], ...ordered.filter((_: any, i: number) => i !== idx)]
+    }
+
     setProfile(prof)
-    setLocation(loc)
+    setLocations(ordered)
 
     if (revs?.length) {
       // The full list lives on the /reviews screen now; here we only need the summary.
@@ -160,7 +159,7 @@ export default function PublicHostProfile() {
     )
   }
 
-  const parkings: string[] = location?.parkings?.length ? location.parkings : (location?.parking ? [location.parking] : [])
+  const firstName = profile.full_name?.split(' ')[0] || 'this host'
 
   return (
     <View style={styles.container}>
@@ -177,8 +176,8 @@ export default function PublicHostProfile() {
                 {`${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} ${avgRating.toFixed(1)} · ${reviewCount} ${reviewCount === 1 ? 'review' : 'reviews'}`}
               </Text>
             )}
-            {location?.location_city && (
-              <Text style={styles.meta}>📍 {location.location_city}, {location.location_country}</Text>
+            {locations[0]?.location_city && (
+              <Text style={styles.meta}>📍 {locations[0].location_city}, {locations[0].location_country}{locations.length > 1 ? ` · ${locations.length} places` : ''}</Text>
             )}
           </View>
         </View>
@@ -208,75 +207,90 @@ export default function PublicHostProfile() {
           </View>
         )}
 
-        {/* Bike safety */}
-        {parkings.length > 0 && <SafetyBlock parkings={parkings} />}
-
-        {/* Bio */}
+        {/* Bio (profile-level) */}
         {profile.bio ? (
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>About {profile.full_name?.split(' ')[0] || 'this rider'}</Text>
+            <Text style={styles.sectionLabel}>About {firstName}</Text>
             <Text style={styles.bio}>{profile.bio}</Text>
           </View>
         ) : null}
 
-        {/* What the host wrote about this place (public description) */}
-        {location?.notes ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>About this place</Text>
-            <Text style={styles.bio}>{location.notes}</Text>
-          </View>
-        ) : null}
+        {/* Every place this host offers */}
+        {locations.map((loc, idx) => {
+          const parkings: string[] = loc.parkings?.length ? loc.parkings : (loc.parking ? [loc.parking] : [])
+          const amen = (loc.amenities as string[] | undefined)?.filter(a => AMENITY_LABELS[a]) ?? []
+          return (
+            <View key={loc.id} style={styles.placeCard}>
+              {locations.length > 1 ? (
+                <Text style={styles.placeHeader}>{loc.location_city || `Place ${idx + 1}`}{loc.location_country ? `, ${loc.location_country}` : ''}</Text>
+              ) : null}
 
-        {/* Sleep */}
-        {location?.sleep_types?.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Where you sleep</Text>
-            <View style={styles.chips}>
-              {(location.sleep_types as string[]).map((s: string) => (
-                <View key={s} style={styles.chip}>
-                  <Text style={styles.chipText}>{SLEEP_LABELS[s] || s}</Text>
+              {parkings.length > 0 && <SafetyBlock parkings={parkings} />}
+
+              {loc.notes ? (
+                <View style={styles.section}>
+                  <Text style={styles.sectionLabel}>About this place</Text>
+                  <Text style={styles.bio}>{loc.notes}</Text>
                 </View>
-              ))}
-            </View>
-          </View>
-        )}
+              ) : null}
 
-        {/* Amenities */}
-        {(location?.amenities as string[] | undefined)?.filter(a => AMENITY_LABELS[a]).length ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Amenities</Text>
-            <View style={styles.chips}>
-              {(location.amenities as string[]).filter(a => AMENITY_LABELS[a]).map((a: string) => (
-                <View key={a} style={styles.chip}>
-                  <Text style={styles.chipText}>{AMENITY_ICONS[a]} {AMENITY_LABELS[a]}</Text>
+              {loc.sleep_types?.length > 0 && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionLabel}>Where you sleep</Text>
+                  <View style={styles.chips}>
+                    {(loc.sleep_types as string[]).map((s: string) => (
+                      <View key={s} style={styles.chip}><Text style={styles.chipText}>{SLEEP_LABELS[s] || s}</Text></View>
+                    ))}
+                  </View>
                 </View>
-              ))}
+              )}
+
+              {amen.length ? (
+                <View style={styles.section}>
+                  <Text style={styles.sectionLabel}>Amenities</Text>
+                  <View style={styles.chips}>
+                    {amen.map((a: string) => (
+                      <View key={a} style={styles.chip}><Text style={styles.chipText}>{AMENITY_ICONS[a]} {AMENITY_LABELS[a]}</Text></View>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
+              {pricingText(loc) ? (
+                <View style={styles.section}>
+                  <Text style={styles.sectionLabel}>What this host wants in return</Text>
+                  <ContributionBadge loc={loc} />
+                  {loc.pricings?.includes('fixed') && loc.price_amount != null ? (
+                    <Text style={styles.priceHint}>Indicative — the exact amount and currency are agreed in chat (local cash is fine).</Text>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {loc.photos?.length > 0 && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionLabel}>Photos of the place</Text>
+                  <ListingGallery photos={loc.photos} />
+                </View>
+              )}
+
+              <Text style={styles.maxGuests}>👥 Up to {loc.max_guests} {loc.max_guests === 1 ? 'rider' : 'riders'}</Text>
+
+              <TouchableOpacity
+                style={styles.ctaBtn}
+                onPress={() => {
+                  if (isLoggedIn === false) { goToSignup(); return }
+                  router.replace({ pathname: '/(tabs)/map', params: { knockHost: profile.id, knockLocation: loc.id } })
+                }}
+              >
+                <Text style={styles.ctaBtnText}>{isLoggedIn === false ? 'Join to knock on the door' : 'Knock on the door'}</Text>
+              </TouchableOpacity>
+
+              {isLoggedIn && currentUserId && currentUserId !== id ? (
+                <ReportButton targetType="listing" targetId={loc.id} label="Report this listing" style={{ alignSelf: 'center', marginTop: 2 }} />
+              ) : null}
             </View>
-          </View>
-        ) : null}
-
-        {/* What this host wants in return (incl. the amount for a Paid listing) */}
-        {location && pricingText(location) ? (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>What this host wants in return</Text>
-            <ContributionBadge loc={location} />
-            {location.pricings?.includes('fixed') && location.price_amount != null ? (
-              <Text style={styles.priceHint}>Indicative — the exact amount and currency are agreed in chat (local cash is fine).</Text>
-            ) : null}
-          </View>
-        ) : null}
-
-        {/* Listing photos (public) */}
-        {location?.photos?.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Photos of the place</Text>
-            <ListingGallery photos={location.photos} />
-          </View>
-        )}
-
-        {location && (
-          <Text style={styles.maxGuests}>👥 Up to {location.max_guests} {location.max_guests === 1 ? 'rider' : 'riders'}</Text>
-        )}
+          )
+        })}
 
         {/* Reviews as a tappable folder, consistent with the profile menu. */}
         <TouchableOpacity
@@ -294,24 +308,6 @@ export default function PublicHostProfile() {
           </View>
           <Text style={styles.reviewsLinkChevron}>›</Text>
         </TouchableOpacity>
-
-        {/* Knock CTA only makes sense for a host with a place. */}
-        {location && (
-          <>
-            <View style={styles.divider} />
-            <Text style={styles.joinCta}>Want to stay here?</Text>
-            <Text style={styles.joinSub}>Send a stay request to {profile.full_name?.split(' ')[0] || 'this host'} and agree on the details in chat.</Text>
-            <TouchableOpacity
-              style={styles.ctaBtn}
-              onPress={() => {
-                if (isLoggedIn === false) { goToSignup(); return }
-                router.replace({ pathname: '/(tabs)/map', params: { knockHost: profile.id, knockLocation: location.id } })
-              }}
-            >
-              <Text style={styles.ctaBtnText}>{isLoggedIn === false ? 'Join to knock on the door' : 'Knock on the door'}</Text>
-            </TouchableOpacity>
-          </>
-        )}
 
         {/* Block / unblock — only for a logged-in viewer looking at someone else */}
         {isLoggedIn && currentUserId && currentUserId !== id ? (
@@ -333,8 +329,7 @@ export default function PublicHostProfile() {
             Copy is contextual: a profile with a listing is a host, otherwise a rider. */}
         {isLoggedIn && currentUserId && currentUserId !== id ? (
           <View style={styles.reportRow}>
-            <ReportButton targetType="user" targetId={id} label={location ? 'Report this host' : 'Report this rider'} />
-            {location ? <ReportButton targetType="listing" targetId={location.id} label="Report this listing" /> : null}
+            <ReportButton targetType="user" targetId={id} label={locations.length ? 'Report this host' : 'Report this rider'} />
           </View>
         ) : null}
       </ScrollView>
@@ -388,6 +383,8 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
 
   section:      { gap: 8 },
   sectionLabel: { color: C.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' },
+  placeCard:    { backgroundColor: C.surface, borderRadius: 22, borderWidth: 1, borderColor: C.border, padding: 16, gap: 14 },
+  placeHeader:  { color: C.text, fontSize: 16, fontFamily: FONT.headBold, letterSpacing: 0.3 },
   chips:        { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip:         { backgroundColor: C.surface, borderRadius: 100, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, paddingVertical: 6 },
   chipText:     { color: C.text, fontSize: 13, fontWeight: '600' },
