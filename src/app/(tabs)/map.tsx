@@ -519,7 +519,9 @@ export default function MapScreen() {
           )}
           {selectedPricings.includes('fixed') && (
             <View style={[styles.infoBox, { borderColor: C.infoBorder, backgroundColor: C.infoSoft }]}>
-              <Text style={[styles.infoText, { color: C.info }]}>💶 Arrange directly with the host — no commission.</Text>
+              <Text style={[styles.infoText, { color: C.info }]}>
+                💶 {selected.price_amount != null ? `About ${selected.price_amount} ${selected.price_currency || 'EUR'} / night — ` : ''}arrange directly with the host, no commission. The exact amount is agreed in chat.
+              </Text>
             </View>
           )}
 
