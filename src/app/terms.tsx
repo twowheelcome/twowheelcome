@@ -16,11 +16,33 @@ export default function TermsScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.kicker}>TWOWHEELCOME</Text>
         <Text style={styles.title}>Terms of Use</Text>
-        <Text style={styles.updated}>Last updated: 17 June 2026</Text>
+        <Text style={styles.updated}>Last updated: 26 June 2026</Text>
 
         <Text style={styles.body}>
           TWOWHEELCOME is a rider-to-rider community for finding and offering safe overnight spots. It is not a hotel, booking agency, travel operator or emergency service.
         </Text>
+
+        <View style={styles.disclaimer}>
+          <Text style={styles.disclaimerTitle}>⚠️ Important — please read</Text>
+          <Text style={styles.disclaimerText}>
+            TWOWHEELCOME is only an intermediary — a platform that helps riders and hosts find each other. We do not provide accommodation, we are not present at any stay and we are not a party to any agreement between a rider and a host. Everything you arrange and do through the app is entirely at your own risk. To the fullest extent allowed by law, TWOWHEELCOME and its operator accept no liability for any harm, injury, death, loss, theft, damage, cost or dispute arising from your use of the app or any stay, contact or arrangement made through it.
+          </Text>
+        </View>
+
+        <Section title="What TWOWHEELCOME is — and is not">
+          <Bullet>It is a directory and messaging tool that connects riders with hosts. Nothing more.</Bullet>
+          <Bullet>It does not own, run, inspect, endorse or guarantee any place, host, rider or listing.</Bullet>
+          <Bullet>It is not a party to any stay. Any stay, payment or arrangement is strictly between the rider and the host.</Bullet>
+          <Bullet>It gives no warranty that any listing, person, place or information is accurate, safe, lawful or suitable.</Bullet>
+        </Section>
+
+        <Section title="No liability — use at your own risk">
+          <Bullet>You use the app and arrange every stay entirely at your own risk and on your own judgement.</Bullet>
+          <Bullet>To the fullest extent permitted by law, TWOWHEELCOME and its operator are not liable for any injury, death, illness, loss, theft, property damage, financial loss, or any direct, indirect or consequential damages connected with the app or any stay, meeting, payment or dispute arranged through it.</Bullet>
+          <Bullet>You are responsible for vetting the other person, for your own safety and belongings, for any insurance, and for complying with local laws.</Bullet>
+          <Bullet>Any dispute about a stay, payment or behaviour is between the rider and the host to resolve. TWOWHEELCOME is not an arbiter and takes no responsibility for the outcome.</Bullet>
+          <Bullet>You agree to indemnify TWOWHEELCOME and its operator against claims arising from your listings, your conduct or your stays.</Bullet>
+        </Section>
 
         <Section title="Community use">
           <Bullet>Use the app honestly and respectfully.</Bullet>
@@ -37,7 +59,7 @@ export default function TermsScreen() {
 
         <Section title="Safety">
           <Text style={styles.body}>
-            Riders and hosts must use their own judgement. Check details before travelling, meet safely and do not continue with a stay if something feels wrong.
+            Riders and hosts must use their own judgement and look after their own safety. Check details before travelling, meet safely, tell someone where you are going, and do not continue with a stay if anything feels wrong. TWOWHEELCOME does not vet, background-check or verify any user, place or claim — that is up to you.
           </Text>
         </Section>
 
@@ -51,6 +73,18 @@ export default function TermsScreen() {
           <Bullet>You are responsible for keeping your login secure.</Bullet>
           <Bullet>You can delete your account from Profile.</Bullet>
           <Bullet>We may remove accounts, listings or content that abuse the service or put riders at risk.</Bullet>
+        </Section>
+
+        <Section title="Governing law & changes">
+          <Text style={styles.body}>
+            These terms are governed by the law of the operator’s country of establishment (see Operator). We may update them; continued use after a change means you accept the updated terms. If any part is found unenforceable, the rest still applies.
+          </Text>
+        </Section>
+
+        <Section title="Operator">
+          <Text style={styles.body}>
+            TWOWHEELCOME is operated by [OPERATOR LEGAL NAME], [LEGAL FORM], [REGISTERED ADDRESS], [COUNTRY], ID/registration no. [ID]. These details must be completed before public launch.
+          </Text>
         </Section>
 
         <Section title="Contact">
@@ -91,6 +125,9 @@ function makeStyles(C: ThemeColors) {
     content: { width: '100%', maxWidth: 720, alignSelf: 'center', padding: 24, paddingBottom: 60, gap: 16 },
     kicker: { color: C.accent, fontSize: 11, fontWeight: '900', letterSpacing: 2 },
     title: { color: C.text, fontSize: 30, fontWeight: '900', lineHeight: 36 },
+    disclaimer: { backgroundColor: C.warningSoft, borderWidth: 1, borderColor: C.warningBorder, borderRadius: 16, padding: 16, gap: 8 },
+    disclaimerTitle: { color: C.warning, fontSize: 15, fontWeight: '900' },
+    disclaimerText: { color: C.text, fontSize: 14, lineHeight: 21 },
     updated: { color: C.textDim, fontSize: 13, marginTop: -8 },
     body: { color: C.textMuted, fontSize: 15, lineHeight: 23 },
     section: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 18, padding: 16, gap: 9 },

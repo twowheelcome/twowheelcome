@@ -16,15 +16,19 @@ export default function PrivacyScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.kicker}>TWOWHEELCOME</Text>
         <Text style={styles.title}>Privacy Policy</Text>
-        <Text style={styles.updated}>Last updated: 17 June 2026</Text>
+        <Text style={styles.updated}>Last updated: 26 June 2026</Text>
 
         <Text style={styles.body}>
           TWOWHEELCOME helps riders find a safe overnight spot for their bike and themselves. We keep privacy simple: public map pins are approximate, and exact meeting points are shared by the host only when both sides agree in chat.
         </Text>
 
+        <Text style={styles.body}>
+          TWOWHEELCOME is only an intermediary that connects riders and hosts — it does not provide accommodation and is not a party to any stay. Using the app and arranging stays is at your own risk; see the Terms of Use for the full liability disclaimer.
+        </Text>
+
         <Section title="Who controls your data">
           <Text style={styles.body}>
-            The TWOWHEELCOME operator is the data controller. The operator&apos;s legal name, postal address and country of establishment must be added here before public launch. Privacy requests can be sent to {CONTACT_EMAIL}.
+            The TWOWHEELCOME operator is the data controller: [OPERATOR LEGAL NAME], [LEGAL FORM], [REGISTERED ADDRESS], [COUNTRY], ID/registration no. [ID]. These details must be completed before public launch. Privacy requests can be sent to {CONTACT_EMAIL}.
           </Text>
         </Section>
 
