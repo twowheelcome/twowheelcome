@@ -53,6 +53,31 @@
 > reviews per-stay, RLS matrix, rate limits, atomic delete, private-photo signing.
 > See dated sections below for history.
 >
+> **External-audit launch blockers (2026-06-27).**
+> 1. **Migration coherence.** Supabase applies migrations by FILENAME order, not authoring
+>    order, so alphabetically-later but older migrations clobbered newer state on a clean
+>    apply (host_locations_public view losing notes/photos/price cols; create_knock/validate/
+>    cascade reverting; per-guest overlap constraint returning; request-photos re-opening),
+>    and harden_rls_view_and_withdraw REVOKEd the view before it's created (apply crash).
+>    Fixed: guarded that REVOKE (IF EXISTS) and added zzzz_canonical_reconcile.sql (sorts last)
+>    that re-asserts the production-canonical view/functions/triggers/policies/constraints/
+>    storage. Applied to live = no-op (idempotent). **Caveat:** the migrations folder does NOT
+>    create the base tables (profiles/stay_requests/reviews/bikes/host_profiles were made in
+>    the dashboard), so a true from-zero deploy still needs a full schema baseline —
+>    Petr should run `supabase db dump` (needs DB creds) to capture one before launch.
+> 2. **delete-account** now also removes the user's public listing-photos (GDPR).
+> 3. **Deep-links** from email/push: RequestsScreen now reads ?openConv= on cold-open and
+>    opens that chat (one-shot, doesn't break return-to-list / internal nav).
+> 4. **Lint green** (0/0): ignore Deno functions + scripts + .expo; fixed entities,
+>    set-state-in-effect, unused vars/exprs/directives.
+> 5. **Terms** disclaimer reworded (EU-safe: intermediary, no exclusion of own-conduct
+>    liability). 6. **Privacy** fixed false 'private notes not published' line; DSA contact
+>    point named; GDPR art.13 elements present (operator = placeholder). 7. Microcopy +
+>    brand casing unified to TWOWHEELCOME (emails/push/subjects).
+>
+> **Petr must still:** fill operator/controller legal identity placeholders in Terms+Privacy;
+> generate a full schema baseline (db dump) for clean from-zero deploys; final legal review.
+>
 > **UX (2026-06-26): native date picker + host capacity in knock.** 'Other day' on mobile is
 > now a calendar (@react-native-community/datetimepicker, min today; web keeps its date input;
 > the package's web stub is a safe no-op). The Request-a-stay window shows a highlighted
