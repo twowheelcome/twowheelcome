@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  FlatList, Image, KeyboardAvoidingView, Linking, Modal, Platform,
+  Animated, FlatList, Image, KeyboardAvoidingView, Linking, Modal, PanResponder, Platform,
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { Feather } from '@expo/vector-icons'
@@ -36,6 +36,7 @@ type ConvRow = {
   lastMsgIsRequest: boolean
   hasRequest: boolean
   requestStatus: string | null
+  requestDeparture: string | null
   requestHostId: string | null
   requestGuestId: string | null
   location_id: string
@@ -192,6 +193,52 @@ function fmtDateStr(s: string): string {
   const [y, m, d] = s.split('-')
   return `${d}.${m}.${y.slice(2)}`
 }
+
+// iOS-style swipe-to-remove for a conversation row. Drag left to reveal a red
+// Remove action; tapping it hides the chat. PanResponder + Animated so it works on
+// web and native without extra gesture-root setup.
+/* eslint-disable react-hooks/refs -- gesture closures read .current at touch time, not render */
+function SwipeToRemove({ onRemove, children, C }: { onRemove: () => void; children: React.ReactNode; C: ThemeColors }) {
+  const ACTION_W = 92
+  const tx = useRef(new Animated.Value(0)).current
+  const openRef = useRef(false)
+  const pan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > 14 && Math.abs(g.dx) > Math.abs(g.dy) * 1.4,
+      onPanResponderMove: (_e, g) => {
+        let nx = (openRef.current ? -ACTION_W : 0) + g.dx
+        if (nx > 0) nx = 0
+        if (nx < -ACTION_W - 24) nx = -ACTION_W - 24
+        tx.setValue(nx)
+      },
+      onPanResponderRelease: (_e, g) => {
+        const open = openRef.current ? g.dx < ACTION_W / 2 : g.dx < -ACTION_W / 2
+        openRef.current = open
+        Animated.spring(tx, { toValue: open ? -ACTION_W : 0, useNativeDriver: true, bounciness: 0 }).start()
+      },
+    }),
+  ).current
+
+  function close() {
+    openRef.current = false
+    Animated.spring(tx, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start()
+  }
+
+  return (
+    <View style={{ position: 'relative' }}>
+      <View style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: ACTION_W, backgroundColor: C.error, borderRadius: 18, justifyContent: 'center', alignItems: 'center' }}>
+        <TouchableOpacity onPress={() => { close(); onRemove() }} style={{ flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center', gap: 3 }} accessibilityRole="button" accessibilityLabel="Remove this chat">
+          <Feather name="trash-2" size={18} color={C.white} />
+          <Text style={{ color: C.white, fontSize: 11, fontWeight: '800' }}>Remove</Text>
+        </TouchableOpacity>
+      </View>
+      <Animated.View style={{ transform: [{ translateX: tx }] }} {...pan.panHandlers}>
+        {children}
+      </Animated.View>
+    </View>
+  )
+}
+/* eslint-enable react-hooks/refs */
 
 // For full ISO timestamps (last_message_at etc.)
 function fmtDate(iso: string): string {
@@ -701,7 +748,7 @@ export default function RequestsScreen() {
       last_message_at: c.last_message_at,
       other: { id: otherId, full_name: prof?.full_name ?? null, avatar_url: prof?.avatar_url ?? null },
       lastMsgBody: null, lastMsgSenderId: null, lastMsgIsRequest: false,
-      hasRequest: false, requestStatus: null, requestHostId: null, requestGuestId: null,
+      hasRequest: false, requestStatus: null, requestDeparture: null, requestHostId: null, requestGuestId: null,
     }
   }
 
@@ -795,7 +842,7 @@ export default function RequestsScreen() {
         .in('conversation_id', convIds)
         .order('created_at', { ascending: false }),
       supabase.from('stay_requests')
-        .select('conversation_id, status, host_id, guest_id, created_at')
+        .select('conversation_id, status, host_id, guest_id, created_at, departure_date')
         .in('conversation_id', convIds)
         .order('created_at', { ascending: false }),
       supabase.from('conversation_reads')
@@ -832,6 +879,7 @@ export default function RequestsScreen() {
     const lastMsgMap: Record<string, { body: string | null; sender_id: string; request_id: string | null }> = {}
     const hasRequestMap: Record<string, boolean> = {}
     const requestStatusMap: Record<string, string> = {}
+    const requestDepartureMap: Record<string, string> = {}
     const requestHostMap: Record<string, string> = {}
     const requestGuestMap: Record<string, string> = {}
     lastMsgs?.forEach((m: any) => {
@@ -843,6 +891,7 @@ export default function RequestsScreen() {
     requestRows?.forEach((r: any) => {
       if (r.conversation_id && !requestStatusMap[r.conversation_id]) {
         requestStatusMap[r.conversation_id] = r.status
+        requestDepartureMap[r.conversation_id] = r.departure_date
         requestHostMap[r.conversation_id] = r.host_id
         requestGuestMap[r.conversation_id] = r.guest_id
       }
@@ -873,6 +922,7 @@ export default function RequestsScreen() {
         lastMsgIsRequest: !!last?.request_id,
         hasRequest: !!hasRequestMap[c.id],
         requestStatus: requestStatusMap[c.id] ?? null,
+        requestDeparture: requestDepartureMap[c.id] ?? null,
         requestHostId: requestHostMap[c.id] ?? null,
         requestGuestId: requestGuestMap[c.id] ?? null,
       }
@@ -881,10 +931,17 @@ export default function RequestsScreen() {
   }
 
   // A chat can be removed from MY list (per-user hide; the other person keeps theirs).
-  // Only when there's no active (pending/accepted) request — dead/finished chats only.
+  // Only an UPCOMING/active stay blocks it: a pending knock, or an accepted stay whose
+  // departure is still in the future. Past accepted stays (even reviewed), declined,
+  // withdrawn and cancelled chats are "behind us" and can be cleared.
   function canRemoveConv(conv: ConvRow): boolean {
     const s = conv.requestStatus
-    return s !== 'PENDING' && s !== 'ACCEPTED'
+    if (s === 'PENDING') return false
+    if (s === 'ACCEPTED') {
+      const today = new Date().toISOString().split('T')[0]
+      if (conv.requestDeparture && conv.requestDeparture >= today) return false
+    }
+    return true
   }
 
   async function hideConversation(conv: ConvRow) {
@@ -1987,9 +2044,9 @@ export default function RequestsScreen() {
                 : direction === 'hosting'
                   ? { label: 'Hosting', bg: C.infoSoft, color: C.info }
                   : null
-              return (
+              const removable = canRemoveConv(conv)
+              const rowInner = (
                 <TouchableOpacity
-                  key={conv.id}
                   style={styles.convRow}
                   onPress={() => openConv(conv)}
                   activeOpacity={0.75}
@@ -2032,6 +2089,11 @@ export default function RequestsScreen() {
                     </View>
                   </View>
                 </TouchableOpacity>
+              )
+              return removable ? (
+                <SwipeToRemove key={conv.id} C={C} onRemove={() => hideConversation(conv)}>{rowInner}</SwipeToRemove>
+              ) : (
+                <View key={conv.id}>{rowInner}</View>
               )
             })}
         </ScrollView>
