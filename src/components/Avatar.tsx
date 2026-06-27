@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Image, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions,
 } from 'react-native'
@@ -24,7 +24,7 @@ export function Avatar({
   style?: object
 }) {
   const C = useTheme()
-  const s = makeStyles(C)
+  const s = useMemo(() => makeStyles(C), [C])
   const { width, height } = useWindowDimensions()
   const [open, setOpen] = useState(false)
   const circle = { width: size, height: size, borderRadius: size / 2 }

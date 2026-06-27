@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+import { ReactNode, useMemo } from 'react'
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { router } from 'expo-router'
 import { useTheme, useThemeMode, type ThemeColors } from '../lib/ThemeContext'
@@ -12,7 +12,7 @@ const MARK_DARK = require('../../assets/images/mark-cream.png')
 export function AppWordmark({ compact = false }: { compact?: boolean }) {
   const C = useTheme()
   const { scheme } = useThemeMode()
-  const styles = makeStyles(C)
+  const styles = useMemo(() => makeStyles(C), [C])
   return (
     <View style={styles.brand}>
       <Image source={scheme === 'dark' ? MARK_DARK : MARK_LIGHT} style={[styles.mark, compact && styles.markCompact]} resizeMode="contain" />
@@ -23,7 +23,7 @@ export function AppWordmark({ compact = false }: { compact?: boolean }) {
 
 export function HeaderBackButton({ onPress = () => router.back() }: { onPress?: () => void }) {
   const C = useTheme()
-  const styles = makeStyles(C)
+  const styles = useMemo(() => makeStyles(C), [C])
   return (
     <TouchableOpacity style={styles.backButton} onPress={onPress} hitSlop={10} accessibilityRole="button" accessibilityLabel="Go back">
       <Text style={styles.backButtonText}>←</Text>
@@ -33,7 +33,7 @@ export function HeaderBackButton({ onPress = () => router.back() }: { onPress?: 
 
 export function AppHeader({ left, right, children, onLogoPress }: { left?: ReactNode; right?: ReactNode; children?: ReactNode; onLogoPress?: () => void }) {
   const C = useTheme()
-  const styles = makeStyles(C)
+  const styles = useMemo(() => makeStyles(C), [C])
   const compactLogo = !!left && !!right
   const content = children ?? (
     <TouchableOpacity

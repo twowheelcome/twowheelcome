@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 import { FONT } from '../lib/theme'
@@ -36,7 +37,7 @@ function mapLabels(values: string[], labels: Record<string, string>): string {
 
 export function HostOffer({ loc }: { loc: OfferLoc }) {
   const C = useTheme()
-  const s = makeStyles(C)
+  const s = useMemo(() => makeStyles(C), [C])
   const sleep = loc.sleep_types ?? []
   // Only amenities we still offer (retired options in old data are dropped, not shown raw).
   const amenities = (loc.amenities ?? []).filter(a => AMENITY_LABELS[a])

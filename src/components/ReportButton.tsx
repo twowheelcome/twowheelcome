@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { View, Text, TouchableOpacity, TextInput, Modal, StyleSheet } from 'react-native'
 import { supabase } from '../lib/supabase'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
@@ -19,7 +19,7 @@ export function ReportButton({
   style?: object
 }) {
   const C = useTheme()
-  const s = makeStyles(C)
+  const s = useMemo(() => makeStyles(C), [C])
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)

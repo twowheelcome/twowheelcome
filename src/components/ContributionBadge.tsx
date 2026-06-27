@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 import { FONT } from '../lib/theme'
@@ -13,7 +14,7 @@ type Loc = {
 
 export function ContributionBadge({ loc, compact = false }: { loc: Loc; compact?: boolean }) {
   const C = useTheme()
-  const s = makeStyles(C)
+  const s = useMemo(() => makeStyles(C), [C])
   const pricings = loc.pricings?.length ? loc.pricings : (loc.pricing ? [loc.pricing] : ['free'])
 
   const items: { key: string; icon: string; label: string; color: string; bg: string; border: string }[] = []
