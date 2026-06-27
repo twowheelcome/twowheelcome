@@ -931,7 +931,7 @@ export default function MapScreen() {
                     router.push({ pathname: '/host/[id]', params: { id: selected.user_id, location: selected.id } })
                   }}
                 >
-                  <Text style={{ color: C.accent, fontSize: 14, fontWeight: '700' }}>View full profile · block or report</Text>
+                  <Text style={{ color: C.accent, fontSize: 14, fontWeight: '700' }}>View full profile</Text>
                 </TouchableOpacity>
               )}
 

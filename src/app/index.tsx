@@ -51,7 +51,9 @@ function Onboarding({ C, onDone }: { C: ThemeColors; onDone: () => void }) {
 
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18 }}>
         <View style={{ width: 160, height: 160, alignItems: 'center', justifyContent: 'center' }}>
-          <Image source={current.image} style={{ width: 160, height: 160 }} resizeMode="contain" />
+          {/* Tint to the foreground colour (graphite on light, cream on dark) so the
+              illustrations match the onboarding text — no terracotta in the glyphs. */}
+          <Image source={current.image} style={{ width: 160, height: 160, tintColor: C.text }} resizeMode="contain" />
         </View>
         <Text style={{ color: C.text, fontSize: 28, lineHeight: 34, fontWeight: '800', textAlign: 'center', maxWidth: 330 }}>
           {current.title}

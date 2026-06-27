@@ -1,5 +1,12 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Light onboarding glyphs + trimmed host-sheet link (2026-06-27).**
+> - **Onboarding illustrations** (bike / roof / gear-circle PNGs) are now tinted to the foreground
+>   colour (`tintColor: C.text`) — graphite on light, cream on dark — so they match the onboarding
+>   text instead of being terracotta. The terracotta is gone from the glyphs (the tint flattens them).
+> - **Host sheet link** shortened from "View full profile · block or report" to just "View full
+>   profile". Block and Report still live on the full profile (host/[id]); the sheet only links there.
+>
 > **Shorter knock placeholder + dismiss-on-left consistency (2026-06-27).**
 > - **Knock placeholder** trimmed from a long multi-sentence tip to one short line
 >   ("Hi! Where are you riding from, how long, and what's your bike?") so it no longer overflows.
