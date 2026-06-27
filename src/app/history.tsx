@@ -3,6 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import { router, useFocusEffect } from 'expo-router'
 import { supabase } from '../lib/supabase'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
+import { FONT } from '../lib/theme'
 import { pendingChatStore } from '../lib/pendingChatStore'
 import { AppHeader, HeaderBackButton } from '../components/AppHeader'
 
@@ -156,7 +157,7 @@ function makeStyles(C: ThemeColors) {
     center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 8 },
     emptyEmoji: { fontSize: 40 },
     emptyTitle: { color: C.text, fontSize: 18, fontWeight: '800' },
-    emptyText: { color: C.textDim, fontSize: 14, textAlign: 'center', lineHeight: 20 },
+    emptyText: { color: C.textDim, fontSize: 14, textAlign: 'center', lineHeight: 20, fontFamily: FONT.body },
     list: { padding: 16, gap: 12, maxWidth: 700, width: '100%', alignSelf: 'center' },
     card: { backgroundColor: C.surface, borderRadius: 18, borderWidth: 1, borderColor: C.border, padding: 16, gap: 4 },
     cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },

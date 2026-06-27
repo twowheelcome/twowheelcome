@@ -4,6 +4,7 @@ import DateTimePicker from '@react-native-community/datetimepicker'
 import { supabase } from '../../lib/supabase'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
+import { FONT } from '../../lib/theme'
 import { pendingChatStore } from '../../lib/pendingChatStore'
 import { pendingKnockStore } from '../../lib/pendingKnockStore'
 import { mapFocusStore } from '../../lib/mapFocusStore'
@@ -1132,7 +1133,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   empty:            { alignItems: 'center', justifyContent: 'center', padding: 48 },
   emptyEmoji:       { fontSize: 64, marginBottom: 16 },
   emptyTitle:       { color: C.text, fontSize: 20, fontWeight: '800', marginBottom: 8, letterSpacing: 0.5 },
-  emptyText:        { color: C.textDim, fontSize: 14, textAlign: 'center', lineHeight: 22 },
+  emptyText:        { color: C.textDim, fontSize: 14, textAlign: 'center', lineHeight: 22, fontFamily: FONT.body },
   card:             { backgroundColor: C.surface, borderRadius: 22, padding: 16, borderWidth: 1, borderColor: C.border, marginBottom: 12 },
   cardSelected:     { borderColor: C.accent },
   cardRow:          { flexDirection: 'row', gap: 12, alignItems: 'center' },
@@ -1142,18 +1143,18 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   cardName:         { color: C.text, fontWeight: '700', fontSize: 15 },
   cardRating:       { color: C.accent, fontWeight: '700', fontSize: 13 },
   cardRatingCount:  { color: C.textDim, fontWeight: '400', fontSize: 12 },
-  amenityTag:       { color: C.textDim, fontSize: 11, backgroundColor: C.elevated, borderRadius: 100, paddingHorizontal: 8, paddingVertical: 3 },
+  amenityTag:       { color: C.textDim, fontSize: 11, backgroundColor: C.elevated, borderRadius: 100, paddingHorizontal: 8, paddingVertical: 3, fontFamily: FONT.body },
   lastReview:       { marginTop: 10, backgroundColor: C.elevated, borderRadius: 10, padding: 10, borderLeftWidth: 3, borderLeftColor: C.accent },
   lastReviewStars:  { color: C.accent, fontSize: 12, marginBottom: 3 },
-  lastReviewBody:   { color: C.text, fontSize: 13, fontStyle: 'italic', lineHeight: 18 },
+  lastReviewBody:   { color: C.text, fontSize: 13, fontStyle: 'italic', lineHeight: 18, fontFamily: FONT.body },
   lastReviewAuthor: { color: C.textDim, fontSize: 11, marginTop: 4 },
   ownBadge:         { color: C.accent, fontSize: 13 },
-  cardLocation:     { color: C.textDim, fontSize: 12, marginTop: 3 },
+  cardLocation:     { color: C.textDim, fontSize: 12, marginTop: 3, fontFamily: FONT.body },
   pricePill:        { borderRadius: 100, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 4 },
   pricePillText:    { fontSize: 11, fontWeight: '600' },
   detail:           { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.border, gap: 10 },
   detailBio:        { color: C.textMuted, fontSize: 13, lineHeight: 20 },
-  detailInfo:       { color: C.textDim, fontSize: 12 },
+  detailInfo:       { color: C.textDim, fontSize: 12, fontFamily: FONT.body },
   requestButton:    { backgroundColor: C.accent, borderRadius: 100, padding: 14, alignItems: 'center' },
   requestButtonText:{ color: C.white, fontWeight: '800', fontSize: 13, letterSpacing: 1 },
   editButton:       { borderWidth: 1, borderColor: C.accent, borderRadius: 100, padding: 14, alignItems: 'center' },
@@ -1174,9 +1175,9 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   loadErrorBanner:  { position: 'absolute', top: 16, left: 16, right: 16, zIndex: 1100, backgroundColor: C.errorSoft, borderColor: C.errorBorder, borderWidth: 1, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   loadErrorText:    { color: C.error, fontSize: 13, fontWeight: '600', flex: 1 },
   loadErrorRetry:   { color: C.accent, fontSize: 13, fontWeight: '800' },
-  textarea:         { backgroundColor: C.elevated, borderRadius: 12, padding: 14, color: C.text, fontSize: 16, minHeight: 100, borderWidth: 1, borderColor: C.border, textAlignVertical: 'top', lineHeight: 22 },
+  textarea:         { backgroundColor: C.elevated, borderRadius: 12, padding: 14, color: C.text, fontSize: 16, minHeight: 100, borderWidth: 1, borderColor: C.border, textAlignVertical: 'top', lineHeight: 22, fontFamily: FONT.body },
   infoBox:          { borderRadius: 12, borderWidth: 1, padding: 14 },
-  infoText:         { fontSize: 13, lineHeight: 19 },
+  infoText:         { fontSize: 13, lineHeight: 19, fontFamily: FONT.body },
   photoBtn:         { borderWidth: 1, borderColor: C.border, borderRadius: 12, borderStyle: 'dashed', padding: 24, alignItems: 'center', justifyContent: 'center' },
   photoBtnFilled:   { borderStyle: 'solid', borderColor: C.accent },
   photoBtnText:     { color: C.textMuted, fontSize: 13, fontWeight: '600' },

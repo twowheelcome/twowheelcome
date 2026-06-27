@@ -9,6 +9,7 @@ import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { UserChip, refreshUserChip } from '../../components/UserChip'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { compressBikePhoto } from '../../lib/compressImage'
+import { FONT } from '../../lib/theme'
 
 export default function ProfileScreen() {
   const C = useTheme()
@@ -591,7 +592,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
   name: { color: C.text, fontSize: 24, fontWeight: '800', letterSpacing: 0.3 },
-  email: { color: C.textDim, fontSize: 13, marginTop: -12 },
+  email: { color: C.textDim, fontSize: 13, marginTop: -12, fontFamily: FONT.body },
   placeCard: { backgroundColor: C.surface, borderRadius: 22, padding: 16, borderWidth: 1, borderColor: C.border },
   placeCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   placeCardTitle: { color: C.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 2 },
@@ -601,7 +602,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   placeDetailText: { color: C.textMuted, fontSize: 13 },
 
   bioRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 2 },
-  bioText: { flex: 1, color: C.textMuted, fontSize: 14, lineHeight: 21 },
+  bioText: { flex: 1, color: C.textMuted, fontSize: 14, lineHeight: 21, fontFamily: FONT.body },
   bioAddBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 2, backgroundColor: C.accentSoft, borderRadius: 100, borderWidth: 1, borderColor: C.accentBorder, paddingHorizontal: 14, paddingVertical: 8 },
   bioAddText: { color: C.accent, fontSize: 13, fontWeight: '700' },
   bioEdit: { gap: 10, marginTop: 2 },
@@ -645,7 +646,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   },
   menuTextWrap: { gap: 3 },
   menuTitle: { color: C.text, fontSize: 16, fontWeight: '700' },
-  menuSub: { color: C.textDim, fontSize: 13 },
+  menuSub: { color: C.textDim, fontSize: 13, fontFamily: FONT.body },
   menuIcon: {
     width: 42, height: 42, borderRadius: 21,
     backgroundColor: C.elevated,
@@ -666,7 +667,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   reviewItemHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   reviewItemName: { color: C.text, fontSize: 14, fontWeight: '700' },
   reviewItemStars: { fontSize: 13 },
-  reviewItemBody: { color: C.textMuted, fontSize: 13, lineHeight: 19, fontStyle: 'italic' },
+  reviewItemBody: { color: C.textMuted, fontSize: 13, lineHeight: 19, fontStyle: 'italic', fontFamily: FONT.body },
   reviewItemDate: { color: C.textDim, fontSize: 11, marginTop: 4 },
 
   deleteBtn: { alignItems: 'center', paddingVertical: 6, marginTop: 4 },

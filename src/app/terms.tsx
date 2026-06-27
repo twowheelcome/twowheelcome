@@ -120,13 +120,13 @@ function makeStyles(C: ThemeColors) {
     title: { color: C.text, fontSize: 30, fontFamily: FONT.headBold, lineHeight: 36 },
     disclaimer: { backgroundColor: C.warningSoft, borderWidth: 1, borderColor: C.warningBorder, borderRadius: 16, padding: 16, gap: 8 },
     disclaimerTitle: { color: C.warning, fontSize: 15, fontWeight: '900' },
-    disclaimerText: { color: C.text, fontSize: 14, lineHeight: 21 },
+    disclaimerText: { color: C.text, fontSize: 14, lineHeight: 21, fontFamily: FONT.body },
     updated: { color: C.textDim, fontSize: 13, marginTop: -8 },
-    body: { color: C.textMuted, fontSize: 15, lineHeight: 23 },
+    body: { color: C.textMuted, fontSize: 15, lineHeight: 23, fontFamily: FONT.body },
     section: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 18, padding: 16, gap: 9 },
     sectionTitle: { color: C.text, fontSize: 17, fontWeight: '900' },
     bulletRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
     bulletMark: { color: C.accent, fontSize: 15, lineHeight: 22, fontWeight: '900' },
-    bulletText: { flex: 1, color: C.textMuted, fontSize: 15, lineHeight: 22 },
+    bulletText: { flex: 1, color: C.textMuted, fontSize: 15, lineHeight: 22, fontFamily: FONT.body },
   })
 }

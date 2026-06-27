@@ -1,5 +1,15 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **App-loaded body font (Inter), 2026-06-27.** Body text used to fall back to each device's
+> system sans (inconsistent across phones). Added `@expo-google-fonts/inter`, loaded in `_layout`
+> alongside Oswald (splash waits for all; falls back to system if loading fails). `FONT.body` is now
+> `Inter_400Regular` (+ bodyMedium/bodySemiBold) and applied to the prose/value/input text across
+> the app — host description & bio, chat bubbles + composer, request-card facts, reviews & replies,
+> legal paragraphs, profile, history, become-host notes/inputs, SafetyBlock sub, ContributionBadge.
+> Oswald stays on the wordmark/headings/labels/buttons (condensed display — never on running prose).
+> So: headers = Oswald (app-loaded), body = Inter (app-loaded), both device-independent. tsc + eslint
+> green.
+
 > **Listing notes/description font consistency (2026-06-27).** The public description (`notes`)
 > read as a different font to Petr. Audited every place it renders — HostOffer (`value`), host
 > profile ("About this place"/bio = `bio`), the chat request card (`factValue`/`factNotes`), and

@@ -3,6 +3,7 @@ import { router, Stack } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import * as Notifications from 'expo-notifications'
 import { useFonts, Oswald_500Medium, Oswald_600SemiBold, Oswald_700Bold } from '@expo-google-fonts/oswald'
+import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from '@expo-google-fonts/inter'
 import { ThemeProvider, useTheme } from '../lib/ThemeContext'
 import { supabase } from '../lib/supabase'
 import { registerPushToken } from '../lib/pushNotifications'
@@ -39,6 +40,7 @@ export default function RootLayout() {
   const notifSubRef = useRef<Notifications.Subscription | null>(null)
   const [fontsLoaded] = useFonts({
     Oswald_500Medium, Oswald_600SemiBold, Oswald_700Bold,
+    Inter_400Regular, Inter_500Medium, Inter_600SemiBold,
   })
 
   useEffect(() => {

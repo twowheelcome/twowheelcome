@@ -186,14 +186,14 @@ function makeStyles(C: ThemeColors) {
     cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     cardName: { color: C.text, fontSize: 14, fontWeight: '700' },
     cardStars: { fontSize: 13 },
-    cardBody: { color: C.textMuted, fontSize: 14, lineHeight: 20, fontStyle: 'italic' },
+    cardBody: { color: C.textMuted, fontSize: 14, lineHeight: 20, fontStyle: 'italic', fontFamily: FONT.body },
     cardDate: { color: C.textDim, fontSize: 11 },
     emptyCard: { backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 18, alignItems: 'center' },
     emptyText: { color: C.textMuted, fontSize: 14 },
 
     replyBlock: { marginTop: 4, borderLeftWidth: 3, borderLeftColor: C.accent, paddingLeft: 12, gap: 3 },
     replyAuthor: { color: C.accent, fontSize: 12, fontWeight: '800' },
-    replyBody: { color: C.text, fontSize: 14, lineHeight: 20 },
+    replyBody: { color: C.text, fontSize: 14, lineHeight: 20, fontFamily: FONT.body },
     replyDate: { color: C.textDim, fontSize: 11 },
 
     replyBtn: { alignSelf: 'flex-start', marginTop: 2, paddingVertical: 7, paddingHorizontal: 14, borderRadius: 100, borderWidth: 1, borderColor: C.border },

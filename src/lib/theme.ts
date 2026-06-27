@@ -143,12 +143,15 @@ export const SAFETY = {
 
 // ── Shape & type constants ─────────────────────────────────────────
 export const RADIUS = { pill: 100, card: 22, lg: 18, md: 14, sm: 12 } as const
-// Oswald = wordmark + headings/labels/buttons (UPPERCASE + tracking). No serif/western.
-// Body stays the system sans for readability.
+// Oswald = wordmark + headings/labels/buttons (condensed display; UPPERCASE + tracking).
+// Inter = body/prose (clean readable sans). Both app-loaded (see _layout) so typography is
+// identical across devices instead of leaning on each platform's default sans.
 export const FONT = {
-  display:  'Oswald_700Bold',   // colour-split wordmark
-  head:     'Oswald_600SemiBold',
-  headBold: 'Oswald_700Bold',
-  headMed:  'Oswald_500Medium',
-  body:     'System',
+  display:    'Oswald_700Bold',   // colour-split wordmark
+  head:       'Oswald_600SemiBold',
+  headBold:   'Oswald_700Bold',
+  headMed:    'Oswald_500Medium',
+  body:       'Inter_400Regular',
+  bodyMedium: 'Inter_500Medium',
+  bodySemiBold: 'Inter_600SemiBold',
 } as const

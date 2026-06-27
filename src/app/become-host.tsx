@@ -6,6 +6,7 @@ import { router } from 'expo-router'
 import type { Pin } from '../components/LocationPicker'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 import { compressBikePhoto } from '../lib/compressImage'
+import { FONT } from '../lib/theme'
 import { SafetyIcon } from '../components/SafetyIcon'
 import { getSafetyKey } from '../components/SafetyBlock'
 
@@ -606,7 +607,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   optIcon: { fontSize: 22, width: 32, textAlign: 'center' },
   optIconWrap: { width: 32, alignItems: 'center', justifyContent: 'center' },
   optLabel: { color: C.text, fontWeight: '700', fontSize: 14 },
-  optDesc: { color: C.textMuted, fontSize: 12, marginTop: 2 },
+  optDesc: { color: C.textMuted, fontSize: 12, marginTop: 2, fontFamily: FONT.body },
   check: { fontSize: 18, fontWeight: '900' },
 
   optCardSleep: { borderColor: C.secondaryBorder, backgroundColor: C.secondarySoft },
@@ -634,8 +635,8 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   pLabelActive: { color: C.accent },
   pDesc: { color: C.textDim, fontSize: 10, textAlign: 'center' },
 
-  textarea: { backgroundColor: C.elevated, borderRadius: 12, padding: 14, color: C.text, fontSize: 16, borderWidth: 1, borderColor: C.border, minHeight: 110, textAlignVertical: 'top', lineHeight: 22 },
-  privateNote: { color: C.textDim, fontSize: 12, lineHeight: 18 },
+  textarea: { backgroundColor: C.elevated, borderRadius: 12, padding: 14, color: C.text, fontSize: 16, borderWidth: 1, borderColor: C.border, minHeight: 110, textAlignVertical: 'top', lineHeight: 22, fontFamily: FONT.body },
+  privateNote: { color: C.textDim, fontSize: 12, lineHeight: 18, fontFamily: FONT.body },
   input: { backgroundColor: C.elevated, borderRadius: 12, padding: 14, color: C.text, fontSize: 16, borderWidth: 1, borderColor: C.border },
   priceRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   priceUnitHint: { color: C.textMuted, fontSize: 15, fontWeight: '700', minWidth: 96 },

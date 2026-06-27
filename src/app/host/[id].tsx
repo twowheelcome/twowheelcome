@@ -374,11 +374,11 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   meta:         { color: C.textMuted, fontSize: 13 },
 
   bio:          { color: C.text, fontSize: 15, lineHeight: 23, fontFamily: FONT.body },
-  priceHint:    { color: C.textDim, fontSize: 12, lineHeight: 17, marginTop: 4 },
+  priceHint:    { color: C.textDim, fontSize: 12, lineHeight: 17, marginTop: 4, fontFamily: FONT.body },
 
   joinBanner:        { backgroundColor: C.accentSoft, borderColor: C.accentBorder, borderWidth: 1, borderRadius: 22, padding: 18, gap: 10 },
   joinBannerTitle:   { color: C.text, fontSize: 18, fontWeight: '900' },
-  joinBannerText:    { color: C.textMuted, fontSize: 14, lineHeight: 21 },
+  joinBannerText:    { color: C.textMuted, fontSize: 14, lineHeight: 21, fontFamily: FONT.body },
   joinBannerBtn:     { height: 50, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
   joinBannerBtnText: { color: C.white, fontSize: 15, fontWeight: '800', letterSpacing: 0.5 },
   joinBannerLogin:   { color: C.accent, fontSize: 13, fontWeight: '700', textAlign: 'center' },
@@ -406,7 +406,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
 
   divider:      { height: 1, backgroundColor: C.border, marginVertical: 8 },
   joinCta:      { color: C.text, fontSize: 18, fontWeight: '900' },
-  joinSub:      { color: C.textMuted, fontSize: 14, lineHeight: 21 },
+  joinSub:      { color: C.textMuted, fontSize: 14, lineHeight: 21, fontFamily: FONT.body },
   ctaBtn:       { height: 52, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
   ctaBtnText:   { color: C.white, fontSize: 15, fontWeight: '800', letterSpacing: 0.5 },
 

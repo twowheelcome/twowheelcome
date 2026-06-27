@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native'
-import { SAFETY } from '../lib/theme'
+import { SAFETY, FONT } from '../lib/theme'
 import { useTheme } from '../lib/ThemeContext'
 import { SafetyIcon } from './SafetyIcon'
 
@@ -68,7 +68,7 @@ const sb = StyleSheet.create({
   label:        { fontSize: 16, fontWeight: '800' },
   rankPill:     { borderRadius: 100, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2 },
   rankText:     { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
-  sub:          { fontSize: 13, lineHeight: 19 },
+  sub:          { fontSize: 13, lineHeight: 19, fontFamily: FONT.body },
   secondaryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.06)' },
   chip:         { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 100, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
   chipText:     { fontSize: 11, fontWeight: '600' },

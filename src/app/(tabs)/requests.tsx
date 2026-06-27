@@ -485,7 +485,7 @@ function makeRc(C: ThemeColors) { return StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 10,
     borderLeftWidth: 3, borderLeftColor: C.accent,
   },
-  msgText: { color: C.textMuted, fontSize: 13, lineHeight: 20, fontStyle: 'italic' },
+  msgText: { color: C.textMuted, fontSize: 13, lineHeight: 20, fontStyle: 'italic', fontFamily: FONT.body },
   photo: { width: '100%', height: 200, borderRadius: 14 },
   privacyBlock: { flexDirection: 'row', gap: 8, borderRadius: 12, borderWidth: 1, padding: 10, alignItems: 'flex-start' },
   privacyIcon:  { fontSize: 18, marginTop: 1 },
@@ -1919,7 +1919,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   },
   bubbleMine: { backgroundColor: C.accent },
   bubbleOther: { backgroundColor: C.surface },
-  bubbleText: { color: C.text, fontSize: 14, lineHeight: 21 },
+  bubbleText: { color: C.text, fontSize: 14, lineHeight: 21, fontFamily: FONT.body },
   bubbleTextMine: { color: C.white },
   navAction: {
     alignSelf: 'flex-start',
@@ -2101,7 +2101,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   input: {
     flex: 1, backgroundColor: C.elevated, borderRadius: 20,
     paddingHorizontal: 16, paddingVertical: 8,
-    color: C.text, fontSize: 15, lineHeight: 20, textAlignVertical: 'top', minWidth: 0,
+    color: C.text, fontSize: 15, lineHeight: 20, textAlignVertical: 'top', minWidth: 0, fontFamily: FONT.body,
   },
   sendBtn: {
     width: 38, height: 38, borderRadius: 19,

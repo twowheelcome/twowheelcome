@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
+import { FONT } from '../lib/theme'
 
 // Prominent contribution badges (Free / Beer welcome / Paid + amount) — what the host
 // wants in return, legible at a glance on cards and detail. One badge per chosen option.
@@ -51,7 +52,7 @@ function makeStyles(C: ThemeColors) {
     badgeCompact: { paddingHorizontal: 10, paddingVertical: 4, gap: 4 },
     icon: { fontSize: 15 },
     iconCompact: { fontSize: 12 },
-    label: { fontSize: 13, fontWeight: '800', letterSpacing: 0.3 },
+    label: { fontSize: 13, fontWeight: '800', letterSpacing: 0.3, fontFamily: FONT.body },
     labelCompact: { fontSize: 11, fontWeight: '700' },
   })
 }
