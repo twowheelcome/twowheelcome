@@ -28,17 +28,17 @@ function Onboarding({ C, onDone }: { C: ThemeColors; onDone: () => void }) {
     {
       image: dark ? require('../../assets/images/bike-cream.png') : require('../../assets/images/bike.png'),
       title: 'Where will your bike sleep tonight?',
-      body: 'Find riders who can offer a safe spot for your bike and a place for you to rest.',
+      body: "Riders who'll share a safe spot for your bike — and a roof for you.",
     },
     {
       image: dark ? require('../../assets/images/roof-cream.png') : require('../../assets/images/roof.png'),
-      title: 'Bike safety comes first.',
-      body: 'See the parking situation before anything else: locked garage, covered parking, fenced yard, or street.',
+      title: "Know it's safe before you knock.",
+      body: 'Every host shows the parking up front: locked garage, carport, yard, or street.',
     },
     {
       image: dark ? require('../../assets/images/kruh-cream.png') : require('../../assets/images/kruh.png'),
-      title: 'From riders to riders.',
-      body: 'A safe night for your bike and you, shared by someone who understands why both matter.',
+      title: "It's riders looking after riders.",
+      body: 'No prices. Just a safe night, passed on by someone who gets it.',
     },
   ]
   const current = slides[step]
