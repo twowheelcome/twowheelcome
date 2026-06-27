@@ -1,5 +1,23 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Dark mode + narrower language set (2026-06-27).**
+> - **Languages** trimmed to English, Español, Français, Čeština, Polski (dropped Deutsch/Italiano);
+>   still EN-only strings.
+> - **Dark mode.** ThemeProvider now resolves **Light / Dark / System** (persisted to AsyncStorage,
+>   follows the OS via `Appearance`; default System) and serves LIGHT or DARK from `theme.ts`. DARK
+>   palette aligned to the design spec (bg #2F3438, surface #373E44, elevated #424C54, sunken #272C30,
+>   borders, map tints, cream text, terracotta accent #D2773A, brighter green #5FB07A) + shared shadow
+>   token. `useTheme()` unchanged; new `useThemeMode()` drives the Settings **Appearance** segment.
+> - **Coverage.** Every screen already consumed `useTheme`, so they adapt automatically. Fixed the
+>   gaps that would otherwise break dark: Stack `contentStyle = C.bg` (no white flash between screens),
+>   a web pre-hydration script that paints the body per stored mode / prefers-color-scheme, HostMap +
+>   LocationPicker use CARTO **dark tiles** + `C.mapBg` container in dark mode, and tokenized the
+>   remaining hardcoded light colors (index hero bg, SafetyBlock hairline, become-host placeholders).
+>   Light mode is unchanged. AppErrorBoundary stays a deliberate standalone dark screen.
+> - **Remaining visual polish for Petr:** the OSM/CARTO raster tiles can't theme custom hues, so the
+>   map honours dark/light tilesets but not the exact `mapLand/mapWater/mapRoad` token values; pin
+>   borders stay white (good contrast on both). Worth an eyeball pass on contrast in a few dense cards.
+>
 > **Remove chats + single-place edit + support digest + language modal (2026-06-27).**
 > - **Remove a finished chat (per-user hide).** New `conversation_hides` (user_id, conversation_id,
 >   hidden_at; RLS own-only). "Remove this chat" in the conversation header — only when there's no

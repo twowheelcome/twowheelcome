@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useTheme } from '../lib/ThemeContext'
+import { useTheme, useThemeMode } from '../lib/ThemeContext'
+
+// CARTO basemap matching the app theme (dark tiles in dark mode), same as HostMap.
+function tileUrl(scheme: 'light' | 'dark'): string {
+  return scheme === 'dark'
+    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+}
 
 export interface Pin {
   lat: number
@@ -70,6 +77,7 @@ function markerIcon(L: any, accent: string) {
 
 export default function LocationPicker({ pin, onChange }: Props) {
   const C = useTheme()
+  const { scheme } = useThemeMode()
 
   // Inline (read-only preview) map
   const previewRef = useRef<HTMLDivElement>(null)
@@ -111,7 +119,7 @@ export default function LocationPicker({ pin, onChange }: Props) {
         doubleClickZoom: false, boxZoom: false, keyboard: false, attributionControl: false,
         ...(L.Browser?.touch ? { tap: false } : {}),
       }).setView(start ? [start.lat, start.lng] : [49.8, 15.5], start ? 12 : 6)
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map)
+      L.tileLayer(tileUrl(scheme), { maxZoom: 19 }).addTo(map)
       previewMapRef.current = map
       if (start) placeMarker(L, map, previewMarkerRef, start.lat, start.lng)
     })
@@ -143,8 +151,8 @@ export default function LocationPicker({ pin, onChange }: Props) {
       const start = draftRef.current
       const map = L.map(fsRef.current, { zoomControl: true })
         .setView(start ? [start.lat, start.lng] : [49.8, 15.5], start ? 14 : 6)
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 18,
+      L.tileLayer(tileUrl(scheme), {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/attributions">CARTO</a>', maxZoom: 19,
       }).addTo(map)
       fsMapRef.current = map
       if (start) placeMarker(L, map, fsMarkerRef, start.lat, start.lng)
@@ -236,7 +244,7 @@ export default function LocationPicker({ pin, onChange }: Props) {
     <>
       {/* Inline, non-interactive preview — tap to open the fullscreen editor */}
       <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-        <div ref={previewRef as any} style={{ width: '100%', height: '100%' }} />
+        <div ref={previewRef as any} style={{ width: '100%', height: '100%', background: C.mapBg }} />
         <div
           onClick={openFullscreen}
           style={{
@@ -301,7 +309,7 @@ export default function LocationPicker({ pin, onChange }: Props) {
 
           {/* Map */}
           <div style={{ position: 'relative', flex: 1 }}>
-            <div ref={fsRef as any} style={{ width: '100%', height: '100%' }} />
+            <div ref={fsRef as any} style={{ width: '100%', height: '100%', background: C.mapBg }} />
             <div style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', background: 'rgba(26,34,41,0.88)', color: '#fff', fontSize: 12, padding: '5px 12px', borderRadius: 20, zIndex: 1000, pointerEvents: 'none', whiteSpace: 'nowrap', fontFamily: 'sans-serif' }}>
               Tap the map to drop the pin · drag/zoom to fine-tune
             </div>
