@@ -399,6 +399,7 @@ BEGIN
   DELETE FROM blocks WHERE blocker_id = p_uid OR blocked_id = p_uid;
   DELETE FROM conversation_reads WHERE user_id = p_uid;
   DELETE FROM conversation_hides WHERE user_id = p_uid;
+  DELETE FROM support_clicks WHERE user_id = p_uid;
 
   -- Remove only this user's messages; keep the other rider's. Detach surviving
   -- messages from the user's stay_requests before those requests disappear.
@@ -812,6 +813,30 @@ CREATE POLICY "feedback_insert" ON public.feedback FOR INSERT TO public WITH CHE
 CREATE POLICY "feedback_select_own" ON public.feedback FOR SELECT TO public USING (auth.uid() = user_id);
 GRANT SELECT, INSERT ON public.feedback TO authenticated;
 GRANT SELECT, INSERT, DELETE, UPDATE, REFERENCES, TRIGGER, TRUNCATE ON public.feedback TO service_role;
+
+-- ── Per-user chat hides (remove a finished chat from MY list; shared data untouched) ──
+CREATE TABLE IF NOT EXISTS public.conversation_hides (
+  user_id uuid NOT NULL,
+  conversation_id uuid NOT NULL,
+  hidden_at timestamp with time zone NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, conversation_id)
+);
+ALTER TABLE public.conversation_hides ENABLE ROW LEVEL SECURITY;
+CREATE POLICY conversation_hides_own ON public.conversation_hides FOR ALL TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.conversation_hides TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.conversation_hides TO service_role;
+
+-- ── Support-link interest log (drives a weekly developer digest email) ──
+CREATE TABLE IF NOT EXISTS public.support_clicks (
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS support_clicks_created_at_idx ON public.support_clicks (created_at);
+ALTER TABLE public.support_clicks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY support_clicks_own_insert ON public.support_clicks FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+GRANT INSERT ON public.support_clicks TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.support_clicks TO service_role;
 
 
 -- ── Storage (buckets + object policies) ──

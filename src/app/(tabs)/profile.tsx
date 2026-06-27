@@ -214,6 +214,10 @@ export default function ProfileScreen() {
   }
 
   function openSupport() {
+    // Log the interest (fire-and-forget; drives the weekly developer digest).
+    if (user?.id) void supabase.from('support_clicks').insert({ user_id: user.id }).then(({ error }) => {
+      if (error) console.warn('support click log error:', error.message)
+    })
     if (hasSupportLink()) { Linking.openURL(SUPPORT_URL).catch(() => {}); return }
     setSupportNote(true)
   }
