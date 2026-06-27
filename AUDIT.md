@@ -115,9 +115,29 @@
 >    token. The in-chat system note stays. Edge function redeployed. Verified naostro: the new
 >    event passes validation and is gated (cancelled_by_host → 401 for a non-host caller, bogus
 >    event → 400, accepted → 401 — identical routing).
-> 4. **Knock icebreaker hint (2026-06-27).** A subtle, optional tip under the "Message to host"
->    field nudging riders to say where they're riding from, how long, and about their bike
->    (cold "Hey, can I stay?" rarely lands). Placeholder unchanged; not required. tsc + eslint green.
+> 4. **Knock icebreaker hint (2026-06-27).** Folded into the message-field placeholder: it now
+>    shows a model knock ("Hi! I'm riding down from Berlin and hoping for one night with my KTM
+>    790…") instead of a cold blank + a separate tip line. One cue, clears on type. Not required.
+>
+> **Logged-out = new user (first impression, 2026-06-27).** Codex flagged that logged-out flows
+> dead-end. Fixed:
+> 1. **Silent "Send request" (launch blocker).** A logged-out rider hitting Send on Request-a-stay
+>    got a silent no-op. Now shows a clear CTA ("Create a free account to knock on this door — we'll
+>    keep this host and your message ready") with sign-up / log-in. The host + drafted message +
+>    dates are stashed in a module store (`pendingKnockStore`) and restored after auth — the form
+>    reopens pre-filled, so context survives the round-trip through sign-up.
+> 2. **Become-a-Host without login.** Logged-out main button now reads "Create a free account to
+>    publish your safe spot" (routes to sign-up) instead of a saveable-looking form. Fixed the
+>    misleading hint "visible for all registered riders" → "Your listing appears on the map for
+>    riders browsing TWOWHEELCOME" (the map is public).
+> 3. **Messages without login.** Logged-out visitors now get "Log in to see your knocks and chats."
+>    + Log in / create-account buttons, instead of the generic find-a-host empty state.
+> 4. **Copy/casing unified** to sentence case across listing + filter labels (Roof over head,
+>    Private room, Tip welcome, Locked garage, Covered carport, Fenced yard, Street parking).
+>
+> Also **verified the map place search is live in production** (Codex tested a pre-deploy build):
+> the deployed HostMap chunk on twowheelcome.com contains the search bar, "No place found",
+> `flyToBounds`, and the Nominatim search URL. tsc + full eslint green for all of the above.
 >
 > **UX (2026-06-26): native date picker + host capacity in knock.** 'Other day' on mobile is
 > now a calendar (@react-native-community/datetimepicker, min today; web keeps its date input;
