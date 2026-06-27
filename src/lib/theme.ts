@@ -135,10 +135,10 @@ export const C = DARK
 
 // ── Bike-safety scale ─────────────────────────────────────────────
 export const SAFETY = {
-  locked_garage: { icon: '🔒', label: 'Locked garage',   sub: 'Behind a locked door. Best option for overnight stays.', color: '#C96E2A',    rank: 'Safest' },
-  carport:       { icon: '🏠', label: 'Covered parking',  sub: 'Off-street and under cover.',                           color: base.info,    rank: 'Good'   },
-  fenced_yard:   { icon: '🚧', label: 'Fenced yard',      sub: 'Behind a gate or fence.',                               color: base.warning, rank: 'Okay'   },
-  street:        { icon: '🛣️', label: 'Street parking',    sub: 'Public street parking nearby. Ask about visibility.',   color: base.error,   rank: 'Basic'  },
+  locked_garage: { icon: '🔒', label: 'Locked garage',   sub: 'Behind a locked door. Best option for overnight stays.', color: base.safe, rank: 'Safest' },
+  carport:       { icon: '🏠', label: 'Covered parking',  sub: 'Off-street and under cover.',                           color: base.good, rank: 'Good'   },
+  fenced_yard:   { icon: '🚧', label: 'Fenced yard',      sub: 'Behind a gate or fence.',                               color: base.okay, rank: 'Okay'   },
+  street:        { icon: '🛣️', label: 'Street parking',    sub: 'Public street parking nearby. Ask about visibility.',   color: base.basic, rank: 'Basic' },
 } as const
 
 // ── Shape & type constants ─────────────────────────────────────────

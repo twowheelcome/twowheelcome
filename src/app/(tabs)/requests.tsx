@@ -14,6 +14,9 @@ import { fuzzCoords } from '../../lib/geo'
 import { UserChip } from '../../components/UserChip'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { RequestPhoto } from '../../components/RequestPhoto'
+import { SafetyIcon } from '../../components/SafetyIcon'
+import { bestSafety } from '../../components/SafetyBlock'
+import { SAFETY } from '../../lib/theme'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -310,17 +313,18 @@ function RequestCard({
   const isGuest = !isHost
   const loc = req.location
   const place = [loc?.location_city, loc?.location_country].filter(Boolean).join(', ')
-  const parking = labelList(loc?.parkings, PARKING_LABELS, loc?.parking)
+  const parkingArr: string[] = loc?.parkings?.length ? loc.parkings : (loc?.parking ? [loc.parking] : [])
+  const safetyLevel = parkingArr.length ? bestSafety(parkingArr) : null
   const sleep = labelList(loc?.sleep_types, SLEEP_LABELS)
   const amenities = labelList(loc?.amenities, AMENITY_LABELS)
   const pricing = labelList(loc?.pricings, PRICING_LABELS, loc?.pricing)
   // One consistent Feather icon per fact (icon = friendly cue, value = the point).
+  // Bike safety renders as its own coloured SafetyIcon row above the facts.
   const facts = ([
     place ? { icon: 'map-pin', value: place } : null,
     { icon: 'calendar', value: `${fmtDateStr(req.arrival_date)} → ${fmtDateStr(req.departure_date)}` },
     req.arrival_time ? { icon: 'clock', value: `Arrival ~ ${req.arrival_time}` } : null,
     { icon: 'users', value: `${guestsLabel}${vehicle ? ` · ${vehicle}` : ''}` },
-    parking ? { icon: 'shield', value: parking } : null,
     sleep ? { icon: 'moon', value: sleep } : null,
     amenities ? { icon: 'coffee', value: amenities } : null,
     pricing ? { icon: 'tag', value: pricing } : null,
@@ -361,6 +365,12 @@ function RequestCard({
       )}
       {/* Details — friendly icon + value rows (value is the focus, icon is the cue) */}
       <View style={rc.facts}>
+        {safetyLevel ? (
+          <View style={rc.fact}>
+            <View style={rc.factIcon}><SafetyIcon level={safetyLevel} size={17} color={SAFETY[safetyLevel].color} strokeWidth={2.2} /></View>
+            <Text style={[rc.factValue, { color: SAFETY[safetyLevel].color, fontWeight: '700' }]}>{SAFETY[safetyLevel].label}</Text>
+          </View>
+        ) : null}
         {facts.map((f, i) => (
           <View key={i} style={rc.fact}>
             <Feather name={f.icon} size={16} color={C.accent} style={rc.factIcon} />

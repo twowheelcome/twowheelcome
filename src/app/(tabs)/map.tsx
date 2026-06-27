@@ -11,6 +11,7 @@ import { fuzzCoords } from '../../lib/geo'
 import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
 import { HostOffer } from '../../components/HostOffer'
 import { ContributionBadge } from '../../components/ContributionBadge'
+import { SafetyIcon } from '../../components/SafetyIcon'
 import { compressBikePhoto } from '../../lib/compressImage'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
@@ -717,7 +718,7 @@ export default function MapScreen() {
                 const on = filterParkings.includes(o.value)
                 return (
                   <TouchableOpacity key={o.value} style={[styles.optRow, on && styles.optRowOn]} onPress={() => setFilterParkings(p => toggleFilter(p, o.value))}>
-                    <Text style={styles.optRowIcon}>{o.icon}</Text>
+                    <View style={styles.optRowIconWrap}><SafetyIcon level={getSafetyKey(o.value)} size={22} color={on ? C.accent : C.textMuted} strokeWidth={2.2} /></View>
                     <View style={{ flex: 1 }}><Text style={[styles.optRowLabel, on && styles.optRowLabelOn]}>{o.label}</Text><Text style={styles.optRowDesc}>{o.desc}</Text></View>
                     {on && <Text style={styles.optRowCheck}>✓</Text>}
                   </TouchableOpacity>
@@ -1099,6 +1100,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   optRow:           { flexDirection: 'row', alignItems: 'center', backgroundColor: C.elevated, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.border, gap: 10 },
   optRowOn:         { borderColor: C.accent, backgroundColor: C.accentSoft },
   optRowIcon:       { fontSize: 20, width: 28, textAlign: 'center' },
+  optRowIconWrap:   { width: 28, alignItems: 'center', justifyContent: 'center' },
   optRowLabel:      { color: C.text, fontWeight: '700', fontSize: 13 },
   optRowLabelOn:    { color: C.accent },
   optRowDesc:       { color: C.textDim, fontSize: 11, marginTop: 1 },

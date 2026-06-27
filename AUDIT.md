@@ -16,8 +16,23 @@
 >    keep a subtle web shadow for legibility.
 > 4. **Safety pin icons.** Replaced the ambiguous emoji on the map pins with clean white SVG line
 >    icons — padlock (locked_garage), open roof on posts (carport), fence (fenced_yard), road
->    (street) — drawn inside the safety-coloured teardrop. (SafetyBlock cards still use emoji;
->    pins were the ask.) tsc + eslint green after each step.
+>    (street) — drawn inside the safety-coloured teardrop. tsc + eslint green after each step.
+>
+> **Visual round 2 (2026-06-27, Petr).**
+> 1. **Wordmark — drop Rye.** The western/serif Rye "twowheelcome" was disliked; removed Rye
+>    entirely (no longer loaded, FONT.display → Oswald bold) and unified on the login's colour-split
+>    wordmark — TWO (terracotta) / WHEEL (ink) / COME (green), Oswald bold uppercase — in the header
+>    and login. (Rye npm dep left unimported in package.json; can be uninstalled separately.)
+> 2. **Contribution badges.** New ContributionBadge — bold coloured pills (Free green / 🍺 Beer
+>    welcome blue / Paid · amount terracotta) shown on the host detail (HostOffer), the request
+>    form, the host profile's "wants in return", and the map list card (compact) — far more visible
+>    than the old plain text / single "Free" pill.
+> 3. **Safety SVG everywhere.** New react-native-svg `SafetyIcon` (the same four shapes as the pins)
+>    now renders wherever safety/parking shows — SafetyBlock (main + secondary chips → host detail,
+>    map sheet, request form), become-host parking cards, the map "Bike safety" filter, and the
+>    request cards (a coloured safety row). SAFETY scale colour unified to green→red (locked_garage
+>    is now green = safest). Safety emoji are gone from the app; sleep/amenities keep their emoji.
+>    tsc + full eslint green after each step.
 
 
 > ## Production hardening — full re-audit (2026-06-25)

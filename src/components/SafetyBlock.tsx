@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet } from 'react-native'
 import { SAFETY } from '../lib/theme'
 import { useTheme } from '../lib/ThemeContext'
+import { SafetyIcon } from './SafetyIcon'
 
 export function getSafetyKey(parking: string): keyof typeof SAFETY {
   const map: Record<string, keyof typeof SAFETY> = {
@@ -32,7 +33,7 @@ export function SafetyBlock({ parkings }: { parkings: string[] }) {
     <View style={[sb.block, { backgroundColor: s.color + '10', borderColor: s.color + '66' }]}>
       <Text style={[sb.bikeLabel, { color: s.color }]}>Your bike sleeps here</Text>
       <View style={sb.mainRow}>
-        <Text style={sb.icon}>{s.icon}</Text>
+        <View style={sb.iconWrap}><SafetyIcon level={best} size={26} color={s.color} strokeWidth={2.2} /></View>
         <View style={sb.info}>
           <View style={sb.labelRow}>
             <Text style={[sb.label, { color: s.color }]}>{s.label}</Text>
@@ -47,7 +48,8 @@ export function SafetyBlock({ parkings }: { parkings: string[] }) {
         <View style={sb.secondaryRow}>
           {secondary.map(k => (
             <View key={k} style={[sb.chip, { borderColor: SAFETY[k].color + '55' }]}>
-              <Text style={[sb.chipText, { color: SAFETY[k].color }]}>{SAFETY[k].icon} {SAFETY[k].label}</Text>
+              <SafetyIcon level={k} size={14} color={SAFETY[k].color} strokeWidth={2} />
+              <Text style={[sb.chipText, { color: SAFETY[k].color }]}>{SAFETY[k].label}</Text>
             </View>
           ))}
         </View>
@@ -60,7 +62,7 @@ const sb = StyleSheet.create({
   block:        { borderRadius: 20, borderWidth: 1.5, padding: 16 },
   bikeLabel:    { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
   mainRow:      { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  icon:         { fontSize: 26, marginTop: 1 },
+  iconWrap:     { marginTop: 1 },
   info:         { flex: 1, gap: 4 },
   labelRow:     { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   label:        { fontSize: 16, fontWeight: '800' },
@@ -68,6 +70,6 @@ const sb = StyleSheet.create({
   rankText:     { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
   sub:          { fontSize: 13, lineHeight: 19 },
   secondaryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.06)' },
-  chip:         { borderRadius: 100, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 3 },
+  chip:         { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 100, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
   chipText:     { fontSize: 11, fontWeight: '600' },
 })

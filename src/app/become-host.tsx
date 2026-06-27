@@ -6,6 +6,8 @@ import { router } from 'expo-router'
 import type { Pin } from '../components/LocationPicker'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 import { compressBikePhoto } from '../lib/compressImage'
+import { SafetyIcon } from '../components/SafetyIcon'
+import { getSafetyKey } from '../components/SafetyBlock'
 
 const LISTING_BUCKET = 'listing-photos'
 const MAX_LISTING_PHOTOS = 3
@@ -381,7 +383,7 @@ export default function BecomeHostScreen() {
                 style={[styles.optCard, active && { borderColor: p.color, backgroundColor: p.color + '12' }]}
                 onPress={() => updateLocation(index, { parkings: toggle(loc.parkings, p.value) })}
               >
-                <Text style={styles.optIcon}>{p.icon}</Text>
+                <View style={styles.optIconWrap}><SafetyIcon level={getSafetyKey(p.value)} size={24} color={active ? p.color : C.textDim} strokeWidth={2.2} /></View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.optLabel, active && { color: p.color }]}>{p.label}</Text>
                   <Text style={styles.optDesc}>{p.desc}</Text>
@@ -605,6 +607,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
 
   optCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.elevated, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: C.border, gap: 12 },
   optIcon: { fontSize: 22, width: 32, textAlign: 'center' },
+  optIconWrap: { width: 32, alignItems: 'center', justifyContent: 'center' },
   optLabel: { color: C.text, fontWeight: '700', fontSize: 14 },
   optDesc: { color: C.textMuted, fontSize: 12, marginTop: 2 },
   check: { fontSize: 18, fontWeight: '900' },
