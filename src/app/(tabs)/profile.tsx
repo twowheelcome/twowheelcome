@@ -35,9 +35,6 @@ export default function ProfileScreen() {
   const [pendingReviews, setPendingReviews] = useState(0)
   const [stats, setStats] = useState({ trips: 0, nights: 0 })
   const [showQR, setShowQR] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [deleteError, setDeleteError] = useState('')
   const [supportNote, setSupportNote] = useState(false)
   const userIdRef = useRef<string | null>(null)
 
@@ -72,9 +69,6 @@ export default function ProfileScreen() {
     setReviews([])
     setPendingReviews(0)
     setShowQR(false)
-    setShowDeleteConfirm(false)
-    setDeleting(false)
-    setDeleteError('')
     setLoading(true)
   }
 
@@ -222,26 +216,6 @@ export default function ProfileScreen() {
   function openSupport() {
     if (hasSupportLink()) { Linking.openURL(SUPPORT_URL).catch(() => {}); return }
     setSupportNote(true)
-  }
-
-  async function deleteAccount() {
-    setDeleting(true)
-    setDeleteError('')
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const res = await supabase.functions.invoke('delete-account', {
-        headers: session?.access_token
-          ? { Authorization: `Bearer ${session.access_token}` }
-          : {},
-      })
-      if (res.error) throw res.error
-      await supabase.auth.signOut()
-      router.replace('/')
-    } catch (e: any) {
-      console.warn('delete account error:', e?.message)
-      setDeleteError('Could not delete your account right now. Please try again.')
-      setDeleting(false)
-    }
   }
 
   if (loading) {
@@ -482,12 +456,8 @@ export default function ProfileScreen() {
             { icon: 'clock', label: 'History', sub: 'Your past stays', onPress: () => router.push('/history') },
             { icon: 'star', label: 'Reviews', sub: avgRating ? `⭐ ${avgRating} · ${reviews.length} ${reviews.length === 1 ? 'review' : 'reviews'}` : 'No reviews yet', onPress: () => router.push('/reviews') },
           ] },
-          { title: 'Account', rows: [
-            { icon: 'bell', label: 'Notifications', sub: 'Email and push alerts', onPress: () => router.push('/notifications') },
-            { icon: 'message-circle', label: 'Send feedback', sub: 'Tell the makers what to fix or build', onPress: () => router.push('/feedback' as never) },
-            { icon: 'slash', label: 'Blocked users', sub: 'Manage or unblock', onPress: () => router.push('/blocked' as never) },
-            { icon: 'shield', label: 'Privacy', sub: 'Data, exact location and account deletion', onPress: () => router.push('/privacy') },
-            { icon: 'file-text', label: 'Terms', sub: 'Community rules and stay requests', onPress: () => router.push('/terms') },
+          { title: 'App', rows: [
+            { icon: 'settings', label: 'Settings', sub: 'Language, notifications, privacy, account', onPress: () => router.push('/settings' as never) },
           ] },
         ] as { title: string; rows: { icon: ComponentProps<typeof Feather>['name']; label: string; sub: string; onPress: () => void }[] }[]).map(group => (
           <View key={group.title} style={styles.menuSection}>
@@ -516,38 +486,8 @@ export default function ProfileScreen() {
         <TouchableOpacity style={styles.signOutBtn} onPress={signOut}>
           <Text style={styles.signOutText}>Sign out</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.deleteBtn} onPress={() => { setDeleteError(''); setShowDeleteConfirm(true) }}>
-          <Text style={styles.deleteBtnText}>Delete account</Text>
-        </TouchableOpacity>
       </View>
     </ScrollView>
-
-    {/* Delete account confirmation modal */}
-
-    <Modal visible={showDeleteConfirm} transparent animationType="fade" onRequestClose={() => setShowDeleteConfirm(false)}>
-      <View style={styles.deleteOverlay}>
-        <View style={styles.deleteSheet}>
-          <Text style={styles.deleteSheetTitle}>Delete account?</Text>
-          <Text style={styles.deleteSheetBody}>
-            This permanently deletes your profile, listings, requests, your messages and reviews. Shared conversations may remain for the other person without your profile. This can&apos;t be undone.
-          </Text>
-          {deleteError ? (
-            <Text style={styles.deleteSheetError}>{deleteError}</Text>
-          ) : null}
-          <TouchableOpacity
-            style={[styles.deleteConfirmBtn, deleting && { opacity: 0.6 }]}
-            onPress={deleteAccount}
-            disabled={deleting}
-          >
-            <Text style={styles.deleteConfirmBtnText}>{deleting ? 'Deleting...' : 'Yes, permanently delete'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.deleteCancelBtn} onPress={() => setShowDeleteConfirm(false)} disabled={deleting}>
-            <Text style={styles.deleteCancelBtnText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
     </View>
   )
 }
@@ -709,18 +649,5 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   reviewItemStars: { fontSize: 13 },
   reviewItemBody: { color: C.textMuted, fontSize: 13, lineHeight: 19, fontStyle: 'italic', fontFamily: FONT.body },
   reviewItemDate: { color: C.textDim, fontSize: 11, marginTop: 4 },
-
-  deleteBtn: { alignItems: 'center', paddingVertical: 6, marginTop: 4 },
-  deleteBtnText: { color: C.error, fontSize: 13, textDecorationLine: 'underline' },
-
-  deleteOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  deleteSheet: { backgroundColor: C.bg, borderRadius: 20, padding: 24, width: '100%', maxWidth: 400, gap: 12, borderWidth: 1, borderColor: C.errorBorder },
-  deleteSheetTitle: { color: C.text, fontSize: 20, fontWeight: '900' },
-  deleteSheetBody: { color: C.textMuted, fontSize: 14, lineHeight: 21 },
-  deleteSheetError: { color: C.error, fontSize: 13 },
-  deleteConfirmBtn: { height: 50, borderRadius: 100, backgroundColor: C.error, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
-  deleteConfirmBtnText: { color: C.white, fontSize: 14, fontWeight: '800' },
-  deleteCancelBtn: { alignItems: 'center', paddingVertical: 8 },
-  deleteCancelBtnText: { color: C.textMuted, fontSize: 14, textDecorationLine: 'underline' },
 
 }) }

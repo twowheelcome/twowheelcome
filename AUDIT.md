@@ -1,5 +1,25 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Support link + My Places + Settings + i18n scaffold (2026-06-27).**
+> - **Low-key dev support.** Optional "🍺 Support twowheelcome — buy the dev a beer" row at the
+>   bottom of the profile, wired to a configurable `SUPPORT_URL` constant (`src/lib/support.ts`,
+>   placeholder for now → swap in Stripe/Revolut/BuyMeACoffee). Empty URL shows "coming soon".
+>   Never a paywall.
+> - **My Listings → My Places.** Renamed everywhere; new `my-places` screen shows each place as a
+>   rich card (title "Garage in City" + OPEN/PAUSED badge + SafetyBlock + sleep + contribution
+>   badge). Available↔Paused toggles right on the card (writes `host_locations.paused`; owner update
+>   verified naostro — 204, and the place leaves `host_locations_public`). Tapping the card opens the
+>   editor. Profile's home row points to `/my-places` (or `/become-host` when not yet a host).
+> - **Settings screen + Account moved off the profile.** New `settings` screen holds Language, the
+>   Account group (Notifications, Send feedback, Blocked users, Privacy, Terms) and Delete account
+>   (modal + delete-account edge call moved here). The profile now keeps just "Your place" + a
+>   Settings row + support + sign out.
+> - **i18n scaffold (no real translations yet).** `src/lib/i18n.tsx` — `LanguageProvider` (wraps the
+>   app in `_layout`), `useT()`/`t(key, fallback)`, persisted selection (AsyncStorage), default
+>   English. Languages offered: English, Deutsch, Français, Español, Italiano, Čeština, Polski —
+>   only EN is filled in; others fall back to EN. Language selector lives in Settings. Full
+>   translations are a separate later step (as is dark mode).
+>
 > **History log + nicer messages + per-listing pause (2026-06-27).**
 > - **History = chronological log, robust to deletion.** The city is now snapshotted on the
 >   stay itself (new `stay_requests.location_city/country`, filled by `create_knock` + backfilled
