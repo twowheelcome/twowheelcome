@@ -173,8 +173,13 @@ export default function BecomeHostScreen() {
 
   async function addPhoto(index: number) {
     const loc = locations[index]
+    if (!loc || loc.photos.length >= MAX_LISTING_PHOTOS) return
     const uid = currentUserIdRef.current
-    if (!loc || !uid || loc.photos.length >= MAX_LISTING_PHOTOS) return
+    if (!uid) {
+      // Logged out: no silent click — send them to sign up instead.
+      if (authChecked) router.push({ pathname: '/', params: { signup: '1' } })
+      return
+    }
     setSaveError('')
     setUploadingPhotoFor(loc.id ?? String(index))
     try {
@@ -491,6 +496,11 @@ export default function BecomeHostScreen() {
               </TouchableOpacity>
             )}
           </View>
+          {authChecked && !currentUser ? (
+            <TouchableOpacity onPress={() => router.push({ pathname: '/', params: { signup: '1' } })}>
+              <Text style={[styles.privateNote, { color: C.accent, fontWeight: '700' }]}>🔒 Create a free account to add photos →</Text>
+            </TouchableOpacity>
+          ) : null}
           <Text style={styles.privateNote}>🔒 Privacy — these are public, so avoid shots that reveal your exact address or your house from the street. Show where the bike sleeps (yard, garage…). You share the precise spot only after you accept a request.</Text>
 
           {/* Public description */}
