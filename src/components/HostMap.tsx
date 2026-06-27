@@ -228,7 +228,9 @@ export default function HostMap({
         iconAnchor: [size / 2, size],
       })
 
-      const marker = L.marker([host.location_lat, host.location_lng], { icon: markerIcon })
+      // Carry the safety level on the marker so the cluster bubble can colour itself
+      // by the BEST safety among its children (green if any locked garage inside).
+      const marker = L.marker([host.location_lat, host.location_lng], { icon: markerIcon, safetyLevel: level } as any)
         .on('click', () => onHostSelect(host))
       cluster.addLayer(marker)
 
@@ -262,8 +264,19 @@ export default function HostMap({
           const n = cl.getChildCount()
           const label = n >= 20 ? '20+' : n >= 10 ? '10+' : n >= 3 ? '3+' : String(n)
           const sz = n >= 20 ? 52 : n >= 10 ? 46 : 40
+          // Colour the bubble by the BEST safety level among the clustered pins, so
+          // "green = safe" reads even when zoomed out (a cluster with a locked garage
+          // shows green). Same green→red scale as the pins.
+          const rank: (keyof typeof SAFETY)[] = ['locked_garage', 'carport', 'fenced_yard', 'street']
+          let bestIdx = rank.length - 1
+          for (const m of cl.getAllChildMarkers()) {
+            const lvl = (m.options && m.options.safetyLevel) as keyof typeof SAFETY | undefined
+            const idx = lvl ? rank.indexOf(lvl) : -1
+            if (idx >= 0 && idx < bestIdx) bestIdx = idx
+          }
+          const bg = SAFETY_PIN_COLOR[rank[bestIdx]]
           return L.divIcon({
-            html: `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${C.accent};border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:${n >= 10 ? 15 : 14}px;">${label}</div>`,
+            html: `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${bg};border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:${n >= 10 ? 15 : 14}px;">${label}</div>`,
             className: '',
             iconSize: [sz, sz],
           })
