@@ -157,7 +157,7 @@ ALTER TABLE host_locations ADD CONSTRAINT host_locations_price_currency_chk CHEC
 ALTER TABLE messages ADD CONSTRAINT messages_body_length CHECK (((body IS NULL) OR (char_length(body) <= 4000)));
 ALTER TABLE profiles ADD CONSTRAINT profiles_bio_length CHECK (((bio IS NULL) OR (char_length(bio) <= 2000)));
 ALTER TABLE profiles ADD CONSTRAINT profiles_full_name_length CHECK (((full_name IS NULL) OR (char_length(full_name) <= 120)));
-ALTER TABLE request_notification_events ADD CONSTRAINT request_notification_events_event_check CHECK ((event = ANY (ARRAY['new_request'::text, 'accepted'::text, 'rejected'::text])));
+ALTER TABLE request_notification_events ADD CONSTRAINT request_notification_events_event_check CHECK ((event = ANY (ARRAY['new_request'::text, 'accepted'::text, 'rejected'::text, 'cancelled_by_host'::text])));
 ALTER TABLE reviews ADD CONSTRAINT reviews_no_self_review CHECK ((reviewer_id <> reviewee_id)) NOT VALID;
 ALTER TABLE reviews ADD CONSTRAINT reviews_body_length CHECK (((body IS NULL) OR (char_length(body) <= 2000)));
 ALTER TABLE reviews ADD CONSTRAINT reviews_rating_range CHECK (((rating >= 1) AND (rating <= 5))) NOT VALID;
@@ -645,6 +645,15 @@ GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON messages 
 GRANT REFERENCES, TRIGGER, TRUNCATE ON profiles TO anon;
 GRANT REFERENCES, TRIGGER, TRUNCATE ON profiles TO authenticated;
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON profiles TO service_role;
+-- Column-scoped grants for profiles (mirror the live DB). A fresh deploy needs these
+-- explicitly: anon/authenticated have no table-level SELECT, so reads of the public
+-- identity columns and own-profile writes would otherwise fail on permissions.
+-- push_token is deliberately NOT readable (written only via set_push_token / own UPDATE),
+-- and notify_email/notify_push stay off the public surface, matching production.
+GRANT SELECT (id, full_name, bio, avatar_url) ON profiles TO anon;
+GRANT SELECT (id, full_name, bio, avatar_url) ON profiles TO authenticated;
+GRANT INSERT (id, full_name, bio, avatar_url, push_token) ON profiles TO authenticated;
+GRANT UPDATE (full_name, bio, avatar_url, push_token) ON profiles TO authenticated;
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON request_notification_events TO service_role;
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON reviews TO anon;
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON reviews TO authenticated;

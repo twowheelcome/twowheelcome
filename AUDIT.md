@@ -139,6 +139,36 @@
 > the deployed HostMap chunk on twowheelcome.com contains the search bar, "No place found",
 > `flyToBounds`, and the Nominatim search URL. tsc + full eslint green for all of the above.
 >
+> **Pre-launch audit round 2 (Codex, 2026-06-27).**
+> 1. **🔴 Host-cancel notification was silently dead.** The app sends a `cancelled_by_host`
+>    event, but `request_notification_events_event_check` (baseline:160) only allowed
+>    new_request/accepted/rejected — so the idempotency INSERT hit a 23514 check_violation and
+>    `notify-request` returned 500, meaning the rider's cancel email/push never sent (the earlier
+>    routing test only reached the 401 auth gate, so it hid this). Fixed the CHECK to include
+>    `cancelled_by_host` — applied to live (management API) and corrected in baseline. **Verified
+>    naostro** (live, BEGIN/ROLLBACK): inserting a `cancelled_by_host` event now succeeds (1 row),
+>    a bogus event is still rejected (23514, so not over-opened), nothing persisted. The host-cancel
+>    notification path is now unblocked end-to-end. No other place validates the event (RLS is
+>    bypassed by the service-role admin client; no other CHECK/trigger references the values).
+> 2. **profiles grants missing from baseline.** Live grants public read of (id, full_name, bio,
+>    avatar_url) and own-profile writes via *column-level* grants, but the baseline only had
+>    table-level REFERENCES/TRIGGER/TRUNCATE — so a fresh deploy/staging would fail on permissions.
+>    Added explicit column grants to baseline, mirroring live exactly (verified with
+>    has_column_privilege): SELECT (id, full_name, bio, avatar_url) for anon + authenticated;
+>    INSERT/UPDATE for authenticated on the writable identity columns + push_token write. push_token
+>    stays unreadable (no SELECT) and notify_email/notify_push stay off the public surface. Live
+>    already has these, so no live change — baseline-only fix.
+>    *(Separately spotted: `authenticated` also lacks SELECT/UPDATE on notify_email/notify_push, so
+>    the notification-settings toggles can't persist on live — flagged as its own task, out of this
+>    scope.)*
+> 3. **De-booking copy.** "YOU'RE BOOKED" → "STAY ACCEPTED"; the "Paid" reward option → "Agreed
+>    contribution" everywhere it shows (become-host, map filter, host profile, chat request card,
+>    HostOffer); visible "guest" → "rider" in the UI (history "As rider", review prompts "RATE THIS
+>    RIDER" / "How was this rider?" / "You rated this rider", profile "rate your hosts and riders").
+> 4. **Listing description placeholder** no longer nudges hosts to publish access details: now
+>    "Quiet fenced yard, dog on site, late arrivals okay. Exact meeting point stays in chat after I
+>    accept." tsc + full eslint green.
+>
 > **UX (2026-06-26): native date picker + host capacity in knock.** 'Other day' on mobile is
 > now a calendar (@react-native-community/datetimepicker, min today; web keeps its date input;
 > the package's web stub is a safe no-op). The Request-a-stay window shows a highlighted
