@@ -54,10 +54,12 @@ Deno.serve(async req => {
       if (removeError) throw new Error(`delete ${bucket}: ${removeError.message}`)
     }
 
-    // Remove personal uploads before their database pointers disappear.
+    // Remove personal uploads before their database pointers disappear. listing-photos are
+    // public, so they especially must not linger after deletion (GDPR).
     await Promise.all([
       removeStorageFolder('avatars', userId),
       removeStorageFolder('request-photos', userId),
+      removeStorageFolder('listing-photos', userId),
     ])
 
     // All DB cleanup in ONE transaction (atomic, no half-deleted state). The RPC
