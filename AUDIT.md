@@ -53,6 +53,13 @@
 > reviews per-stay, RLS matrix, rate limits, atomic delete, private-photo signing.
 > See dated sections below for history.
 >
+> **Privacy (2026-06-26): review location protection.** A reminder under the review text field
+> ("don't share the host's exact address/location") plus a backstop that strips obvious GPS
+> coordinate pairs (3+ decimals, e.g. '50.0875, 14.4213') from the review body — client-side on
+> submit and via a BEFORE INSERT/UPDATE trigger on reviews (covers direct API calls); prices
+> like '20.50' are untouched, no word/address matching. Reporting/moderation not done (Petr's
+> call). Verified live: coords stripped, normal review unchanged.
+>
 > **Additions (2026-06-26): price currency + privacy notes.** Listing price gained a currency
 > (`price_currency`, default EUR, currency-chip selector in become-host, shown as '20 EUR /
 > night' everywhere the price appears). Currency set is global majors —
