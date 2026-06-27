@@ -831,9 +831,9 @@ export default function MapScreen() {
           const myStatus = myActiveByLocation[selected.id]   // 'PENDING' | 'ACCEPTED' | undefined
           const parkings: string[] = selected.parkings?.length ? selected.parkings : (selected.parking ? [selected.parking] : [])
           return (
-            <View style={{ backgroundColor: C.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 34, gap: 14, borderTopWidth: 1, borderTopColor: C.border }}>
+            <View style={{ backgroundColor: C.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 20, maxHeight: '88%', borderTopWidth: 1, borderTopColor: C.border }}>
               {/* Drag handle */}
-              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: 'center', marginBottom: 4 }} />
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: 'center', marginBottom: 8 }} />
 
               {/* Close — return to the map (the backdrop tap can be hard to reach when the
                   sheet is tall on a phone). */}
@@ -847,6 +847,7 @@ export default function MapScreen() {
                 <Text style={{ color: C.text, fontSize: 15, fontWeight: '800' }}>✕</Text>
               </TouchableOpacity>
 
+              <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16, gap: 14 }} showsVerticalScrollIndicator>
               {/* Avatar + info */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
                 <Avatar url={selected.profiles?.avatar_url} name={selected.profiles?.full_name} size={56} />
@@ -930,7 +931,10 @@ export default function MapScreen() {
                 </TouchableOpacity>
               )}
 
-              {/* CTAs */}
+              </ScrollView>
+
+              {/* Sticky footer — the primary action stays reachable on short screens */}
+              <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 34, gap: 10, borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.bg }}>
               {!isOwn ? (
                 <>
                   {myStatus ? (
@@ -982,6 +986,7 @@ export default function MapScreen() {
                   <Text style={{ color: C.text, fontSize: 15, fontWeight: '700' }}>Edit your listing</Text>
                 </TouchableOpacity>
               )}
+              </View>
             </View>
           )
         })()}
