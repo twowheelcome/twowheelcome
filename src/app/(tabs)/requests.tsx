@@ -974,6 +974,13 @@ export default function RequestsScreen() {
     setTimeout(() => flatRef.current?.scrollToEnd({ animated: false }), 100)
   }
 
+  // Strip obvious GPS coordinate pairs (e.g. "50.087, 14.421") so a review can't leak the
+  // host's exact spot. Needs 3+ decimals, so prices like "20.50" are untouched. The DB has
+  // the same backstop for direct API calls.
+  function stripCoords(text: string): string {
+    return text.replace(/\d{1,3}\.\d{3,}[\s,;]+\d{1,3}\.\d{3,}/g, '').replace(/\s{2,}/g, ' ').trim()
+  }
+
   async function submitReview(stayId: string) {
     if (submittingReviewRef.current) return   // guard against a double-tap inserting twice
     const req = endedStays.find(r => r.id === stayId)
@@ -982,7 +989,7 @@ export default function RequestsScreen() {
     const userId = currentUser.id
     if (currentUserIdRef.current !== userId) return
     const revieweeId = userId === req.host_id ? req.guest_id : req.host_id
-    const body = (reviewDraftBody[stayId] || '').trim()
+    const body = stripCoords((reviewDraftBody[stayId] || '').trim())
     submittingReviewRef.current = true
     setSubmittingStayId(stayId)
     const { error } = await supabase.from('reviews').insert({
@@ -1368,6 +1375,7 @@ export default function RequestsScreen() {
 	                        multiline
 	                        maxLength={500}
 	                      />
+	                      <Text style={styles.reviewPrivacyHint}>🔒 Please don't share the host's exact address or location — keep it private.</Text>
 	                      <TouchableOpacity
 	                        style={[styles.reviewSubmit, (!stars || submittingStayId === stay.id) && styles.reviewSubmitDisabled]}
 	                        onPress={() => submitReview(stay.id)}
@@ -2013,6 +2021,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     color: C.text, fontSize: 16, minHeight: 60,
     borderWidth: 1, borderColor: C.border,
   },
+  reviewPrivacyHint: { color: C.textDim, fontSize: 12, lineHeight: 17 },
   reviewSubmit: {
     backgroundColor: C.accent, borderRadius: 100, padding: 13, alignItems: 'center',
   },
