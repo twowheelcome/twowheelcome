@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  FlatList, Image, KeyboardAvoidingView, Linking, Platform,
+  FlatList, Image, KeyboardAvoidingView, Linking, Modal, Platform,
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { Feather } from '@expo/vector-icons'
@@ -288,7 +288,7 @@ async function openNavigation(lat: number, lng: number) {
 // ── RequestCard ───────────────────────────────────────────────────────────
 
 function RequestCard({
-  req, body, isHost, onRespond, responding, onShowMap, onWithdraw, withdrawing,
+  req, body, isHost, onRespond, responding, onShowMap, onWithdraw, withdrawing, onCancelStay, cancelling,
 }: {
   req: RequestData
   body: string | null
@@ -298,6 +298,8 @@ function RequestCard({
   onShowMap?: () => void
   onWithdraw?: (id: string) => void
   withdrawing?: boolean
+  onCancelStay?: (id: string) => void
+  cancelling?: boolean
 }) {
   const C = useTheme()
   const rc = useMemo(() => makeRc(C), [C])
@@ -424,6 +426,18 @@ function RequestCard({
           <Text style={rc.withdrawTxt}>{withdrawing ? '...' : 'Withdraw request'}</Text>
         </TouchableOpacity>
       )}
+
+      {/* Host can call off an already-accepted stay (life happens). Frees the night slot. */}
+      {isHost && req.status === 'ACCEPTED' && onCancelStay && (
+        <TouchableOpacity
+          style={[rc.withdrawBtn, cancelling && rc.actionDisabled]}
+          onPress={() => onCancelStay(req.id)}
+          disabled={cancelling}
+          accessibilityRole="button"
+        >
+          <Text style={rc.withdrawTxt}>{cancelling ? '...' : 'Cancel this stay'}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   )
 }
@@ -501,6 +515,8 @@ export default function RequestsScreen() {
   const [actionError, setActionError] = useState<string | null>(null)   // accept/decline failure banner
   const [respondingFor, setRespondingFor] = useState<string | null>(null)
   const [withdrawingFor, setWithdrawingFor] = useState<string | null>(null)
+  const [cancellingFor, setCancellingFor] = useState<string | null>(null)
+  const [cancelStayTarget, setCancelStayTarget] = useState<string | null>(null)   // host cancel confirm modal
   const [activeFilter, setActiveFilter] = useState<ConversationFilter>('all')
   const flatRef = useRef<FlatList<ChatItem>>(null)
   const nearBottomRef = useRef(true)   // is the user near the bottom of the thread?
@@ -510,6 +526,7 @@ export default function RequestsScreen() {
   const loadUserIdRef = useRef<string | null>(null)
   const respondingRef = useRef(false)   // guard against double-tap accept/decline
   const withdrawingRef = useRef(false)   // guard against double-tap withdraw
+  const cancellingRef = useRef(false)   // guard against double-tap host-cancel
   const sendingMsgRef = useRef(false)   // guard against double-tap send message
   const sendingCoordsRef = useRef(false)   // guard against double-tap send coordinates
   const submittingReviewRef = useRef(false)   // guard against double-tap submit review
@@ -1257,6 +1274,64 @@ export default function RequestsScreen() {
     setWithdrawingFor(null)
   }
 
+  // The host calls off an ALREADY-ACCEPTED stay (life happens). ACCEPTED -> CANCELLED
+  // drops the row out of the no_double_booked_accepted exclusion constraint, so the
+  // booked nights free up. A short system note lands in chat so the guest sees why.
+  async function cancelAcceptedStay(requestId: string) {
+    if (cancellingRef.current || cancellingFor) return
+    if (!currentUser || currentUserIdRef.current !== currentUser.id) return
+    const userId = currentUser.id
+    cancellingRef.current = true
+    setCancellingFor(requestId)
+    setActionError(null)
+    const { error } = await supabase
+      .from('stay_requests')
+      .update({ status: 'CANCELLED' })
+      .eq('id', requestId)
+      .eq('status', 'ACCEPTED')
+      .eq('host_id', userId)
+    if (error) {
+      cancellingRef.current = false
+      setCancellingFor(null)
+      setCancelStayTarget(null)
+      if (error.message) console.warn('cancelAcceptedStay error:', error.code, error.message)
+      setActionError("Couldn't cancel the stay. Check your connection and try again.")
+      return
+    }
+    setMessages(prev => prev.map(m =>
+      m.request?.id === requestId
+        ? { ...m, request: { ...m.request!, status: 'CANCELLED' } }
+        : m
+    ))
+    setConvs(prev => prev.map(c =>
+      c.id === selected?.id ? { ...c, requestStatus: 'CANCELLED' } : c
+    ))
+
+    // System note in the thread (plain bubble, no request_id so it doesn't render a card).
+    if (selected) {
+      const { data: inserted } = await supabase.from('messages').insert({
+        conversation_id: selected.id,
+        sender_id: userId,
+        body: 'Host cancelled this stay. The booked nights are free again.',
+      })
+        .select(`
+          id, conversation_id, sender_id, body, photo_url, request_id, created_at,
+          request:stay_requests!request_id(${REQUEST_SELECT})
+        `)
+        .single()
+      if (inserted) {
+        const normalizedInserted = normalizeMsg({ ...inserted, sender: { full_name: null } })
+        setMessages(prev => prev.find(m => m.id === normalizedInserted.id) ? prev : [...prev, normalizedInserted])
+        await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', selected.id)
+      }
+    }
+
+    cancellingRef.current = false
+    setCancellingFor(null)
+    setCancelStayTarget(null)
+    setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100)
+  }
+
   // ── Chat view ────────────────────────────────────────────────────────────
 
   if (selected) {
@@ -1337,6 +1412,28 @@ export default function RequestsScreen() {
           </TouchableOpacity>
           <UserChip />
         </View>
+
+        {/* Host cancel-stay confirmation */}
+        <Modal visible={!!cancelStayTarget} transparent animationType="fade" onRequestClose={() => setCancelStayTarget(null)}>
+          <View style={styles.confirmOverlay}>
+            <View style={styles.confirmSheet}>
+              <Text style={styles.confirmTitle}>Cancel this stay?</Text>
+              <Text style={styles.confirmBody}>
+                This calls off the accepted stay and frees the nights for other riders. {otherName} will see a note in this chat. This can’t be undone.
+              </Text>
+              <TouchableOpacity
+                style={[styles.confirmDanger, cancellingFor && { opacity: 0.6 }]}
+                onPress={() => { if (cancelStayTarget) void cancelAcceptedStay(cancelStayTarget) }}
+                disabled={!!cancellingFor}
+              >
+                <Text style={styles.confirmDangerText}>{cancellingFor ? 'Cancelling…' : 'Yes, cancel the stay'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmCancel} onPress={() => setCancelStayTarget(null)} disabled={!!cancellingFor}>
+                <Text style={styles.confirmCancelText}>Keep the stay</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
         <FlatList
           ref={flatRef}
@@ -1437,6 +1534,8 @@ export default function RequestsScreen() {
 	                    responding={respondingFor === m.request.id}
 	                    onWithdraw={withdrawRequest}
 	                    withdrawing={withdrawingFor === m.request.id}
+	                    onCancelStay={setCancelStayTarget}
+	                    cancelling={cancellingFor === m.request.id}
 	                    onShowMap={Platform.OS === 'web' && m.request.location_id ? showLocationOnMap : undefined}
 	                  />
                 </View>
@@ -1692,6 +1791,16 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   },
   title: { color: C.text, fontSize: 24, fontWeight: '900', letterSpacing: 1, flex: 1 },
   titleAccent: { color: C.accent },
+
+  // Host cancel-stay confirmation
+  confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  confirmSheet: { backgroundColor: C.bg, borderRadius: 20, padding: 24, width: '100%', maxWidth: 400, gap: 12, borderWidth: 1, borderColor: C.errorBorder },
+  confirmTitle: { color: C.text, fontSize: 20, fontWeight: '900' },
+  confirmBody: { color: C.textMuted, fontSize: 14, lineHeight: 21 },
+  confirmDanger: { height: 50, borderRadius: 100, backgroundColor: C.error, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  confirmDangerText: { color: C.white, fontSize: 14, fontWeight: '800' },
+  confirmCancel: { alignItems: 'center', paddingVertical: 8 },
+  confirmCancelText: { color: C.textMuted, fontSize: 14, textDecorationLine: 'underline' },
   chatAvatar: {
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: C.elevated, alignItems: 'center', justifyContent: 'center',

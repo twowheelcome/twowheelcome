@@ -84,6 +84,31 @@
 > final legal review; for a fresh deploy, re-create the Vault `cron_secret` + the notify-review
 > CRON_SECRET env var (operational, can't live in a migration). (Schema baseline is now done.)
 >
+> **First-impression rider features (2026-06-27).** Three polished additions from the rider audit:
+> 1. **Map place search.** A thumb-friendly search bar (city / region / address) pinned to the
+>    top of the map (`HostMap.tsx`, web). Reuses the existing OpenStreetMap/Nominatim geocoder
+>    (same one the listing location picker uses). Debounced (400ms), ✕ clear, loading state,
+>    decent "no place found" message; on select it glides the camera with `flyToBounds` using
+>    the result's boundingbox (frames a whole city or a single street appropriately). Existing
+>    pins / filters / clustering untouched (search only moves the camera). Satellite toggle moved
+>    below the bar so they don't overlap.
+> 2. **Bio in the UI.** `profiles.bio` was selected everywhere but never shown. Now rendered on:
+>    own profile (`profile.tsx`, with inline edit + a "Tell others about yourself" prompt when
+>    empty, 500-char cap, saved via the same self-upsert as name); public profile (`host/[id].tsx`,
+>    given an "About {first name}" section header); and the map host bottom-sheet (`map.tsx`).
+>    Empty bio renders nothing (no empty block).
+> 3. **Host can cancel an ACCEPTED stay** (life happens). New migration
+>    `00000000000002_host_cancel_accepted.sql` widens BOTH gates that previously only allowed
+>    transitions out of PENDING: the `validate_stay_request_write` trigger (now also permits
+>    host ACCEPTED→CANCELLED) and the `sr_update` RLS policy (host may update their own ACCEPTED
+>    rows to CANCELLED; guests still cannot touch an accepted stay). Cancelling drops the row out
+>    of the `no_double_booked_accepted` exclusion constraint, so the booked nights free up
+>    automatically. UI: "Cancel this stay" on the host's accepted-request card → confirm modal →
+>    a system note lands in chat ("Host cancelled this stay. The booked nights are free again.").
+>    **Verified naostro** (live DB, in a BEGIN/ROLLBACK transaction — no data changed): foreigner
+>    update → 0 rows, guest-on-accepted → 0 rows, host → 1 row; the live row stayed ACCEPTED.
+>    Migration applied to production via the management API. tsc + full eslint green.
+>
 > **UX (2026-06-26): native date picker + host capacity in knock.** 'Other day' on mobile is
 > now a calendar (@react-native-community/datetimepicker, min today; web keeps its date input;
 > the package's web stub is a safe no-op). The Request-a-stay window shows a highlighted
