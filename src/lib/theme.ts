@@ -143,8 +143,12 @@ export const SAFETY = {
 
 // ── Shape & type constants ─────────────────────────────────────────
 export const RADIUS = { pill: 100, card: 22, lg: 18, md: 14, sm: 12 } as const
+// Rye = logo/wordmark only. Oswald = headings/labels/buttons (use UPPERCASE + tracking).
+// Body stays the system sans for readability.
 export const FONT = {
-  display: 'System',
-  head:    'System',
-  body:    'System',
+  display:  'Rye_400Regular',
+  head:     'Oswald_600SemiBold',
+  headBold: 'Oswald_700Bold',
+  headMed:  'Oswald_500Medium',
+  body:     'System',
 } as const

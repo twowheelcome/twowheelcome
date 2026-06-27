@@ -3,6 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, View } from 'r
 import { useFocusEffect } from 'expo-router'
 import { supabase } from '../lib/supabase'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
+import { FONT } from '../lib/theme'
 import { AppHeader, HeaderBackButton } from '../components/AppHeader'
 
 export default function NotificationsScreen() {
@@ -110,8 +111,8 @@ function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: C.bg },
     content: { width: '100%', maxWidth: 720, alignSelf: 'center', padding: 24, paddingBottom: 60, gap: 16 },
-    kicker: { color: C.accent, fontSize: 11, fontWeight: '900', letterSpacing: 2 },
-    title: { color: C.text, fontSize: 30, fontWeight: '900', lineHeight: 36 },
+    kicker: { color: C.accent, fontSize: 11, fontFamily: FONT.head, letterSpacing: 2, textTransform: 'uppercase' },
+    title: { color: C.text, fontSize: 30, fontFamily: FONT.headBold, lineHeight: 36 },
     body: { color: C.textMuted, fontSize: 15, lineHeight: 23 },
     section: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 18, padding: 4 },
     row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 14 },

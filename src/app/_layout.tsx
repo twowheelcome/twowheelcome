@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 import { router, Stack } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import * as Notifications from 'expo-notifications'
+import { useFonts, Oswald_500Medium, Oswald_600SemiBold, Oswald_700Bold } from '@expo-google-fonts/oswald'
+import { Rye_400Regular } from '@expo-google-fonts/rye'
 import { ThemeProvider, useTheme } from '../lib/ThemeContext'
 import { supabase } from '../lib/supabase'
 import { registerPushToken } from '../lib/pushNotifications'
@@ -36,10 +38,14 @@ function AppStack() {
 
 export default function RootLayout() {
   const notifSubRef = useRef<Notifications.Subscription | null>(null)
+  const [fontsLoaded] = useFonts({
+    Oswald_500Medium, Oswald_600SemiBold, Oswald_700Bold, Rye_400Regular,
+  })
 
   useEffect(() => {
-    SplashScreen.hideAsync()
-  }, [])
+    // Hide the splash only once fonts are ready, so the UI doesn't flash in system font first.
+    if (fontsLoaded) SplashScreen.hideAsync()
+  }, [fontsLoaded])
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -71,6 +77,8 @@ export default function RootLayout() {
 
     return () => { subscription.unsubscribe(); notifSubRef.current?.remove() }
   }, [])
+
+  if (!fontsLoaded) return null
 
   return (
     <ThemeProvider>

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
+import { FONT } from '../lib/theme'
 import { AppHeader, HeaderBackButton } from '../components/AppHeader'
 
 const CONTACT_EMAIL = 'privacy@twowheelcome.com'
@@ -115,8 +116,8 @@ function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: C.bg },
     content: { width: '100%', maxWidth: 720, alignSelf: 'center', padding: 24, paddingBottom: 60, gap: 16 },
-    kicker: { color: C.accent, fontSize: 11, fontWeight: '900', letterSpacing: 2 },
-    title: { color: C.text, fontSize: 30, fontWeight: '900', lineHeight: 36 },
+    kicker: { color: C.accent, fontSize: 11, fontFamily: FONT.head, letterSpacing: 2, textTransform: 'uppercase' },
+    title: { color: C.text, fontSize: 30, fontFamily: FONT.headBold, lineHeight: 36 },
     disclaimer: { backgroundColor: C.warningSoft, borderWidth: 1, borderColor: C.warningBorder, borderRadius: 16, padding: 16, gap: 8 },
     disclaimerTitle: { color: C.warning, fontSize: 15, fontWeight: '900' },
     disclaimerText: { color: C.text, fontSize: 14, lineHeight: 21 },

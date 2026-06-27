@@ -3,6 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOp
 import { useLocalSearchParams } from 'expo-router'
 import { supabase } from '../lib/supabase'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
+import { FONT } from '../lib/theme'
 import { AppHeader, HeaderBackButton } from '../components/AppHeader'
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -178,8 +179,8 @@ function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: C.bg },
     content: { width: '100%', maxWidth: 720, alignSelf: 'center', padding: 24, paddingBottom: 60, gap: 12 },
-    kicker: { color: C.accent, fontSize: 11, fontWeight: '900', letterSpacing: 2 },
-    title: { color: C.text, fontSize: 28, fontWeight: '900', lineHeight: 34 },
+    kicker: { color: C.accent, fontSize: 11, fontFamily: FONT.head, letterSpacing: 2, textTransform: 'uppercase' },
+    title: { color: C.text, fontSize: 28, fontFamily: FONT.headBold, lineHeight: 34 },
     summary: { color: C.accent, fontSize: 15, fontWeight: '700', marginTop: -4, marginBottom: 6 },
     card: { backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 14, gap: 6 },
     cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

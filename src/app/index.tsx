@@ -6,6 +6,7 @@ import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView,
 import { Feather } from '@expo/vector-icons'
 import { supabase } from '../lib/supabase'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
+import { FONT } from '../lib/theme'
 
 const ONBOARDING_KEY = '@twowheelcome/onboarding-seen'
 
@@ -365,7 +366,7 @@ function makeStyles(C: ThemeColors) {
       color: C.text, fontSize: 18, fontWeight: '700', textAlign: 'center', lineHeight: 25,
     },
     taglineSub: {
-      color: C.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 1.6, textAlign: 'center', marginTop: 8, textTransform: 'uppercase',
+      color: C.textMuted, fontSize: 12, fontFamily: FONT.head, letterSpacing: 1.6, textAlign: 'center', marginTop: 8, textTransform: 'uppercase',
     },
 
     safetyWrap: {
@@ -386,9 +387,9 @@ function makeStyles(C: ThemeColors) {
     input:     { flex: 1, color: C.text, fontSize: 16 },
 
     btnPrimary:     { height: 54, backgroundColor: C.accent, borderRadius: 100, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
-    btnPrimaryText: { color: C.white, fontSize: 16, fontWeight: '700' },
+    btnPrimaryText: { color: C.white, fontSize: 16, fontFamily: FONT.head, letterSpacing: 1, textTransform: 'uppercase' },
     btnOutline:     { height: 54, borderRadius: 100, borderWidth: 1.5, borderColor: C.borderMid, alignItems: 'center', justifyContent: 'center' },
-    btnOutlineText: { color: C.text, fontSize: 16 },
+    btnOutlineText: { color: C.text, fontSize: 16, fontFamily: FONT.head, letterSpacing: 1, textTransform: 'uppercase' },
 
     forgotWrap: { alignItems: 'center', paddingVertical: 4 },
     forgotText: { color: C.textDim, fontSize: 14 },

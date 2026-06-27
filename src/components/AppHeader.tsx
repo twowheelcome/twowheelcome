@@ -2,6 +2,7 @@ import { ReactNode } from 'react'
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { router } from 'expo-router'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
+import { FONT } from '../lib/theme'
 
 const mark = require('../../assets/images/mark.png')
 
@@ -127,9 +128,9 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   },
   wordmark: {
     color: C.text,
+    fontFamily: FONT.display,   // Rye — the wordmark/logo only
     fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: 0,
+    letterSpacing: 0.5,
     flexShrink: 1,
   },
   wordmarkCompact: {
