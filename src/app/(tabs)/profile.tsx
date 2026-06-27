@@ -10,6 +10,7 @@ import { UserChip, refreshUserChip } from '../../components/UserChip'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { compressBikePhoto } from '../../lib/compressImage'
 import { FONT } from '../../lib/theme'
+import { LinearGradient } from 'expo-linear-gradient'
 
 export default function ProfileScreen() {
   const C = useTheme()
@@ -28,6 +29,7 @@ export default function ProfileScreen() {
   const [avatarError, setAvatarError] = useState<string | null>(null)
   const [reviews, setReviews] = useState<{ rating: number; body: string | null; reviewer_name: string | null; created_at: string }[]>([])
   const [pendingReviews, setPendingReviews] = useState(0)
+  const [stats, setStats] = useState({ trips: 0, nights: 0 })
   const [showQR, setShowQR] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -100,19 +102,26 @@ export default function ProfileScreen() {
       created_at: rev.created_at,
     })))
 
-    // Pending reviews you can still leave — as a guest AND as a host (symmetric).
+    // Accepted stays drive both the review prompt and the Trips/Nights stats.
     const today = new Date().toISOString().split('T')[0]
-    const [{ data: endedStays }, { data: myRevs }] = await Promise.all([
+    const [{ data: acceptedStays }, { data: myRevs }] = await Promise.all([
       supabase.from('stay_requests')
-        .select('id')
+        .select('id, arrival_date, departure_date')
         .or(`guest_id.eq.${resolvedUser.id},host_id.eq.${resolvedUser.id}`)
-        .eq('status', 'ACCEPTED')
-        .lte('departure_date', today),
+        .eq('status', 'ACCEPTED'),
       supabase.from('reviews').select('stay_request_id').eq('reviewer_id', resolvedUser.id),
     ])
     if (userIdRef.current !== resolvedUser.id) return
+    const accepted = acceptedStays || []
     const reviewedSet = new Set((myRevs || []).map((r2: any) => r2.stay_request_id))
-    setPendingReviews((endedStays || []).filter((s: any) => !reviewedSet.has(s.id)).length)
+    const ended = accepted.filter((s: any) => s.departure_date && s.departure_date <= today)
+    setPendingReviews(ended.filter((s: any) => !reviewedSet.has(s.id)).length)
+    const nights = accepted.reduce((sum: number, s: any) => {
+      const a = new Date(s.arrival_date).getTime(), d = new Date(s.departure_date).getTime()
+      const n = Math.round((d - a) / 86400000)
+      return sum + (n > 0 ? n : 0)
+    }, 0)
+    setStats({ trips: accepted.length, nights })
 
     setLoading(false)
   }
@@ -227,8 +236,8 @@ export default function ProfileScreen() {
     <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
       <AppHeader left={<HeaderBackButton />} right={<UserChip />} />
 
-      {/* Avatar + QR */}
-      <View style={styles.hero}>
+      {/* Avatar + QR — warm Road→Trail gradient band */}
+      <LinearGradient colors={[C.accentSoft, C.greenSoft]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
         {Platform.OS === 'web' ? (
           <div style={{ position: 'relative', width: 96, height: 96, flexShrink: 0 } as any}>
             <View style={styles.avatarCircle}>
@@ -279,7 +288,7 @@ export default function ProfileScreen() {
           <Feather name="share-2" size={16} color={C.accent} />
           <Text style={styles.qrBtnText}>Share profile</Text>
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       {/* QR Modal */}
       <Modal visible={showQR} transparent animationType="fade" onRequestClose={() => setShowQR(false)}>
@@ -336,6 +345,11 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         )}
         <Text style={styles.email}>{user?.email}</Text>
+        {(avgRating || hostLocations[0]?.location_city) ? (
+          <Text style={styles.profileMeta}>
+            {avgRating ? `⭐ ${avgRating}` : ''}{avgRating && hostLocations[0]?.location_city ? '  ·  ' : ''}{hostLocations[0]?.location_city ? `📍 ${hostLocations[0].location_city}` : ''}
+          </Text>
+        ) : null}
 
         {/* Bio — what riders see on your public profile */}
         {editingBio ? (
@@ -371,23 +385,21 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Stats */}
+        {/* Stats — Spots / Nights / Trips */}
         <View style={styles.statsCard}>
           <View style={styles.statItem}>
             <Text style={styles.statNum}>{hostLocations.length}</Text>
-            <Text style={styles.statLabel}>locations</Text>
+            <Text style={styles.statLabel}>Spots</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={[styles.statNum, avgRating ? { color: C.accent } : {}]}>
-              {avgRating ? `⭐ ${avgRating}` : '—'}
-            </Text>
-            <Text style={styles.statLabel}>rating</Text>
+            <Text style={styles.statNum}>{stats.nights || '—'}</Text>
+            <Text style={styles.statLabel}>Nights</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNum}>{reviews.length || '—'}</Text>
-            <Text style={styles.statLabel}>reviews</Text>
+            <Text style={styles.statNum}>{stats.trips || '—'}</Text>
+            <Text style={styles.statLabel}>Trips</Text>
           </View>
         </View>
 
@@ -603,6 +615,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   nameRow: { flexDirection: 'row', alignItems: 'center' },
   name: { color: C.text, fontSize: 24, fontWeight: '800', letterSpacing: 0.3 },
   email: { color: C.textDim, fontSize: 13, marginTop: -12, fontFamily: FONT.body },
+  profileMeta: { color: C.accent, fontSize: 13, fontWeight: '700', marginTop: 2 },
   placeCard: { backgroundColor: C.surface, borderRadius: 22, padding: 16, borderWidth: 1, borderColor: C.border },
   placeCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   placeCardTitle: { color: C.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 2 },

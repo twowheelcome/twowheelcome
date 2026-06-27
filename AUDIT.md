@@ -1,5 +1,21 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Design pass (2026-06-27, Petr's screens).**
+> 1. **Review hero redesign** — "How was your stay?": centered avatar/name/dates, 5 stars with
+>    labels, "Did your bike feel safe?" (🔒/😐/⚠️), "What stood out?" tags, optional words + an
+>    optional "🍺 €3" thanks gesture (never required, no charge yet), POST disabled until rating.
+>    New reviews.bike_safe (CHECK) + tags[] columns (live + baseline). Verified naostro.
+> 2. **Profile** — warm terracotta→green gradient hero band; stats are now Spots / Nights / Trips
+>    (Nights/Trips computed from accepted stays); meta line (⭐ rating · 📍 city). Avatar camera-edit
+>    and menu (incl. new Blocked users) kept. Finer "Your place" card layout left for Petr's pixels.
+> 3. **Block management** — blocked hosts are now removed from the map/list (blockedIds filtered in
+>    filteredHosts, loaded on mount + focus), and a new /blocked screen lists everyone you've blocked
+>    with Unblock, linked from the profile menu.
+> 4. **Full profile = all places** — host/[id] loads and renders every host_locations_public listing
+>    (one place card each: safety, about, sleep, amenities, contribution, photos, capacity, its own
+>    Knock + Report-listing), not just the first. Privacy (approximate coords) kept. Verified a
+>    3-listing host renders all three. tsc + full eslint green throughout.
+
 > **Post-E2E follow-ups (2026-06-27).**
 > - **delete-account re-verified live** on a fresh pre-confirmed throwaway account: edge function
 >   returned 200, then auth.users/profiles/reports/host_locations all 0 for that id — clean, no
