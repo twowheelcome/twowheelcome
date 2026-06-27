@@ -398,6 +398,7 @@ BEGIN
   -- function was first written).
   DELETE FROM blocks WHERE blocker_id = p_uid OR blocked_id = p_uid;
   DELETE FROM conversation_reads WHERE user_id = p_uid;
+  DELETE FROM conversation_hides WHERE user_id = p_uid;
 
   -- Remove only this user's messages; keep the other rider's. Detach surviving
   -- messages from the user's stay_requests before those requests disappear.

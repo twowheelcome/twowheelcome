@@ -548,6 +548,8 @@ export default function RequestsScreen() {
   const [cancelStayTarget, setCancelStayTarget] = useState<string | null>(null)   // host cancel confirm modal
   const [acceptTarget, setAcceptTarget] = useState<string | null>(null)           // host accept confirm modal
   const [coordsTarget, setCoordsTarget] = useState<RequestData | null>(null)       // send-coordinates confirm modal
+  const [removeTarget, setRemoveTarget] = useState<ConvRow | null>(null)           // "remove this chat" confirm modal
+  const [removing, setRemoving] = useState(false)
   const [activeFilter, setActiveFilter] = useState<ConversationFilter>('all')
   const flatRef = useRef<FlatList<ChatItem>>(null)
   const nearBottomRef = useRef(true)   // is the user near the bottom of the thread?
@@ -785,7 +787,7 @@ export default function RequestsScreen() {
       .filter((id: string | null): id is string => !!id)
     const locationIds = convData.map((c: any) => c.location_id).filter(Boolean)
 
-    const [{ data: profiles }, { data: locations }, { data: lastMsgs }, { data: requestRows }, { data: readRows }, { data: blockRows }] = await Promise.all([
+    const [{ data: profiles }, { data: locations }, { data: lastMsgs }, { data: requestRows }, { data: readRows }, { data: blockRows }, { data: hideRows }] = await Promise.all([
       otherIds.length ? supabase.from('profiles').select('id, full_name, avatar_url').in('id', otherIds) : Promise.resolve({ data: [] as any[] }),
       locationIds.length ? supabase.from('host_locations_public').select('id, location_city, location_country').in('id', locationIds) : Promise.resolve({ data: [] as any[] }),
       supabase.from('messages')
@@ -801,11 +803,15 @@ export default function RequestsScreen() {
         .eq('user_id', userId),
       // People I've blocked — hide those conversations from my list.
       supabase.from('blocks').select('blocked_id').eq('blocker_id', userId),
+      // Chats I've removed from my list — stay hidden until a newer message arrives.
+      supabase.from('conversation_hides').select('conversation_id, hidden_at').eq('user_id', userId),
     ])
 
     if (loadUserIdRef.current !== userId || currentUserIdRef.current !== userId) return
 
     const blockedSet = new Set((blockRows || []).map((b: any) => b.blocked_id))
+    const hideMap: Record<string, string> = {}
+    hideRows?.forEach((h: any) => { hideMap[h.conversation_id] = h.hidden_at })
 
     setReadMap(prev => {
       const next = { ...prev }
@@ -845,7 +851,11 @@ export default function RequestsScreen() {
 
     setConvs(convData.filter((c: any) => {
       const otherId = c.user_a === userId ? c.user_b : c.user_a
-      return !blockedSet.has(otherId)
+      if (blockedSet.has(otherId)) return false
+      // Hidden until something newer than the hide arrives (then it resurfaces).
+      const hiddenAt = hideMap[c.id]
+      if (hiddenAt && new Date(hiddenAt).getTime() >= new Date(c.last_message_at).getTime()) return false
+      return true
     }).map((c: any) => {
       const otherId = c.user_a === userId ? c.user_b : c.user_a
       const last = lastMsgMap[c.id]
@@ -868,6 +878,27 @@ export default function RequestsScreen() {
       }
     }))
     setLoading(false)
+  }
+
+  // A chat can be removed from MY list (per-user hide; the other person keeps theirs).
+  // Only when there's no active (pending/accepted) request — dead/finished chats only.
+  function canRemoveConv(conv: ConvRow): boolean {
+    const s = conv.requestStatus
+    return s !== 'PENDING' && s !== 'ACCEPTED'
+  }
+
+  async function hideConversation(conv: ConvRow) {
+    const userId = currentUserIdRef.current
+    if (!userId || removing) return
+    setRemoving(true)
+    const { error } = await supabase
+      .from('conversation_hides')
+      .upsert({ user_id: userId, conversation_id: conv.id, hidden_at: new Date().toISOString() }, { onConflict: 'user_id,conversation_id' })
+    setRemoving(false)
+    if (error) { console.warn('hide conversation error:', error.message); return }
+    setRemoveTarget(null)
+    setConvs(prev => prev.filter(c => c.id !== conv.id))
+    if (selectedConvIdRef.current === conv.id) { setSelected(null); selectedConvIdRef.current = null }
   }
 
   async function markRead(convId: string, isoTime: string) {
@@ -1485,8 +1516,41 @@ export default function RequestsScreen() {
             </View>
           </TouchableOpacity>
           <ReportButton targetType="conversation" targetId={selected.id} label="Report" style={{ marginRight: 4 }} />
+          {canRemoveConv(selected) ? (
+            <TouchableOpacity
+              onPress={() => setRemoveTarget(selected)}
+              style={{ padding: 6, marginRight: 2 }}
+              accessibilityRole="button"
+              accessibilityLabel="Remove this chat from your list"
+              hitSlop={8}
+            >
+              <Feather name="trash-2" size={18} color={C.textDim} />
+            </TouchableOpacity>
+          ) : null}
           <UserChip />
         </View>
+
+        {/* Remove-this-chat confirmation (per-user hide) */}
+        <Modal visible={!!removeTarget} transparent animationType="fade" onRequestClose={() => setRemoveTarget(null)}>
+          <View style={styles.confirmOverlay}>
+            <View style={styles.confirmSheet}>
+              <Text style={styles.confirmTitle}>Remove this chat?</Text>
+              <Text style={styles.confirmBody}>
+                This hides the chat from your list only — {otherName} keeps their copy, and nothing is deleted. It comes back if a new message arrives.
+              </Text>
+              <TouchableOpacity
+                style={[styles.confirmPrimary, removing && { opacity: 0.6 }]}
+                onPress={() => { if (removeTarget) void hideConversation(removeTarget) }}
+                disabled={removing}
+              >
+                <Text style={styles.confirmPrimaryText}>{removing ? 'Removing…' : 'Remove from my list'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmCancel} onPress={() => setRemoveTarget(null)} disabled={removing}>
+                <Text style={styles.confirmCancelText}>Keep it</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
 
         {/* Host cancel-stay confirmation */}
         <Modal visible={!!cancelStayTarget} transparent animationType="fade" onRequestClose={() => setCancelStayTarget(null)}>
