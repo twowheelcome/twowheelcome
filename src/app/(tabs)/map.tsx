@@ -10,6 +10,7 @@ import { mapFocusStore } from '../../lib/mapFocusStore'
 import { fuzzCoords } from '../../lib/geo'
 import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
 import { HostOffer } from '../../components/HostOffer'
+import { ContributionBadge } from '../../components/ContributionBadge'
 import { compressBikePhoto } from '../../lib/compressImage'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
@@ -1004,7 +1005,6 @@ export default function MapScreen() {
       <>
         {filteredHosts.map((host) => {
           const hostParkings: string[] = host.parkings?.length ? host.parkings : (host.parking ? [host.parking] : [])
-          const hostPricings: string[] = host.pricings?.length ? host.pricings : (host.pricing ? [host.pricing] : ['free'])
           const isOwn = host.user_id === currentUser?.id
           return (
             <TouchableOpacity
@@ -1029,11 +1029,7 @@ export default function MapScreen() {
                   </View>
                   <Text style={styles.cardLocation}>📍 {placeLabel(host.location_city, host.location_country)}</Text>
                 </View>
-                {hostPricings.includes('free') && (
-                  <View style={[styles.pricePill, { borderColor: C.successBorder, backgroundColor: C.successSoft }]}>
-                    <Text style={[styles.pricePillText, { color: C.success }]}>Free</Text>
-                  </View>
-                )}
+                <ContributionBadge loc={host} compact />
               </View>
               {selected?.id === host.id && (
                 <View style={styles.detail}>

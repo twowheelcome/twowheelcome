@@ -4,6 +4,7 @@ import { useLocalSearchParams, router } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { SafetyBlock } from '../../components/SafetyBlock'
+import { ContributionBadge } from '../../components/ContributionBadge'
 import { ListingGallery } from '../../components/ListingGallery'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
@@ -260,7 +261,7 @@ export default function PublicHostProfile() {
         {location && pricingText(location) ? (
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>What this host wants in return</Text>
-            <Text style={styles.bio}>💶 {pricingText(location)}</Text>
+            <ContributionBadge loc={location} />
             {location.pricings?.includes('fixed') && location.price_amount != null ? (
               <Text style={styles.priceHint}>Indicative — the exact amount and currency are agreed in chat (local cash is fine).</Text>
             ) : null}

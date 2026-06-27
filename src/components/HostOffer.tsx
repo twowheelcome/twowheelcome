@@ -1,11 +1,11 @@
 import { View, Text, StyleSheet } from 'react-native'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 import { ListingGallery } from './ListingGallery'
+import { ContributionBadge } from './ContributionBadge'
 
 // The host's full public offer (everything except parking, which SafetyBlock shows on its
 // own). Fed from host_locations_public — public fields only, never the exact address/GPS.
 const SLEEP_LABELS: Record<string, string> = { tent: 'Tent space', roof: 'Roof over head', room: 'Private room' }
-const PRICING_LABELS: Record<string, string> = { free: 'Free', tip: 'Tip welcome', fixed: 'Agreed contribution' }
 const VEHICLE_LABELS: Record<string, string> = { moto: 'Motorcycle', car: 'Car', bicycle: 'Bicycle', van: 'Van', scooter: 'Scooter' }
 const AMENITY_ICON: Record<string, string> = {
   shower: '🚿', toilet: '🚽', kitchen: '🍳', laundry: '👕', electricity: '⚡', wifi: '📶',
@@ -43,15 +43,6 @@ export function HostOffer({ loc }: { loc: OfferLoc }) {
   const notes = loc.notes?.trim()
   const photos = loc.photos ?? []
 
-  // Show the actual amount + currency for a Paid listing so riders know the cost before knocking.
-  const currency = loc.price_currency || 'EUR'
-  const pricingText = pricings.map(v => {
-    if (v === 'fixed') {
-      return loc.price_amount != null ? `${loc.price_amount} ${currency} / night` : (PRICING_LABELS.fixed || 'Agreed contribution')
-    }
-    return PRICING_LABELS[v] || v
-  }).join(' · ')
-
   if (!sleep.length && !amenities.length && !pricings.length && !vehicles.length && !notes && !photos.length) return null
 
   return (
@@ -62,7 +53,7 @@ export function HostOffer({ loc }: { loc: OfferLoc }) {
         <View style={s.row}><Text style={s.icon}>🛏</Text><Text style={s.value}>{mapLabels(sleep, SLEEP_LABELS)}</Text></View>
       )}
       {pricings.length > 0 && (
-        <View style={s.row}><Text style={s.icon}>💶</Text><Text style={s.value}>{pricingText}</Text></View>
+        <ContributionBadge loc={loc} />
       )}
       {pricings.includes('fixed') && loc.price_amount != null && (
         <Text style={s.priceHint}>Indicative — the exact amount and currency are up to you two in chat (local cash is fine).</Text>
