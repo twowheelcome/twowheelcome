@@ -460,6 +460,16 @@ export default function ProfileScreen() {
             </View>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/feedback' as never)}>
+            <View style={styles.menuTextWrap}>
+              <Text style={styles.menuTitle}>Send feedback</Text>
+              <Text style={styles.menuSub}>Tell the makers what to fix or build</Text>
+            </View>
+            <View style={styles.menuIcon}>
+              <Feather name="message-circle" size={18} color={C.accent} />
+            </View>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/blocked' as never)}>
             <View style={styles.menuTextWrap}>
               <Text style={styles.menuTitle}>Blocked users</Text>

@@ -1,5 +1,12 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Feedback channel (2026-06-27).** "Send feedback" in the profile menu opens a form (optional
+> Bug/Idea/Other + free message). Submitting stores it in a new `feedback` table (user_id, category,
+> message; RLS: own insert/read) and emails the developer inbox (privacy@twowheelcome.com via Resend,
+> reply-to = sender) through a new `feedback` edge function — same robust pattern as report (returns
+> `emailed`, email failure doesn't block the insert). Confirm: "Thanks — your feedback is on its
+> way." No developer tipping yet (deferred). Verified naostro: 200 {ok, emailed:true}, row stored.
+
 > **Map/chat/edit polish (2026-06-27).**
 > - **No ETA** anywhere (confirmed by grep; not added — riders use their own nav).
 > - **"Navigate to approximate area"** — opens external maps on the fuzzed/approximate coords
