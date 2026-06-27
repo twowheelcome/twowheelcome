@@ -448,6 +448,16 @@ export default function ProfileScreen() {
             </View>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/blocked' as never)}>
+            <View style={styles.menuTextWrap}>
+              <Text style={styles.menuTitle}>Blocked users</Text>
+              <Text style={styles.menuSub}>People you blocked — manage or unblock</Text>
+            </View>
+            <View style={styles.menuIcon}>
+              <Feather name="slash" size={18} color={C.accent} />
+            </View>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/privacy')}>
             <View style={styles.menuTextWrap}>
               <Text style={styles.menuTitle}>Privacy</Text>

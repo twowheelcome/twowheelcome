@@ -40,6 +40,7 @@ export default function MapScreen() {
   const C = useTheme()
   const styles = useMemo(() => makeStyles(C), [C])
   const [hosts, setHosts] = useState<any[]>([])
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())   // hosts I've blocked → hidden
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [selected, setSelected] = useState<any>(null)
@@ -98,6 +99,7 @@ export default function MapScreen() {
   }
 
   const filteredHosts = hosts.filter(h => {
+    if (blockedIds.has(h.user_id)) return false   // blocked hosts never appear on the map/list
     if (filterParkings.length) {
       const hp: string[] = h.parkings?.length ? h.parkings : (h.parking ? [h.parking] : [])
       const hpKeys = hp.map(getSafetyKey)
@@ -198,12 +200,19 @@ export default function MapScreen() {
     setMyConvByLocation(convMap)
   }, [])
 
+  // People I've blocked — their listings are hidden from the map/list.
+  const loadBlocks = useCallback(async (userId: string) => {
+    const { data } = await supabase.from('blocks').select('blocked_id').eq('blocker_id', userId)
+    if (currentUserIdRef.current !== userId) return
+    setBlockedIds(new Set((data || []).map((b: any) => b.blocked_id)))
+  }, [])
+
   useEffect(() => {
     void Promise.resolve().then(fetchHosts)
     supabase.auth.getUser().then(({ data: { user } }) => {
       currentUserIdRef.current = user?.id ?? null
       setCurrentUser(user)
-      if (user) void loadMyRequests(user.id)
+      if (user) { void loadMyRequests(user.id); void loadBlocks(user.id) }
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const nextUser = session?.user ?? null
@@ -220,21 +229,21 @@ export default function MapScreen() {
       setSendSuccess(false)
       setPhotoFile(null)
       handledKnockHostRef.current = null
-      if (nextUser) void loadMyRequests(nextUser.id)
-      else setMyActiveByLocation({})
+      if (nextUser) { void loadMyRequests(nextUser.id); void loadBlocks(nextUser.id) }
+      else { setMyActiveByLocation({}); setBlockedIds(new Set()) }
     })
     if (Platform.OS === 'web') {
       import('../../components/HostMap').then(m => setHostMap(() => m.default))
     }
     return () => subscription.unsubscribe()
-  }, [fetchHosts, loadMyRequests])
+  }, [fetchHosts, loadMyRequests, loadBlocks])
 
   // Refresh my request statuses when returning to the map (e.g. the host just
   // accepted in chat), so the host card reflects the latest state.
   useFocusEffect(
     useCallback(() => {
       const uid = currentUserIdRef.current
-      if (uid) void loadMyRequests(uid)
+      if (uid) { void loadMyRequests(uid); void loadBlocks(uid) }
       // Honour a "Show on map" request from a chat. Consumed on every focus, so it
       // works whether the Map tab was already mounted or just re-focused.
       const focus = mapFocusStore.consume()
@@ -245,7 +254,7 @@ export default function MapScreen() {
         reopenHostSheetRef.current = false
         setShowHostProfile(true)
       }
-    }, [loadMyRequests])
+    }, [loadMyRequests, loadBlocks])
   )
 
   // Keep the ref in sync after optimistic in-place updates (send success / dup error).
