@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { router } from 'expo-router'
 import { supabase } from '../lib/supabase'
-import { useTheme, type ThemeColors } from '../lib/ThemeContext'
+import { useTheme, useThemeMode, type ThemeColors } from '../lib/ThemeContext'
 
 export default function ResetPasswordScreen() {
   const C = useTheme()
+  const { scheme } = useThemeMode()
   const styles = useMemo(() => makeStyles(C), [C])
 
   const [ready, setReady] = useState(false)
@@ -63,7 +64,7 @@ export default function ResetPasswordScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} bounces={false}>
       <View style={styles.hero}>
-        <Image source={require('../../assets/images/mark.png')} style={styles.logo} resizeMode="contain" />
+        <Image source={scheme === 'dark' ? require('../../assets/images/mark-cream.png') : require('../../assets/images/mark.png')} style={styles.logo} resizeMode="contain" />
         <Text style={styles.title}>Set a new password</Text>
       </View>
 

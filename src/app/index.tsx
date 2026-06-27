@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView, Platform } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import { supabase } from '../lib/supabase'
-import { useTheme, type ThemeColors } from '../lib/ThemeContext'
+import { useTheme, useThemeMode, type ThemeColors } from '../lib/ThemeContext'
 import { FONT } from '../lib/theme'
 import { Wordmark } from '../components/Wordmark'
 
@@ -94,6 +94,7 @@ function Onboarding({ C, onDone }: { C: ThemeColors; onDone: () => void }) {
 
 export default function AuthScreen() {
   const C = useTheme()
+  const { scheme } = useThemeMode()
   const styles = useMemo(() => makeStyles(C), [C])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -220,7 +221,7 @@ export default function AuthScreen() {
       {/* Logo + tagline */}
       <View style={styles.hero}>
         <Image
-          source={require('../../assets/images/mark.png')}
+          source={scheme === 'dark' ? require('../../assets/images/mark-cream.png') : require('../../assets/images/mark.png')}
           style={styles.logo}
           resizeMode="contain"
         />
