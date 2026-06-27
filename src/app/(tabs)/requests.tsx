@@ -1736,10 +1736,10 @@ export default function RequestsScreen() {
                   <View style={styles.meetingCard}>
                     <View style={styles.meetingHeader}>
                       <View style={styles.meetingIcon}>
-                        <Feather name="navigation" size={17} color={C.accent} />
+                        <Feather name="unlock" size={17} color={C.success} />
                       </View>
                       <View style={styles.meetingHeaderText}>
-                        <Text style={styles.meetingTitle}>Exact meeting point</Text>
+                        <Text style={styles.meetingTitle}>🔓 Address unlocked</Text>
                         <Text style={styles.meetingCoords}>
                           {exactPoint.coords.lat.toFixed(6)}, {exactPoint.coords.lng.toFixed(6)}
                         </Text>
@@ -1749,7 +1749,7 @@ export default function RequestsScreen() {
                       <View style={styles.meetingFacts}>
                         {exactPoint.lines.map(line => (
                           <View key={line.label} style={styles.meetingFact}>
-                            <Feather name={MEETING_ICONS[line.label] ?? 'info'} size={16} color={C.accent} style={styles.meetingFactIcon} />
+                            <Feather name={MEETING_ICONS[line.label] ?? 'info'} size={16} color={C.success} style={styles.meetingFactIcon} />
                             <Text style={styles.meetingFactValue}>{line.value}</Text>
                           </View>
                         ))}
@@ -1759,8 +1759,8 @@ export default function RequestsScreen() {
                       style={styles.meetingNavButton}
                       onPress={() => openNavigation(exactPoint.coords.lat, exactPoint.coords.lng)}
                     >
-                      <Feather name="navigation" size={14} color={C.white} />
-                      <Text style={styles.meetingNavText}>Open navigation</Text>
+                      <Feather name="navigation" size={15} color={C.white} />
+                      <Text style={styles.meetingNavText}>Navigate</Text>
                     </TouchableOpacity>
                     <Text style={styles.autoTime}>{fmtTime(m.created_at)}</Text>
                   </View>
@@ -2075,9 +2075,9 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   meetingCard: {
     maxWidth: '90%',
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: C.border,
-    backgroundColor: C.surface,
+    borderWidth: 1.5,
+    borderColor: C.successBorder,
+    backgroundColor: C.successSoft,
     padding: 14,
     gap: 10,
   },
@@ -2090,7 +2090,9 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: C.accentSoft,
+    backgroundColor: C.successSoft,
+    borderWidth: 1,
+    borderColor: C.successBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2099,9 +2101,10 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     minWidth: 0,
   },
   meetingTitle: {
-    color: C.text,
+    color: C.success,
     fontSize: 16,
-    fontWeight: '900',
+    fontFamily: FONT.headBold,
+    letterSpacing: 0.3,
   },
   meetingCoords: {
     color: C.textDim,
@@ -2116,12 +2119,13 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   meetingNavButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
-    alignSelf: 'flex-start',
+    alignSelf: 'stretch',
     borderRadius: 100,
-    backgroundColor: C.accent,
+    backgroundColor: C.success,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 13,
   },
   meetingNavText: {
     color: C.white,
