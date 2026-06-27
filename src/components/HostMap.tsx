@@ -349,9 +349,11 @@ export default function HostMap({
     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
       <div ref={mapRef as any} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
 
-      {/* Place search — top, full width, big thumb-friendly target */}
-      <div style={{ position: 'absolute', top: 12, left: 12, right: 12, zIndex: 1100, maxWidth: 520 }}>
+      {/* Place search + Near me — one top row, big thumb-friendly targets */}
+      <div style={{ position: 'absolute', top: 12, left: 12, right: 12, zIndex: 1100, maxWidth: 560 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <div style={{
+          flex: 1, minWidth: 0,
           display: 'flex', alignItems: 'center',
           background: C.surface, borderRadius: 100,
           border: `1.5px solid ${C.border}`,
@@ -382,6 +384,38 @@ export default function HostMap({
               }}
             >✕</button>
           )}
+        </div>
+
+          {/* Near me — next to search; centres the map on your location */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              if (!mapInstanceRef.current || locating) return
+              if (!navigator.geolocation) { setLocateError('Geolocation not supported'); return }
+              setLocating(true)
+              setLocateError('')
+              navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                  const { latitude: lat, longitude: lng } = pos.coords
+                  mapInstanceRef.current?.setView([lat, lng], 13)
+                  setLocating(false)
+                },
+                () => { setLocateError('Denied'); setLocating(false) },
+                { timeout: 10000, enableHighAccuracy: true }
+              )
+            }}
+            aria-label="Centre the map on my location"
+            title={locateError || 'Near me'}
+            style={{
+              flexShrink: 0, height: 50, borderRadius: 100,
+              background: C.surface, border: `2px solid ${C.accent}`,
+              color: C.text, fontWeight: 700, fontSize: 13, cursor: 'pointer',
+              padding: '0 16px', display: 'flex', alignItems: 'center', gap: 6,
+              boxShadow: '0 2px 16px rgba(0,0,0,0.22)', opacity: locating ? 0.7 : 1, whiteSpace: 'nowrap',
+            }}
+          >
+            📍 <span style={{ fontSize: 13 }}>{locating ? '…' : 'Near me'}</span>
+          </button>
         </div>
 
         {/* Results dropdown */}
@@ -424,12 +458,12 @@ export default function HostMap({
         )}
       </div>
 
-      {/* Satellite toggle — top-right, below the search bar */}
+      {/* Satellite toggle — moved to the bottom-left corner, out of the search row */}
       {onSatelliteToggle && (
         <button
           onClick={onSatelliteToggle}
           style={{
-            position: 'absolute', top: 74, right: 16, zIndex: 1000,
+            position: 'absolute', bottom: 80, left: 16, zIndex: 1000,
             background: satellite ? C.accent : C.surface,
             border: `2px solid ${satellite ? C.accent : C.border}`,
             borderRadius: 100, padding: '9px 16px',
@@ -442,40 +476,6 @@ export default function HostMap({
           🛰 Satellite
         </button>
       )}
-
-      {/* Near me — bottom-right */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          if (!mapInstanceRef.current || locating) return
-          if (!navigator.geolocation) { setLocateError('Geolocation not supported'); return }
-          setLocating(true)
-          setLocateError('')
-          navigator.geolocation.getCurrentPosition(
-            (pos) => {
-              const { latitude: lat, longitude: lng } = pos.coords
-              mapInstanceRef.current?.setView([lat, lng], 13)
-              setLocating(false)
-            },
-            () => {
-              setLocateError('Location access denied')
-              setLocating(false)
-            },
-            { timeout: 10000, enableHighAccuracy: true }
-          )
-        }}
-        style={{
-          position: 'absolute', bottom: 80, right: 16, zIndex: 1000,
-          background: C.surface, border: `2px solid ${C.accent}`,
-          borderRadius: 100, padding: '10px 16px',
-          color: C.text, fontWeight: 700, fontSize: 13, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: 6,
-          boxShadow: '0 2px 16px rgba(0,0,0,0.2)',
-          opacity: locating ? 0.7 : 1,
-        }}
-      >
-        📍 {locating ? 'Locating...' : locateError || 'Near me'}
-      </button>
     </div>
   )
 }

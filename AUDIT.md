@@ -225,6 +225,9 @@
 > the SafetyBlock cards (garage_locked→locked_garage, yard→fenced_yard, …). The dashed ~500 m fuzz
 > circle (now tinted to the safety colour), clustering, tap→host sheet and approximate location are
 > all unchanged. Marker aria-label now leads with the safety level. Avatar marker code removed.
+> Map controls regrouped (Petr): "Near me" now sits on the top row next to the search field (both
+> are location actions); the Satellite toggle moved to the bottom-left corner so it no longer
+> crowds the search. Both keep their behaviour; thumb-reachable on mobile.
 >
 > **Pre-launch audit round 4 (2026-06-27).**
 > 1. **Persist the pending knock.** pendingKnockStore was in-memory only, so the "we'll keep this
