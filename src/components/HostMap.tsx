@@ -186,8 +186,12 @@ export default function HostMap({
         : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;">${initial}</div>`
 
       const totalH = size + 8  // circle + arrow
+      // Screen-reader label: name + city, so the marker isn't an empty button.
+      const ariaName = escapeHtml(host.profiles?.full_name || 'A rider')
+      const ariaPlace = escapeHtml([host.location_city, host.location_country].filter(Boolean).join(', '))
+      const ariaLabel = `Host ${ariaName}${ariaPlace ? `, ${ariaPlace}` : ''} — safe spot for your bike`
       const markerHtml = `
-        <div style="position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;">
+        <div role="button" tabindex="0" aria-label="${ariaLabel}" style="position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;">
           <div style="
             width:${size}px;height:${size}px;
             background:${pinColor};

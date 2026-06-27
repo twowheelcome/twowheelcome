@@ -216,7 +216,33 @@
 >    from chat header + map + reviews); blocked conversations are hidden from the blocker's
 >    Messages list; a blocked send surfaces the server message instead of failing silently.
 >
-> **UX (2026-06-26): native date picker + host capacity in knock.** 'Other day' on mobile is
+> **Pre-launch audit round 4 (2026-06-27).**
+> 1. **Persist the pending knock.** pendingKnockStore was in-memory only, so the "we'll keep this
+>    host and your message ready" promise broke on a reload / confirmation-email round-trip. Now it
+>    persists to AsyncStorage (localStorage on web) on set and is restored (async) + cleared on use.
+> 2. **Resend confirmation email.** Signup needs email confirmation; a stuck user (no/lost email)
+>    now gets a "Didn't get the email? Resend confirmation" action — shown after sign-up and when
+>    login fails with email-not-confirmed — via supabase.auth.resend({type:'signup'}).
+> 3. **Public listing description guard.** Reworded the warning (no exact address, gate code, phone,
+>    email, social handle or GPS) and added a light client strip on save that cuts GPS coordinate
+>    pairs, emails and phone-number runs (verified: strips those, keeps "3 riders, 2 nights").
+>    Addresses-in-words aren't detectable — hence the explicit warning.
+> 4. **guest → rider copy** (remaining): history "Rider:", Terms "Riders and hosts", the review-
+>    reminder email/push "How was this rider?" (notify-review redeployed). DB field names untouched.
+> 5. **Map marker accessibility.** Host pins were empty buttons to a screen reader; each now carries
+>    role="button" + aria-label "Host {name}, {city} — safe spot for your bike".
+> 6. **set_review_reply hardening.** Explicit REVOKE EXECUTE FROM public/anon + GRANT EXECUTE TO
+>    authenticated (live + baseline); verified anon_exec=false, auth_exec=true.
+>
+> **host_locations_public — SECURITY DEFINER advisor (verification, no change).** Confirmed safe:
+> the view returns only round(lat/lng, 2) (~1 km, never exact GPS), public offer columns and notes
+> — no exact coordinates, no push_token (not in the base table), no private location_name. The base
+> host_locations has RLS owner-only; naostro, anon reads 0 rows from it, so an invoker view would
+> break the public map — the definer projection is the deliberate, correct pattern. View grants are
+> SELECT-only for anon/authenticated (nothing extra). The advisor warning is intentional/acceptable.
+> Optional extra hardening (not applied): REVOKE SELECT ON host_locations FROM anon (harmless today —
+> RLS already returns 0 rows).
+>
 > now a calendar (@react-native-community/datetimepicker, min today; web keeps its date input;
 > the package's web stub is a safe no-op). The Request-a-stay window shows a highlighted
 > capacity badge (👥 Up to N riders) from host_locations.max_guests, and the pin-tap detail
