@@ -517,6 +517,8 @@ export default function RequestsScreen() {
   const [withdrawingFor, setWithdrawingFor] = useState<string | null>(null)
   const [cancellingFor, setCancellingFor] = useState<string | null>(null)
   const [cancelStayTarget, setCancelStayTarget] = useState<string | null>(null)   // host cancel confirm modal
+  const [acceptTarget, setAcceptTarget] = useState<string | null>(null)           // host accept confirm modal
+  const [coordsTarget, setCoordsTarget] = useState<RequestData | null>(null)       // send-coordinates confirm modal
   const [activeFilter, setActiveFilter] = useState<ConversationFilter>('all')
   const flatRef = useRef<FlatList<ChatItem>>(null)
   const nearBottomRef = useRef(true)   // is the user near the bottom of the thread?
@@ -1440,6 +1442,50 @@ export default function RequestsScreen() {
           </View>
         </Modal>
 
+        {/* Host accept-request confirmation (a tap shouldn't accidentally accept) */}
+        <Modal visible={!!acceptTarget} transparent animationType="fade" onRequestClose={() => setAcceptTarget(null)}>
+          <View style={styles.confirmOverlay}>
+            <View style={[styles.confirmSheet, { borderColor: C.border }]}>
+              <Text style={styles.confirmTitle}>Accept this rider?</Text>
+              <Text style={styles.confirmBody}>
+                Your exact meeting point stays hidden until you send it. You can share it from the chat once you’re set.
+              </Text>
+              <TouchableOpacity
+                style={[styles.confirmPrimary, respondingFor && { opacity: 0.6 }]}
+                onPress={() => { const id = acceptTarget; setAcceptTarget(null); if (id) void respondToRequest(id, 'ACCEPTED') }}
+                disabled={!!respondingFor}
+              >
+                <Text style={styles.confirmPrimaryText}>Accept rider</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmCancel} onPress={() => setAcceptTarget(null)}>
+                <Text style={styles.confirmCancelText}>Not yet</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Send exact coordinates confirmation (sensitive + one-way) */}
+        <Modal visible={!!coordsTarget} transparent animationType="fade" onRequestClose={() => setCoordsTarget(null)}>
+          <View style={styles.confirmOverlay}>
+            <View style={[styles.confirmSheet, { borderColor: C.accentBorder }]}>
+              <Text style={styles.confirmTitle}>Send exact meeting point to this rider?</Text>
+              <Text style={styles.confirmBody}>
+                Only do this once you’re comfortable hosting them — they’ll see your precise coordinates in the chat.
+              </Text>
+              <TouchableOpacity
+                style={[styles.confirmPrimary, sendingCoordsFor && { opacity: 0.6 }]}
+                onPress={() => { const req = coordsTarget; setCoordsTarget(null); if (req) void sendCoordinates(req) }}
+                disabled={!!sendingCoordsFor}
+              >
+                <Text style={styles.confirmPrimaryText}>Send exact location</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmCancel} onPress={() => setCoordsTarget(null)}>
+                <Text style={styles.confirmCancelText}>Not yet</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
         <FlatList
           ref={flatRef}
           data={chatItems}
@@ -1535,7 +1581,7 @@ export default function RequestsScreen() {
                     req={m.request}
                     body={m.body}
 	                    isHost={isHost}
-	                    onRespond={respondToRequest}
+	                    onRespond={(id, status) => status === 'ACCEPTED' ? setAcceptTarget(id) : respondToRequest(id, status)}
 	                    responding={respondingFor === m.request.id}
 	                    onWithdraw={withdrawRequest}
 	                    withdrawing={withdrawingFor === m.request.id}
@@ -1637,7 +1683,7 @@ export default function RequestsScreen() {
                 styles.coordinateTrayButton,
                 sendingCoordsFor === coordinateRequest.id && styles.coordinateTrayButtonDisabled,
               ]}
-              onPress={() => sendCoordinates(coordinateRequest!)}
+              onPress={() => setCoordsTarget(coordinateRequest!)}
               disabled={sendingCoordsFor === coordinateRequest.id}
             >
               <Text style={styles.coordinateTrayButtonText}>
@@ -1816,6 +1862,8 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   confirmBody: { color: C.textMuted, fontSize: 14, lineHeight: 21 },
   confirmDanger: { height: 50, borderRadius: 100, backgroundColor: C.error, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
   confirmDangerText: { color: C.white, fontSize: 14, fontWeight: '800' },
+  confirmPrimary: { height: 50, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  confirmPrimaryText: { color: C.white, fontSize: 14, fontWeight: '800' },
   confirmCancel: { alignItems: 'center', paddingVertical: 8 },
   confirmCancelText: { color: C.textMuted, fontSize: 14, textDecorationLine: 'underline' },
   chatAvatar: {
