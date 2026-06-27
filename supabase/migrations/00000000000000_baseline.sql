@@ -512,6 +512,10 @@ BEGIN
 END;
 $function$
 ;
+-- Only signed-in users may reply (the function itself still checks reviewee = auth.uid()).
+REVOKE EXECUTE ON FUNCTION public.set_review_reply(uuid, text) FROM public;
+REVOKE EXECUTE ON FUNCTION public.set_review_reply(uuid, text) FROM anon;
+GRANT EXECUTE ON FUNCTION public.set_review_reply(uuid, text) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.validate_conversation_write()
  RETURNS trigger
