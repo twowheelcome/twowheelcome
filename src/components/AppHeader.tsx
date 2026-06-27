@@ -2,7 +2,7 @@ import { ReactNode } from 'react'
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { router } from 'expo-router'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
-import { FONT } from '../lib/theme'
+import { Wordmark } from './Wordmark'
 
 const mark = require('../../assets/images/mark.png')
 
@@ -12,9 +12,7 @@ export function AppWordmark({ compact = false }: { compact?: boolean }) {
   return (
     <View style={styles.brand}>
       <Image source={mark} style={[styles.mark, compact && styles.markCompact]} resizeMode="contain" />
-      <Text style={[styles.wordmark, compact && styles.wordmarkCompact]} numberOfLines={1}>
-        <Text style={styles.wordmarkAccent}>TWO</Text>WHEEL<Text style={styles.wordmarkGreen}>COME</Text>
-      </Text>
+      <Wordmark size={compact ? 19 : 22} style={{ flexShrink: 1 }} />
     </View>
   )
 }
@@ -125,22 +123,5 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   markCompact: {
     width: 30,
     height: 30,
-  },
-  wordmark: {
-    color: C.text,
-    fontFamily: FONT.headBold,   // Oswald bold — colour-split wordmark (no serif/western)
-    fontSize: 22,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    flexShrink: 1,
-  },
-  wordmarkCompact: {
-    fontSize: 19,
-  },
-  wordmarkAccent: {
-    color: C.accent,
-  },
-  wordmarkGreen: {
-    color: C.green,
   },
 }) }

@@ -7,6 +7,7 @@ import { Feather } from '@expo/vector-icons'
 import { supabase } from '../lib/supabase'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 import { FONT } from '../lib/theme'
+import { Wordmark } from '../components/Wordmark'
 
 const ONBOARDING_KEY = '@twowheelcome/onboarding-seen'
 
@@ -43,7 +44,7 @@ function Onboarding({ C, onDone }: { C: ThemeColors; onDone: () => void }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Image source={require('../../assets/images/icon.png')} style={{ width: 32, height: 32, borderRadius: 8 }} />
-          <Text style={{ color: C.text, fontSize: 15, fontWeight: '800' }}>twowheelcome</Text>
+          <Wordmark size={16} />
         </View>
         <TouchableOpacity onPress={onDone} hitSlop={10}>
           <Text style={{ color: C.textDim, fontSize: 13, fontWeight: '700' }}>Skip</Text>
@@ -223,11 +224,7 @@ export default function AuthScreen() {
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={styles.wordmark}>
-          <Text style={styles.wordmarkAccent}>TWO</Text>
-          WHEEL
-          <Text style={styles.wordmarkGreen}>COME</Text>
-        </Text>
+        <Wordmark size={32} style={{ marginBottom: 8 }} />
         <Text style={styles.tagline}>Safe night for your bike and you.</Text>
         <Text style={styles.taglineSub}>From riders to riders.</Text>
       </View>
@@ -350,21 +347,6 @@ function makeStyles(C: ThemeColors) {
       width: 198,
       height: 188,
       marginBottom: 4,
-    },
-    wordmark: {
-      color: C.text,
-      fontFamily: FONT.headBold,
-      fontSize: 32,
-      letterSpacing: 0.5,
-      textTransform: 'uppercase',
-      lineHeight: 38,
-      marginBottom: 8,
-    },
-    wordmarkAccent: {
-      color: C.accent,
-    },
-    wordmarkGreen: {
-      color: C.green,
     },
     tagline: {
       color: C.text, fontSize: 18, fontWeight: '700', textAlign: 'center', lineHeight: 25,
