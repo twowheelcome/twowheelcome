@@ -180,9 +180,12 @@ export default function PublicHostProfile() {
         {parkings.length > 0 && <SafetyBlock parkings={parkings} />}
 
         {/* Bio */}
-        {profile.bio && (
-          <Text style={styles.bio}>{profile.bio}</Text>
-        )}
+        {profile.bio ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>About {profile.full_name?.split(' ')[0] || 'this rider'}</Text>
+            <Text style={styles.bio}>{profile.bio}</Text>
+          </View>
+        ) : null}
 
         {/* What the host wrote about this place (public description) */}
         {location?.notes ? (

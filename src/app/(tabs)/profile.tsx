@@ -19,6 +19,9 @@ export default function ProfileScreen() {
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState('')
   const [savingName, setSavingName] = useState(false)
+  const [editingBio, setEditingBio] = useState(false)
+  const [bioInput, setBioInput] = useState('')
+  const [savingBio, setSavingBio] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [avatarError, setAvatarError] = useState<string | null>(null)
   const [reviews, setReviews] = useState<{ rating: number; body: string | null; reviewer_name: string | null; created_at: string }[]>([])
@@ -49,6 +52,9 @@ export default function ProfileScreen() {
     setEditingName(false)
     setNameInput('')
     setSavingName(false)
+    setEditingBio(false)
+    setBioInput('')
+    setSavingBio(false)
     setUploadingAvatar(false)
     setAvatarError(null)
     setReviews([])
@@ -76,6 +82,7 @@ export default function ProfileScreen() {
     setProfile(p.data)
     setHostLocations(h.data || [])
     setNameInput(p.data?.full_name || '')
+    setBioInput(p.data?.bio || '')
     const revRows = (r.data || []) as any[]
     const reviewerIds = [...new Set(revRows.map(rev => rev.reviewer_id).filter(Boolean))]
     const reviewerMap: Record<string, string> = {}
@@ -117,6 +124,16 @@ export default function ProfileScreen() {
     setProfile((p: any) => ({ ...p, full_name: nameInput.trim() }))
     setEditingName(false)
     refreshUserChip()
+  }
+
+  async function saveBio() {
+    setSavingBio(true)
+    const trimmed = bioInput.trim()
+    const { error } = await supabase.from('profiles').upsert({ id: user.id, bio: trimmed || null })
+    setSavingBio(false)
+    if (error) { console.warn('save bio error:', error.message); setAvatarError('Could not save your bio. Please try again.'); return }
+    setProfile((p: any) => ({ ...p, bio: trimmed || null }))
+    setEditingBio(false)
   }
 
   async function pickAvatar() {
@@ -312,6 +329,40 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         )}
         <Text style={styles.email}>{user?.email}</Text>
+
+        {/* Bio — what riders see on your public profile */}
+        {editingBio ? (
+          <View style={styles.bioEdit}>
+            <TextInput
+              style={styles.bioInput}
+              value={bioInput}
+              onChangeText={setBioInput}
+              placeholder="Tell other riders about yourself — what you ride, where you're based, what you're happy to share."
+              placeholderTextColor={C.textFaint}
+              multiline
+              maxLength={500}
+              autoFocus
+            />
+            <View style={styles.nameActions}>
+              <TouchableOpacity style={styles.saveNameBtn} onPress={saveBio} disabled={savingBio}>
+                <Text style={styles.saveNameBtnText}>{savingBio ? '...' : 'Save'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { setBioInput(profile?.bio || ''); setEditingBio(false) }}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : profile?.bio ? (
+          <TouchableOpacity style={styles.bioRow} onPress={() => setEditingBio(true)} activeOpacity={0.7}>
+            <Text style={styles.bioText}>{profile.bio}</Text>
+            <Feather name="edit-2" size={13} color={C.textDim} style={{ marginLeft: 8, marginTop: 3 }} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.bioAddBtn} onPress={() => setEditingBio(true)} activeOpacity={0.7}>
+            <Feather name="plus" size={14} color={C.accent} />
+            <Text style={styles.bioAddText}>Tell others about yourself</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Stats */}
         <View style={styles.statsCard}>
@@ -543,6 +594,12 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   placeDetails: { marginTop: 10, gap: 4 },
   placeDetailText: { color: C.textMuted, fontSize: 13 },
 
+  bioRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 2 },
+  bioText: { flex: 1, color: C.textMuted, fontSize: 14, lineHeight: 21 },
+  bioAddBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 2, backgroundColor: C.accentSoft, borderRadius: 100, borderWidth: 1, borderColor: C.accentBorder, paddingHorizontal: 14, paddingVertical: 8 },
+  bioAddText: { color: C.accent, fontSize: 13, fontWeight: '700' },
+  bioEdit: { gap: 10, marginTop: 2 },
+  bioInput: { backgroundColor: C.elevated, borderRadius: 14, padding: 14, color: C.text, fontSize: 15, lineHeight: 22, minHeight: 92, borderWidth: 1, borderColor: C.accent, textAlignVertical: 'top' },
   nameEdit: { gap: 10 },
   nameInput: {
     backgroundColor: C.elevated, borderRadius: 14, padding: 14,
