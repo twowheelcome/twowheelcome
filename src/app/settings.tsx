@@ -3,7 +3,7 @@ import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { Feather } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { supabase } from '../lib/supabase'
-import { useTheme, type ThemeColors } from '../lib/ThemeContext'
+import { useTheme, useThemeMode, type ThemeColors, type ThemeMode } from '../lib/ThemeContext'
 import { FONT } from '../lib/theme'
 import { LANGUAGES, useLanguage, type LangCode } from '../lib/i18n'
 import { AppHeader, HeaderBackButton } from '../components/AppHeader'
@@ -12,6 +12,12 @@ export default function SettingsScreen() {
   const C = useTheme()
   const styles = useMemo(() => makeStyles(C), [C])
   const { lang, setLang, t } = useLanguage()
+  const { mode, setMode } = useThemeMode()
+  const APPEARANCE: { value: ThemeMode; label: string; icon: ComponentProps<typeof Feather>['name'] }[] = [
+    { value: 'system', label: 'System', icon: 'smartphone' },
+    { value: 'light', label: 'Light', icon: 'sun' },
+    { value: 'dark', label: 'Dark', icon: 'moon' },
+  ]
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
@@ -52,9 +58,22 @@ export default function SettingsScreen() {
       </AppHeader>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Language — row shows the current choice; tap opens a picker */}
+        {/* Appearance — Light / Dark / System */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('settings.preferences')}</Text>
+          <View style={styles.segRow}>
+            {APPEARANCE.map(opt => {
+              const active = mode === opt.value
+              return (
+                <TouchableOpacity key={opt.value} style={[styles.segBtn, active && styles.segBtnActive]} onPress={() => setMode(opt.value)} activeOpacity={0.7}>
+                  <Feather name={opt.icon} size={16} color={active ? C.white : C.textMuted} />
+                  <Text style={[styles.segText, active && styles.segTextActive]}>{opt.label}</Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+
+          {/* Language — row shows the current choice; tap opens a picker */}
           <View style={styles.card}>
             <TouchableOpacity style={styles.menuRow} onPress={() => { setTempLang(lang); setShowLangModal(true) }} activeOpacity={0.6}>
               <View style={styles.menuRowIcon}><Feather name="globe" size={17} color={C.accent} /></View>
@@ -144,6 +163,11 @@ function makeStyles(C: ThemeColors) {
     section: { gap: 8 },
     sectionTitle: { color: C.textDim, fontSize: 11, fontFamily: FONT.head, letterSpacing: 1.5, textTransform: 'uppercase', marginLeft: 4 },
     card: { backgroundColor: C.surface, borderRadius: 18, borderWidth: 1, borderColor: C.border, overflow: 'hidden' },
+    segRow: { flexDirection: 'row', gap: 8 },
+    segBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 14, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface },
+    segBtnActive: { backgroundColor: C.accent, borderColor: C.accent },
+    segText: { color: C.textMuted, fontSize: 13, fontWeight: '700' },
+    segTextActive: { color: C.white },
     rowBorder: { borderTopWidth: 1, borderTopColor: C.border },
     langRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 13 },
     langLabel: { color: C.textMuted, fontSize: 15, fontFamily: FONT.body },

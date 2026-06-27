@@ -40,50 +40,57 @@ const base = {
 
   white: '#ffffff',
   black: '#000000',
+  shadow: '#000000',
 } as const
 
 export const DARK = {
   ...base,
 
-  // ── Backgrounds ─────────────────────────────────────────────────
+  // Brighter green reads better on charcoal than the light-mode forest green.
+  green:       '#5FB07A',
+  greenSoft:   '#5FB07A1F',
+  greenBorder: '#5FB07A55',
+  greenDim:    '#4A9462',
+
+  // ── Backgrounds (design DARK palette) ───────────────────────────
   bg:        '#2F3438',
-  surface:   '#373D42',
-  elevated:  '#42484E',
-  sunken:    '#262B2E',
-  border:    '#50585F',
-  borderMid: '#687178',
+  surface:   '#373E44',
+  elevated:  '#424C54',
+  sunken:    '#272C30',
+  border:    '#4C565E',
+  borderMid: '#64707A',
   hover:     '#3C4247',
 
   // ── Map tints ───────────────────────────────────────────────────
-  mapBg:    '#20262A',
-  mapLand:  '#262C30',
-  mapWater: '#1E2A2C',
-  mapRoad:  '#3A4248',
+  mapBg:    '#262B2F',
+  mapLand:  '#2E353A',
+  mapWater: '#27343A',
+  mapRoad:  '#454F56',
 
   // ── Text ────────────────────────────────────────────────────────
   text:        '#F2EBDD',
-  textMuted:   '#C9BFAE',
-  textDim:     '#9D9283',
-  textFaint:   '#746B60',
-  placeholder: '#9D9283',
+  textMuted:   '#B6A78C',
+  textDim:     '#8A8068',
+  textFaint:   '#6E6657',
+  placeholder: '#8A8068',
 
-  // ── Accent — orange (PRIMARY action) ────────────────────────────
-  accent:       '#C96E2A',
-  accentSoft:   '#C96E2A18',
-  accentBorder: '#C96E2A55',
+  // ── Accent — terracotta (PRIMARY action) ────────────────────────
+  accent:       '#D2773A',
+  accentSoft:   '#D2773A22',
+  accentBorder: '#D2773A55',
 
   // ── Legacy aliases (keep shape for existing screens) ──────────────
   forest:       '#2F3438',
   forestSoft:   '#2F343830',
   forestBorder: '#2F343880',
 
-  leather:       '#38404A',
-  leatherSoft:   '#38404A18',
-  leatherBorder: '#38404A55',
+  leather:       '#424C54',
+  leatherSoft:   '#424C5418',
+  leatherBorder: '#4C565E',
 
-  secondary:       '#7A8A96',
-  secondarySoft:   '#7A8A9618',
-  secondaryBorder: '#7A8A9655',
+  secondary:       '#8FA0AC',
+  secondarySoft:   '#8FA0AC1F',
+  secondaryBorder: '#8FA0AC55',
 } as const
 
 export const LIGHT = {
