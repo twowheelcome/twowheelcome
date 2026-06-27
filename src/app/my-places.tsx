@@ -98,7 +98,7 @@ export default function MyPlacesScreen() {
               const sleep = (p.sleep_types || []).filter(s => SLEEP_LABELS[s]).map(s => SLEEP_LABELS[s]).join(' · ')
               const isBusy = busy === p.id
               return (
-                <TouchableOpacity key={p.id} style={styles.card} activeOpacity={0.85} onPress={() => router.push('/become-host')}>
+                <TouchableOpacity key={p.id} style={styles.card} activeOpacity={0.85} onPress={() => router.push({ pathname: '/become-host', params: { place: p.id } })}>
                   <View style={styles.cardTop}>
                     <Text style={styles.cardTitle} numberOfLines={1}>{placeTitle(p)}</Text>
                     <View style={[styles.badge, p.paused ? styles.badgePaused : styles.badgeOpen]}>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Image, Platform } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { supabase } from '../lib/supabase'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import type { Pin } from '../components/LocationPicker'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 import { compressBikePhoto } from '../lib/compressImage'
@@ -102,39 +102,41 @@ export default function BecomeHostScreen() {
   const C = useTheme()
   const PARKING = useMemo(() => makePARKING(C), [C])
   const styles = useMemo(() => makeStyles(C), [C])
+  // Single-place editor: `place` = edit that one listing; no param = add a brand-new place.
+  const { place: placeParam } = useLocalSearchParams<{ place?: string }>()
   const [locations, setLocations] = useState<Location[]>([emptyLocation()])
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
-  const [saveOk, setSaveOk] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [authChecked, setAuthChecked] = useState(false)
   const [LocationPicker, setLocationPicker] = useState<any>(null)
   const currentUserIdRef = useRef<string | null>(null)
 
   const loadExisting = useCallback(async (userId: string) => {
-    const { data } = await supabase
+    // No `place` param → adding a new place; keep the empty card.
+    if (!placeParam) return
+    const { data: d } = await supabase
       .from('host_locations')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: true })
-    if (currentUserIdRef.current !== userId) return
-    if (data && data.length > 0) {
-      setLocations(data.map(d => ({
-        id: d.id,
-        paused: !!d.paused,
-        pin: { lat: d.location_lat, lng: d.location_lng, city: d.location_city, country: d.location_country },
-        parkings: d.parkings?.length ? d.parkings : (d.parking ? [d.parking] : []),
-        sleepTypes: d.sleep_types || [],
-        amenities: d.amenities || [],
-        maxGuests: d.max_guests || 2,
-        pricings: d.pricings?.length ? d.pricings : (d.pricing ? [d.pricing] : ['free']),
-        notes: d.notes || '',
-        photos: Array.isArray(d.photos) ? d.photos : [],
-        priceAmount: d.price_amount != null ? String(d.price_amount) : '',
-        priceCurrency: d.price_currency || 'EUR',
-      })))
-    }
-  }, [])
+      .eq('id', placeParam)
+      .maybeSingle()
+    if (currentUserIdRef.current !== userId || !d) return
+    setLocations([{
+      id: d.id,
+      paused: !!d.paused,
+      pin: { lat: d.location_lat, lng: d.location_lng, city: d.location_city, country: d.location_country },
+      parkings: d.parkings?.length ? d.parkings : (d.parking ? [d.parking] : []),
+      sleepTypes: d.sleep_types || [],
+      amenities: d.amenities || [],
+      maxGuests: d.max_guests || 2,
+      pricings: d.pricings?.length ? d.pricings : (d.pricing ? [d.pricing] : ['free']),
+      notes: d.notes || '',
+      photos: Array.isArray(d.photos) ? d.photos : [],
+      priceAmount: d.price_amount != null ? String(d.price_amount) : '',
+      priceCurrency: d.price_currency || 'EUR',
+    }])
+  }, [placeParam])
 
   useEffect(() => {
     import('../components/LocationPicker').then(m => setLocationPicker(() => m.default))
@@ -151,7 +153,6 @@ export default function BecomeHostScreen() {
       setCurrentUser(nextUser)
       setLocations([emptyLocation()])
       setSaveError('')
-      setSaveOk(false)
       setSaving(false)
       if (nextUser) loadExisting(nextUser.id)
       else router.replace('/')
@@ -218,30 +219,21 @@ export default function BecomeHostScreen() {
     void supabase.storage.from(LISTING_BUCKET).remove([path]).catch(() => {})
   }
 
-  function addLocation() {
-    setLocations(prev => [...prev, emptyLocation()])
-  }
-
-  function removeLocation(index: number) {
-    setLocations(prev => prev.filter((_, i) => i !== index))
-  }
-
+  // Single place: validate and upsert just this one row (never touches the host's
+  // other places), then go back to the My Places list.
   async function save() {
     setSaveError('')
-    setSaveOk(false)
-    const missingIdx = locations.findIndex(l => !l.pin)
-    if (missingIdx >= 0) {
-      setSaveError(`Location #${missingIdx + 1} has no pin yet — tap the map to set its position, or remove that location before saving.`)
+    const loc = locations[0]
+    if (!loc.pin) {
+      setSaveError('This place has no pin yet — search an address or tap the map to set its position.')
       return
     }
-    const noParkingIdx = locations.findIndex(l => l.parkings.length === 0)
-    if (noParkingIdx >= 0) {
-      setSaveError(`Location #${noParkingIdx + 1}: pick at least one parking option — it's the first thing riders look for.`)
+    if (loc.parkings.length === 0) {
+      setSaveError('Pick at least one parking option — it’s the first thing riders look for.')
       return
     }
-    const noSleepIdx = locations.findIndex(l => l.sleepTypes.length === 0)
-    if (noSleepIdx >= 0) {
-      setSaveError(`Location #${noSleepIdx + 1}: pick at least one sleeping option so guests know what to expect.`)
+    if (loc.sleepTypes.length === 0) {
+      setSaveError('Pick at least one sleeping option so guests know what to expect.')
       return
     }
     if (!currentUser) {
@@ -255,73 +247,39 @@ export default function BecomeHostScreen() {
     }
     setSaving(true)
     try {
-      const validLocations = locations.filter(l => l.pin)
-      const { data: existingRows, error: existingError } = await supabase
-        .from('host_locations')
-        .select('id')
-        .eq('user_id', userId)
-      if (existingError) { setSaveError(existingError.message); return }
-      const existingIds = new Set(existingRows?.map((l: any) => l.id) || [])
-      const keptIds = new Set(validLocations.map(l => l.id).filter(Boolean) as string[])
-      const removedIds = [...existingIds].filter(id => !keptIds.has(id))
-
-      if (removedIds.length > 0) {
-        const { data: linkedRequests, error: linkedError } = await supabase
-          .from('stay_requests')
-          .select('location_id, status')
-          .in('location_id', removedIds)
-          .in('status', ['PENDING', 'ACCEPTED'])
-
-        if (linkedError) { setSaveError(linkedError.message); return }
-        const blockedIds = new Set((linkedRequests || []).map((r: any) => r.location_id).filter(Boolean))
-        if (blockedIds.size > 0) {
-          setSaveError('This location has active (pending or accepted) requests, so it cannot be removed yet. You can edit it instead.')
-          return
-        }
-
-        const { error: delError } = await supabase
-          .from('host_locations')
-          .delete()
-          .eq('user_id', userId)
-          .in('id', removedIds)
-        if (delError) { setSaveError(delError.message); return }
+      const row = {
+        id: loc.id || makeId(),
+        user_id: userId,
+        paused: loc.paused,
+        location_name: null,
+        location_lat: loc.pin.lat,
+        location_lng: loc.pin.lng,
+        location_city: loc.pin.city || '',
+        location_country: loc.pin.country || '',
+        parkings: loc.parkings,
+        parking: loc.parkings[0] || 'yard',
+        sleep_types: loc.sleepTypes,
+        amenities: loc.amenities,
+        max_guests: loc.maxGuests,
+        pricings: loc.pricings,
+        pricing: loc.pricings[0] || 'free',
+        notes: stripContacts(loc.notes),
+        photos: loc.photos.slice(0, MAX_LISTING_PHOTOS),
+        // Price only applies to a Paid listing; otherwise stored as null.
+        price_amount: loc.pricings.includes('fixed') && loc.priceAmount.trim() !== '' ? Number(loc.priceAmount) : null,
+        price_currency: loc.pricings.includes('fixed') ? (loc.priceCurrency || 'EUR') : null,
+        price_unit: null,
       }
-
-      const rows = validLocations
-        .map(l => ({
-          id: l.id || makeId(),
-          user_id: userId,
-          paused: l.paused,
-          location_name: null,
-          location_lat: l.pin!.lat,
-          location_lng: l.pin!.lng,
-          location_city: l.pin!.city || '',
-          location_country: l.pin!.country || '',
-          parkings: l.parkings,
-          parking: l.parkings[0] || 'yard',
-          sleep_types: l.sleepTypes,
-          amenities: l.amenities,
-          max_guests: l.maxGuests,
-          pricings: l.pricings,
-          pricing: l.pricings[0] || 'free',
-          notes: stripContacts(l.notes),
-          photos: l.photos.slice(0, MAX_LISTING_PHOTOS),
-          // Price only applies to a Paid listing; otherwise stored as null.
-          price_amount: l.pricings.includes('fixed') && l.priceAmount.trim() !== '' ? Number(l.priceAmount) : null,
-          price_currency: l.pricings.includes('fixed') ? (l.priceCurrency || 'EUR') : null,
-          price_unit: null,
-        }))
-
-      const { error } = await supabase.from('host_locations').upsert(rows, { onConflict: 'id' })
+      const { error } = await supabase.from('host_locations').upsert(row, { onConflict: 'id' })
       if (error) {
         console.warn('save listing error:', error.message)
-        setSaveError('Could not save your listing. Please check your connection and try again.')
+        setSaveError('Could not save your place. Please check your connection and try again.')
       } else {
-        setSaveOk(true)
+        router.replace('/my-places' as never)
       }
     } catch (e: any) {
       console.warn('save listing exception:', e?.message)
-      setSaveError('Could not save your listing. Please check your connection and try again.')
+      setSaveError('Could not save your place. Please check your connection and try again.')
     } finally {
       setSaving(false)
     }
@@ -335,16 +293,11 @@ export default function BecomeHostScreen() {
           <View style={styles.locationHeader}>
             <View style={styles.locationHeaderLeft}>
               <View style={styles.locationBadge}>
-                <Text style={styles.locationBadgeText}>LOCATION {index + 1}</Text>
+                <Text style={styles.locationBadgeText}>{placeParam ? 'EDIT PLACE' : 'NEW PLACE'}</Text>
               </View>
               {loc.pin?.city ? <Text style={styles.locationNameTag} numberOfLines={1}>{loc.pin.city}</Text> : null}
               {loc.paused ? <View style={styles.pausedTag}><Text style={styles.pausedTagText}>⏸ PAUSED</Text></View> : null}
             </View>
-            {locations.length > 1 && (
-              <TouchableOpacity onPress={() => removeLocation(index)}>
-                <Text style={styles.removeLocation}>✕ Remove</Text>
-              </TouchableOpacity>
-            )}
           </View>
 
           {/* Availability — coarse "away" pause; a paused place leaves the public map */}
@@ -545,23 +498,9 @@ export default function BecomeHostScreen() {
         </View>
       ))}
 
-      {/* Add another location */}
-      <TouchableOpacity style={styles.addBtn} onPress={addLocation}>
-        <Text style={styles.addBtnText}>+ ADD ANOTHER LOCATION</Text>
-      </TouchableOpacity>
-
       {saveError ? (
         <View style={styles.errorBox}>
           <Text style={styles.errorText}>⚠️ {saveError}</Text>
-        </View>
-      ) : null}
-
-      {saveOk ? (
-        <View style={styles.successBox}>
-          <Text style={styles.successText}>🎉 You are on the map! Your listing is visible to all riders.</Text>
-          <TouchableOpacity onPress={() => router.replace('/(tabs)/map')} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>← Back to map</Text>
-          </TouchableOpacity>
         </View>
       ) : null}
 
@@ -614,7 +553,6 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   availOptTextActive: { color: C.text },
   locationBadge: { backgroundColor: C.accent, borderRadius: 100, paddingHorizontal: 12, paddingVertical: 5 },
   locationBadgeText: { color: C.white, fontSize: 11, fontWeight: '800', letterSpacing: 1.5 },
-  removeLocation: { color: C.textDim, fontSize: 13 },
 
   label: { color: C.textDim, fontSize: 11, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' },
   pinLabel: { color: C.accent, fontSize: 13, fontWeight: '600' },
@@ -674,17 +612,10 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   photoAdd: { width: 88, height: 88, borderRadius: 12, borderWidth: 1.5, borderColor: C.border, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: C.elevated },
   photoAddText: { color: C.accent, fontSize: 30, fontWeight: '300' },
 
-  addBtn: { borderWidth: 1, borderColor: C.accent, borderRadius: 100, padding: 14, alignItems: 'center', borderStyle: 'dashed' },
-  addBtnText: { color: C.accent, fontWeight: '700', fontSize: 14, letterSpacing: 1 },
-
   saveBtn: { backgroundColor: C.accent, borderRadius: 100, padding: 17, alignItems: 'center', minHeight: 54, justifyContent: 'center' },
   saveBtnText: { color: C.white, fontWeight: '800', fontSize: 15, letterSpacing: 0.5 },
   hint: { color: C.textDim, fontSize: 12, textAlign: 'center', lineHeight: 19 },
 
   errorBox: { backgroundColor: C.errorSoft, borderWidth: 1, borderColor: C.errorBorder, borderRadius: 12, padding: 14 },
   errorText: { color: C.error, fontSize: 13, lineHeight: 18 },
-  successBox: { backgroundColor: C.successSoft, borderWidth: 1, borderColor: C.successBorder, borderRadius: 12, padding: 16, gap: 12 },
-  successText: { color: C.success, fontSize: 14, lineHeight: 21 },
-  backBtn: { backgroundColor: C.success, borderRadius: 100, padding: 12, alignItems: 'center' },
-  backBtnText: { color: C.white, fontWeight: '700', fontSize: 13 },
 }) }
