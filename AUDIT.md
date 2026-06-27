@@ -1,5 +1,12 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Host card avatar = real photo (2026-06-27).** New shared `Avatar` component shows the host's
+> profile photo (avatar_url) in the map host sheet, the request-a-stay card and the list card (and
+> the public profile hero), tappable to a fullscreen lightbox (same pattern as listing/bike photos);
+> falls back to initials when there's no photo. Map pins stay safety icons. Avatar upload now
+> compresses before upload (compressBikePhoto — web compresses, native falls back), like bike/
+> listing photos. tsc + eslint green.
+>
 > **Pre-launch E2E round (2026-06-27).**
 > - **Report flow (DSA notice, no moderation).** New `reports` table (RLS: own insert/read),
 >   `report` edge function (stores + emails privacy@twowheelcome.com via Resend), and a

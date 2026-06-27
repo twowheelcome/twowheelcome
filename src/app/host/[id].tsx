@@ -6,6 +6,7 @@ import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { SafetyBlock } from '../../components/SafetyBlock'
 import { ContributionBadge } from '../../components/ContributionBadge'
 import { ReportButton } from '../../components/ReportButton'
+import { Avatar } from '../../components/Avatar'
 import { ListingGallery } from '../../components/ListingGallery'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
@@ -161,7 +162,6 @@ export default function PublicHostProfile() {
   }
 
   const parkings: string[] = location?.parkings?.length ? location.parkings : (location?.parking ? [location.parking] : [])
-  const initials = (profile.full_name || '?').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
 
   return (
     <View style={styles.container}>
@@ -170,9 +170,7 @@ export default function PublicHostProfile() {
 
         {/* Avatar + name */}
         <View style={styles.heroRow}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
+          <Avatar url={profile.avatar_url} name={profile.full_name} size={76} />
           <View style={styles.heroInfo}>
             <Text style={styles.name}>{profile.full_name || 'Anonymous Rider'}</Text>
             {avgRating != null && (

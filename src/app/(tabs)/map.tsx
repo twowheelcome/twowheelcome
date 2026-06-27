@@ -12,6 +12,7 @@ import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
 import { HostOffer } from '../../components/HostOffer'
 import { ContributionBadge } from '../../components/ContributionBadge'
 import { SafetyIcon } from '../../components/SafetyIcon'
+import { Avatar } from '../../components/Avatar'
 import { compressBikePhoto } from '../../lib/compressImage'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
@@ -435,9 +436,7 @@ export default function MapScreen() {
         <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
           <View style={styles.card}>
             <View style={styles.cardRow}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{selected.profiles?.full_name?.charAt(0) || '?'}</Text>
-              </View>
+              <Avatar url={selected.profiles?.avatar_url} name={selected.profiles?.full_name} size={46} />
               <View style={styles.cardInfo}>
                 <Text style={styles.cardName}>{selected.profiles?.full_name || 'Anonymous Rider'}</Text>
                 <Text style={styles.cardLocation}>📍 {placeLabel(selected.location_city, selected.location_country)}</Text>
@@ -811,7 +810,6 @@ export default function MapScreen() {
           const isOwn = selected.user_id === currentUser?.id
           const myStatus = myActiveByLocation[selected.id]   // 'PENDING' | 'ACCEPTED' | undefined
           const parkings: string[] = selected.parkings?.length ? selected.parkings : (selected.parking ? [selected.parking] : [])
-          const initials = (selected.profiles?.full_name || '?').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
           return (
             <View style={{ backgroundColor: C.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 34, gap: 14, borderTopWidth: 1, borderTopColor: C.border }}>
               {/* Drag handle */}
@@ -831,9 +829,7 @@ export default function MapScreen() {
 
               {/* Avatar + info */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                <View style={[styles.avatar, { width: 56, height: 56, borderRadius: 28 }]}>
-                  <Text style={[styles.avatarText, { fontSize: 20 }]}>{initials}</Text>
-                </View>
+                <Avatar url={selected.profiles?.avatar_url} name={selected.profiles?.full_name} size={56} />
                 <View style={{ flex: 1, gap: 3 }}>
                   <Text style={{ color: C.text, fontSize: 18, fontWeight: '900' }}>{selected.profiles?.full_name || 'Anonymous Rider'}</Text>
                   <Text style={{ color: C.textMuted, fontSize: 13 }}>📍 {placeLabel(selected.location_city, selected.location_country)}</Text>
@@ -1015,9 +1011,7 @@ export default function MapScreen() {
             >
               <SafetyBlock parkings={hostParkings} />
               <View style={[styles.cardRow, { marginTop: 12 }]}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{host.profiles?.full_name?.charAt(0) || '?'}</Text>
-                </View>
+                <Avatar url={host.profiles?.avatar_url} name={host.profiles?.full_name} size={46} />
                 <View style={styles.cardInfo}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Text style={styles.cardName}>

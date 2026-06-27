@@ -8,6 +8,7 @@ import { router } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { UserChip, refreshUserChip } from '../../components/UserChip'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
+import { compressBikePhoto } from '../../lib/compressImage'
 
 export default function ProfileScreen() {
   const C = useTheme()
@@ -161,9 +162,14 @@ export default function ProfileScreen() {
     setUploadingAvatar(true)
     setAvatarError(null)
     try {
-      const ext = extHint ?? ((file as File).name?.split('.').pop() || 'jpg')
+      // Downscale + compress before upload (web compresses; native falls back to original),
+      // so avatars don't bloat storage — same treatment as bike/listing photos.
+      const uploadBlob = await compressBikePhoto(file as File)
+      const compressed = uploadBlob !== file
+      const ext = compressed ? 'jpg' : (extHint ?? ((file as File).name?.split('.').pop() || 'jpg'))
       const path = `${user.id}/avatar.${ext}`
-      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: (file as File).type || `image/${ext}` })
+      const contentType = compressed ? 'image/jpeg' : ((file as File).type || `image/${ext}`)
+      const { error: upErr } = await supabase.storage.from('avatars').upload(path, uploadBlob, { upsert: true, contentType })
       if (upErr) { console.warn('avatar upload error:', upErr.message); setAvatarError('Could not upload the photo. Please try again.'); return }
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
       const url = `${publicUrl}?t=${Date.now()}`
