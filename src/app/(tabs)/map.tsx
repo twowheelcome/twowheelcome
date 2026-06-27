@@ -56,6 +56,8 @@ export default function MapScreen() {
   const reopenHostSheetRef = useRef(false)
   const sendingRef = useRef(false)
   const [arrivalChip, setArrivalChip] = useState<'tonight' | 'tomorrow' | 'other'>('tonight')
+  const [guestsCount, setGuestsCount] = useState(1)
+  const [arrivalTime, setArrivalTime] = useState<string | null>(null)   // orientational: 'Morning' | 'Afternoon' | …
   const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().split('T')[0])
   const [departureDate, setDepartureDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0])
   const [showDatePicker, setShowDatePicker] = useState(false)
@@ -283,6 +285,8 @@ export default function MapScreen() {
       setArrivalChip(pk.arrivalChip)
       setArrivalDate(pk.arrivalDate)
       setDepartureDate(pk.departureDate)
+      setGuestsCount(pk.guestsCount)
+      setArrivalTime(pk.arrivalTime)
       setMessage(pk.message)
       setRequesting(true)
     })
@@ -297,6 +301,8 @@ export default function MapScreen() {
     setArrivalChip('tonight')
     setArrivalDate(new Date().toISOString().split('T')[0])
     setDepartureDate(new Date(Date.now() + 86400000).toISOString().split('T')[0])
+    setGuestsCount(1)
+    setArrivalTime(null)
     setPhotoFile(null)
     setRequesting(true)
   }
@@ -360,14 +366,16 @@ export default function MapScreen() {
       // One atomic DB call: find/create the conversation, insert the stay request, and
       // insert the first message — all-or-nothing, so a mid-way failure can't leave an
       // orphan conversation or a request with no message.
+      const maxGuests = selected.max_guests || 1
+      const guests = Math.min(Math.max(1, guestsCount), maxGuests)
       const { data: knock, error: knockErr } = await supabase.rpc('create_knock', {
         p_host_id: selected.user_id,
         p_location_id: selected.id,
-        p_guests: 1,
+        p_guests: guests,
         p_message: message.trim(),
         p_arrival: arrivalDate,
         p_departure: departureDate,
-        p_arrival_time: null,
+        p_arrival_time: arrivalTime,
         p_photo_url: uploadedPhotoUrl,
       })
       const row = Array.isArray(knock) ? knock[0] : knock
@@ -508,7 +516,41 @@ export default function MapScreen() {
                 )}
               </View>
             )}
+
+            <Text style={[styles.sectionLabel, { marginTop: 4 }]}>ARRIVAL TIME (optional)</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {(['Morning', 'Afternoon', 'Evening', 'Late', 'Flexible'] as const).map(t => {
+                const active = arrivalTime === t
+                return (
+                  <TouchableOpacity
+                    key={t}
+                    style={[{ paddingHorizontal: 14, paddingVertical: 9, borderRadius: 100, borderWidth: 1, borderColor: C.border, backgroundColor: C.bg },
+                      active && { borderColor: C.accent, backgroundColor: C.accentSoft }]}
+                    onPress={() => setArrivalTime(active ? null : t)}
+                  >
+                    <Text style={[{ color: C.textMuted, fontWeight: '700', fontSize: 13 }, active && { color: C.accent }]}>{t}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
           </View>
+
+          {/* How many riders — capped at the host's capacity */}
+          {(selected.max_guests || 1) > 1 && (
+            <View style={styles.card}>
+              <Text style={styles.sectionLabel}>HOW MANY RIDERS?</Text>
+              <View style={styles.counter}>
+                <TouchableOpacity style={styles.counterBtn} onPress={() => setGuestsCount(v => Math.max(1, v - 1))}>
+                  <Text style={styles.counterBtnText}>−</Text>
+                </TouchableOpacity>
+                <Text style={styles.counterValue}>{guestsCount}</Text>
+                <TouchableOpacity style={styles.counterBtn} onPress={() => setGuestsCount(v => Math.min(selected.max_guests || 1, v + 1))}>
+                  <Text style={styles.counterBtnText}>+</Text>
+                </TouchableOpacity>
+                <Text style={styles.counterMax}>{guestsCount === 1 ? 'rider' : 'riders'} · host takes up to {selected.max_guests}</Text>
+              </View>
+            </View>
+          )}
 
           {Platform.OS === 'web' && (
             <View style={styles.card}>
@@ -610,6 +652,8 @@ export default function MapScreen() {
                     arrivalDate,
                     departureDate,
                     arrivalChip,
+                    guestsCount,
+                    arrivalTime,
                   })
                   router.push({ pathname: '/', params: { signup: '1' } })
                 }}

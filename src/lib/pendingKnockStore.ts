@@ -16,6 +16,8 @@ export type PendingKnock = {
   arrivalDate: string
   departureDate: string
   arrivalChip: 'tonight' | 'tomorrow' | 'other'
+  guestsCount: number
+  arrivalTime: string | null
 }
 
 let _pending: PendingKnock | null = null

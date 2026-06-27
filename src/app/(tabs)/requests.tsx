@@ -318,6 +318,7 @@ function RequestCard({
   const facts = ([
     place ? { icon: 'map-pin', value: place } : null,
     { icon: 'calendar', value: `${fmtDateStr(req.arrival_date)} → ${fmtDateStr(req.departure_date)}` },
+    req.arrival_time ? { icon: 'clock', value: `Arrival ~ ${req.arrival_time}` } : null,
     { icon: 'users', value: `${guestsLabel}${vehicle ? ` · ${vehicle}` : ''}` },
     parking ? { icon: 'shield', value: parking } : null,
     sleep ? { icon: 'moon', value: sleep } : null,
