@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Image, Platform, Modal } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
@@ -466,91 +466,37 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Menu items */}
-        <View style={styles.menuGroup}>
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/become-host')}>
-            <View style={styles.menuTextWrap}>
-              <Text style={styles.menuTitle}>{isHost ? 'My Listings' : 'Become a Host'}</Text>
-              <Text style={styles.menuSub}>{isHost ? `${hostLocations.length} active ${hostLocations.length === 1 ? 'location' : 'locations'}` : 'Add listing'}</Text>
+        {/* Menu — compact grouped rows (iOS-settings style) instead of 8 big cards */}
+        {([
+          { title: 'Your place', rows: [
+            { icon: 'home', label: isHost ? 'My Listings' : 'Become a Host', sub: isHost ? `${hostLocations.length} active ${hostLocations.length === 1 ? 'location' : 'locations'}` : 'Add a listing', onPress: () => router.push('/become-host') },
+            { icon: 'clock', label: 'History', sub: 'Your past stays', onPress: () => router.push('/history') },
+            { icon: 'star', label: 'Reviews', sub: avgRating ? `⭐ ${avgRating} · ${reviews.length} ${reviews.length === 1 ? 'review' : 'reviews'}` : 'No reviews yet', onPress: () => router.push('/reviews') },
+          ] },
+          { title: 'Account', rows: [
+            { icon: 'bell', label: 'Notifications', sub: 'Email and push alerts', onPress: () => router.push('/notifications') },
+            { icon: 'message-circle', label: 'Send feedback', sub: 'Tell the makers what to fix or build', onPress: () => router.push('/feedback' as never) },
+            { icon: 'slash', label: 'Blocked users', sub: 'Manage or unblock', onPress: () => router.push('/blocked' as never) },
+            { icon: 'shield', label: 'Privacy', sub: 'Data, exact location and account deletion', onPress: () => router.push('/privacy') },
+            { icon: 'file-text', label: 'Terms', sub: 'Community rules and stay requests', onPress: () => router.push('/terms') },
+          ] },
+        ] as { title: string; rows: { icon: ComponentProps<typeof Feather>['name']; label: string; sub: string; onPress: () => void }[] }[]).map(group => (
+          <View key={group.title} style={styles.menuSection}>
+            <Text style={styles.menuSectionTitle}>{group.title}</Text>
+            <View style={styles.menuCard}>
+              {group.rows.map((it, i) => (
+                <TouchableOpacity key={it.label} style={[styles.menuRow, i > 0 && styles.menuRowBorder]} onPress={it.onPress} activeOpacity={0.6}>
+                  <View style={styles.menuRowIcon}><Feather name={it.icon} size={17} color={C.accent} /></View>
+                  <View style={styles.menuRowText}>
+                    <Text style={styles.menuRowTitle}>{it.label}</Text>
+                    <Text style={styles.menuRowSub} numberOfLines={1}>{it.sub}</Text>
+                  </View>
+                  <Feather name="chevron-right" size={20} color={C.textDim} />
+                </TouchableOpacity>
+              ))}
             </View>
-            <View style={styles.menuIcon}>
-              <Feather name="home" size={18} color={C.accent} />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/history')}>
-            <View style={styles.menuTextWrap}>
-              <Text style={styles.menuTitle}>History</Text>
-              <Text style={styles.menuSub}>Your past stays</Text>
-            </View>
-            <View style={styles.menuIcon}>
-              <Feather name="clock" size={18} color={C.accent} />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/reviews')}>
-            <View style={styles.menuTextWrap}>
-              <Text style={styles.menuTitle}>Reviews</Text>
-              <Text style={styles.menuSub}>
-                {avgRating ? `⭐ ${avgRating} · ${reviews.length} ${reviews.length === 1 ? 'review' : 'reviews'}` : 'No reviews yet'}
-              </Text>
-            </View>
-            <View style={styles.menuIcon}>
-              <Feather name="star" size={18} color={C.accent} />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/notifications')}>
-            <View style={styles.menuTextWrap}>
-              <Text style={styles.menuTitle}>Notifications</Text>
-              <Text style={styles.menuSub}>Email and push alerts</Text>
-            </View>
-            <View style={styles.menuIcon}>
-              <Feather name="bell" size={18} color={C.accent} />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/feedback' as never)}>
-            <View style={styles.menuTextWrap}>
-              <Text style={styles.menuTitle}>Send feedback</Text>
-              <Text style={styles.menuSub}>Tell the makers what to fix or build</Text>
-            </View>
-            <View style={styles.menuIcon}>
-              <Feather name="message-circle" size={18} color={C.accent} />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/blocked' as never)}>
-            <View style={styles.menuTextWrap}>
-              <Text style={styles.menuTitle}>Blocked users</Text>
-              <Text style={styles.menuSub}>People you blocked — manage or unblock</Text>
-            </View>
-            <View style={styles.menuIcon}>
-              <Feather name="slash" size={18} color={C.accent} />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/privacy')}>
-            <View style={styles.menuTextWrap}>
-              <Text style={styles.menuTitle}>Privacy</Text>
-              <Text style={styles.menuSub}>Data, exact location and account deletion</Text>
-            </View>
-            <View style={styles.menuIcon}>
-              <Feather name="shield" size={18} color={C.accent} />
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/terms')}>
-            <View style={styles.menuTextWrap}>
-              <Text style={styles.menuTitle}>Terms</Text>
-              <Text style={styles.menuSub}>Community rules and stay requests</Text>
-            </View>
-            <View style={styles.menuIcon}>
-              <Feather name="file-text" size={18} color={C.accent} />
-            </View>
-          </TouchableOpacity>
-
-        </View>
+          </View>
+        ))}
 
         <TouchableOpacity style={styles.signOutBtn} onPress={signOut}>
           <Text style={styles.signOutText}>Sign out</Text>
@@ -719,25 +665,15 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   reviewPrompt: { backgroundColor: C.accentSoft, borderColor: C.accentBorder, borderWidth: 1, borderRadius: 16, padding: 16, marginBottom: 12, gap: 3 },
   reviewPromptText: { color: C.text, fontSize: 15, fontWeight: '800' },
   reviewPromptSub: { color: C.textMuted, fontSize: 13 },
-  menuGroup: { gap: 10 },
-  menuItem: {
-    backgroundColor: C.surface,
-    borderRadius: 22,
-    padding: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  menuTextWrap: { gap: 3 },
-  menuTitle: { color: C.text, fontSize: 16, fontWeight: '700' },
-  menuSub: { color: C.textDim, fontSize: 13, fontFamily: FONT.body },
-  menuIcon: {
-    width: 42, height: 42, borderRadius: 21,
-    backgroundColor: C.elevated,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  menuSection: { gap: 8 },
+  menuSectionTitle: { color: C.textDim, fontSize: 11, fontFamily: FONT.head, letterSpacing: 1.5, textTransform: 'uppercase', marginLeft: 4 },
+  menuCard: { backgroundColor: C.surface, borderRadius: 18, borderWidth: 1, borderColor: C.border, overflow: 'hidden' },
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 12 },
+  menuRowBorder: { borderTopWidth: 1, borderTopColor: C.border },
+  menuRowIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: C.elevated, alignItems: 'center', justifyContent: 'center' },
+  menuRowText: { flex: 1, gap: 1 },
+  menuRowTitle: { color: C.text, fontSize: 15, fontWeight: '700' },
+  menuRowSub: { color: C.textDim, fontSize: 12, fontFamily: FONT.body },
 
   inlineError: { backgroundColor: C.errorSoft, borderRadius: 10, borderWidth: 1, borderColor: C.errorBorder, padding: 10 },
   inlineErrorText: { color: C.error, fontSize: 13 },
