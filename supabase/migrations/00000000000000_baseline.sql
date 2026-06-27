@@ -205,6 +205,17 @@ CREATE INDEX stay_requests_location_id_idx ON public.stay_requests USING btree (
 CREATE UNIQUE INDEX conversations_pair_location_key ON public.conversations USING btree (user_a, user_b, location_id);
 CREATE UNIQUE INDEX reviews_unique_per_stay_reviewer ON public.reviews USING btree (stay_request_id, reviewer_id);
 
+-- Hot-path indexes for the common access patterns (chat list, history, profile stats,
+-- map listings). Non-destructive; added in the 2026-06-27 performance pass.
+CREATE INDEX IF NOT EXISTS messages_conv_created_idx ON public.messages USING btree (conversation_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS stay_requests_conversation_id_idx ON public.stay_requests USING btree (conversation_id);
+CREATE INDEX IF NOT EXISTS stay_requests_guest_id_idx ON public.stay_requests USING btree (guest_id);
+CREATE INDEX IF NOT EXISTS stay_requests_host_id_idx ON public.stay_requests USING btree (host_id);
+CREATE INDEX IF NOT EXISTS reviews_reviewee_id_idx ON public.reviews USING btree (reviewee_id);
+CREATE INDEX IF NOT EXISTS reviews_reviewer_id_idx ON public.reviews USING btree (reviewer_id);
+CREATE INDEX IF NOT EXISTS conversations_user_b_idx ON public.conversations USING btree (user_b);
+CREATE INDEX IF NOT EXISTS host_locations_user_id_idx ON public.host_locations USING btree (user_id);
+
 -- ── Row level security ──
 ALTER TABLE bikes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE conversation_reads ENABLE ROW LEVEL SECURITY;
