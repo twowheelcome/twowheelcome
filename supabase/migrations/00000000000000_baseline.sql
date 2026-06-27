@@ -492,6 +492,27 @@ END;
 $function$
 ;
 
+-- Server-side scrub of the PUBLIC listing notes (un-bypassable backstop to the client
+-- guard): cut obvious GPS coordinate pairs, emails and phone numbers — the exact meeting
+-- point belongs in chat after accepting. Addresses-in-words aren't detectable.
+CREATE OR REPLACE FUNCTION public.strip_location_notes()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+  IF NEW.notes IS NOT NULL THEN
+    NEW.notes := regexp_replace(NEW.notes, '[0-9]{1,3}\.[0-9]{3,}[[:space:],;]+[0-9]{1,3}\.[0-9]{3,}', '', 'g');
+    NEW.notes := regexp_replace(NEW.notes, '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}', '', 'g');
+    NEW.notes := regexp_replace(NEW.notes, '\+?[0-9][0-9 ().-]{5,}[0-9]', '', 'g');
+    NEW.notes := btrim(regexp_replace(NEW.notes, '[[:space:]]{2,}', ' ', 'g'));
+    IF NEW.notes = '' THEN NEW.notes := NULL; END IF;
+  END IF;
+  RETURN NEW;
+END;
+$function$
+;
+
 -- A reviewed person (the reviewee) may post ONE public reply per review. Goes through a
 -- SECURITY DEFINER RPC because reviews has no UPDATE policy — the function pins
 -- auth.uid() = reviewee_id, and the strip_review_coords trigger scrubs coords on write.
@@ -654,6 +675,7 @@ $function$
 CREATE TRIGGER cascade_on_accept_trigger AFTER UPDATE ON public.stay_requests FOR EACH ROW WHEN (((new.status = 'ACCEPTED'::text) AND (old.status IS DISTINCT FROM 'ACCEPTED'::text))) EXECUTE FUNCTION cascade_on_accept();
 CREATE TRIGGER enforce_message_rate_limit_trigger BEFORE INSERT ON public.messages FOR EACH ROW EXECUTE FUNCTION enforce_message_rate_limit();
 CREATE TRIGGER strip_review_coords_trigger BEFORE INSERT OR UPDATE ON public.reviews FOR EACH ROW EXECUTE FUNCTION strip_review_coords();
+CREATE TRIGGER strip_location_notes_trigger BEFORE INSERT OR UPDATE ON public.host_locations FOR EACH ROW EXECUTE FUNCTION strip_location_notes();
 CREATE TRIGGER validate_conversation_write_trigger BEFORE INSERT OR UPDATE ON public.conversations FOR EACH ROW EXECUTE FUNCTION validate_conversation_write();
 CREATE TRIGGER validate_message_request_trigger BEFORE INSERT OR UPDATE ON public.messages FOR EACH ROW EXECUTE FUNCTION validate_message_request();
 CREATE TRIGGER validate_stay_request_write_trigger BEFORE INSERT OR UPDATE ON public.stay_requests FOR EACH ROW EXECUTE FUNCTION validate_stay_request_write();
