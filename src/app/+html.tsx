@@ -25,6 +25,15 @@ export default function Root({ children }: PropsWithChildren) {
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
         <ScrollViewStyleReset />
+
+        {/* Pre-hydration: paint the body in the right theme so dark-mode users don't
+            get a white flash before React mounts (mirrors ThemeContext's resolution). */}
+        <style dangerouslySetInnerHTML={{ __html: 'html,body{background:#F7F1E6}' }} />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "(function(){try{var m=localStorage.getItem('twowheelcome.themeMode');var d=m==='dark'||((m==='system'||!m)&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);var c=d?'#2F3438':'#F7F1E6';document.documentElement.style.background=c;document.body.style.background=c;}catch(e){}})();",
+          }}
+        />
       </head>
       <body>{children}</body>
     </html>

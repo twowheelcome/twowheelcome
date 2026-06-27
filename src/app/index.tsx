@@ -341,7 +341,7 @@ function makeStyles(C: ThemeColors) {
       paddingTop: 0,
       paddingBottom: 20,
       paddingHorizontal: 24,
-      backgroundColor: '#F2EBDD',
+      backgroundColor: C.bg,
     },
     logo: {
       width: 198,

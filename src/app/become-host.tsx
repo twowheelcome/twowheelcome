@@ -430,7 +430,7 @@ export default function BecomeHostScreen() {
                 <TextInput
                   style={[styles.input, { flex: 1 }]}
                   placeholder="500"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={C.placeholder}
                   keyboardType="numeric"
                   value={loc.priceAmount}
                   onChangeText={t => updateLocation(index, { priceAmount: t.replace(/[^0-9.]/g, '') })}
@@ -487,7 +487,7 @@ export default function BecomeHostScreen() {
           <TextInput
             style={styles.textarea}
             placeholder={'What should riders know about this place? e.g. "Quiet fenced yard, dog on site, late arrivals okay. Exact meeting point stays in chat after I accept." Riders read this before they knock.'}
-            placeholderTextColor="#666"
+            placeholderTextColor={C.placeholder}
             value={loc.notes}
             onChangeText={text => updateLocation(index, { notes: text })}
             multiline

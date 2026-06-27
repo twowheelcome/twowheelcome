@@ -45,7 +45,7 @@ export function SafetyBlock({ parkings }: { parkings: string[] }) {
         </View>
       </View>
       {secondary.length > 0 && (
-        <View style={sb.secondaryRow}>
+        <View style={[sb.secondaryRow, { borderTopColor: C.border }]}>
           {secondary.map(k => (
             <View key={k} style={[sb.chip, { borderColor: SAFETY[k].color + '55' }]}>
               <SafetyIcon level={k} size={14} color={SAFETY[k].color} strokeWidth={2} />
@@ -69,7 +69,7 @@ const sb = StyleSheet.create({
   rankPill:     { borderRadius: 100, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2 },
   rankText:     { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
   sub:          { fontSize: 13, lineHeight: 19, fontFamily: FONT.body },
-  secondaryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.06)' },
+  secondaryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10, paddingTop: 10, borderTopWidth: 1 },
   chip:         { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 100, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
   chipText:     { fontSize: 11, fontWeight: '600' },
 })

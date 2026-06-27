@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useFocusEffect } from 'expo-router'
 import L from 'leaflet'
 import 'leaflet.markercluster'  // side-effect: patches the same L with markerClusterGroup
-import { useTheme } from '../lib/ThemeContext'
+import { useTheme, useThemeMode } from '../lib/ThemeContext'
 import { SAFETY } from '../lib/theme'
 import { bestSafety } from './SafetyBlock'
 
@@ -104,6 +104,7 @@ export default function HostMap({
   onFocusHandled?: () => void
 }) {
   const C = useTheme()
+  const { scheme } = useThemeMode()
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
   const markersRef = useRef<any[]>([])
@@ -333,8 +334,12 @@ export default function HostMap({
         ).addTo(map),
       ]
     } else {
+      // Dark map tiles in dark mode (CARTO dark_all), Voyager in light.
+      const base = scheme === 'dark'
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
       tileLayerRef.current = L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+        base,
         { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>', maxZoom: 19 }
       ).addTo(map)
     }
@@ -343,7 +348,8 @@ export default function HostMap({
   useEffect(() => {
     const map = mapInstanceRef.current
     if (map) setupTileLayers(map, satellite)
-  }, [satellite])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [satellite, scheme])
 
   // Centre on an externally-requested point (the host's APPROXIMATE area, from the
   // "Request a stay" screen). The coords are already rounded + fuzzed and the host's
@@ -360,7 +366,7 @@ export default function HostMap({
 
   return (
     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-      <div ref={mapRef as any} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+      <div ref={mapRef as any} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: C.mapBg }} />
 
       {/* Place search + Near me — one top row, big thumb-friendly targets */}
       <div style={{ position: 'absolute', top: 12, left: 12, right: 12, zIndex: 1100, maxWidth: 560 }}>
