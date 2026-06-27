@@ -272,12 +272,12 @@ export default function MapScreen() {
   // reopen the Request-a-stay form pre-filled with their host + message + dates.
   useEffect(() => {
     if (!currentUser || hosts.length === 0) return
-    const pk = pendingKnockStore.consume()
-    if (!pk) return
-    const host = hosts.find(h => h.id === pk.locationId && h.user_id === pk.hostUserId)
-      ?? hosts.find(h => h.user_id === pk.hostUserId)
-    if (!host) return
-    void Promise.resolve().then(() => {
+    let active = true
+    void pendingKnockStore.consume().then(pk => {
+      if (!active || !pk) return
+      const host = hosts.find(h => h.id === pk.locationId && h.user_id === pk.hostUserId)
+        ?? hosts.find(h => h.user_id === pk.hostUserId)
+      if (!host) return
       setSelected(host)
       setShowHostProfile(false)
       setAuthPrompt(false)
@@ -290,6 +290,7 @@ export default function MapScreen() {
       setMessage(pk.message)
       setRequesting(true)
     })
+    return () => { active = false }
     // One-shot restore once the user is back and hosts are loaded.
   }, [hosts, currentUser])
 
