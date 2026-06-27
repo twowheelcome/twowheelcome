@@ -145,7 +145,6 @@ const SAFE_OPTS = [
   { value: 'soso',   icon: '😐', label: 'So-so' },
   { value: 'not',    icon: '⚠️', label: 'Not really' },
 ] as const
-const REVIEW_TAGS = ['Secure parking', 'Warm welcome', 'Clean spot', 'Great tips', 'Quiet night', 'Good tools'] as const
 
 // Same Feather icon set the request card uses, keyed by the meeting-point line label.
 const MEETING_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
@@ -532,7 +531,6 @@ export default function RequestsScreen() {
   const [reviewDraftStars, setReviewDraftStars] = useState<Record<string, number>>({})
   const [reviewDraftBody, setReviewDraftBody] = useState<Record<string, string>>({})
   const [reviewDraftSafe, setReviewDraftSafe] = useState<Record<string, string>>({})   // 'secure'|'soso'|'not'
-  const [reviewDraftTags, setReviewDraftTags] = useState<Record<string, string[]>>({})
   const [reviewDraftThanks, setReviewDraftThanks] = useState<Record<string, boolean>>({})   // optional beer gesture (no charge yet)
   const [submittingStayId, setSubmittingStayId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)   // accept/decline failure banner
@@ -1025,7 +1023,7 @@ export default function RequestsScreen() {
       ).values()
     ).sort((a, b) => a.departure_date < b.departure_date ? -1 : a.departure_date > b.departure_date ? 1 : 0)
     setEndedStays(ended)
-    setReviewDraftStars({}); setReviewDraftBody({}); setReviewDraftSafe({}); setReviewDraftTags({}); setReviewDraftThanks({}); setMyReviewsByStay({})
+    setReviewDraftStars({}); setReviewDraftBody({}); setReviewDraftSafe({}); setReviewDraftThanks({}); setMyReviewsByStay({})
     if (ended.length && currentUser) {
       const { data: revs } = await supabase
         .from('reviews')
@@ -1060,7 +1058,6 @@ export default function RequestsScreen() {
     submittingReviewRef.current = true
     setSubmittingStayId(stayId)
     const bikeSafe = reviewDraftSafe[stayId] || null
-    const tags = (reviewDraftTags[stayId] || [])
     const { error } = await supabase.from('reviews').insert({
       stay_request_id: stayId,
       reviewer_id: userId,
@@ -1068,7 +1065,6 @@ export default function RequestsScreen() {
       rating: stars,
       body: body || null,
       bike_safe: bikeSafe,
-      tags: tags.length ? tags : null,
     })
     submittingReviewRef.current = false
     setSubmittingStayId(null)
@@ -1560,7 +1556,6 @@ export default function RequestsScreen() {
 	                  const dates = `${fmtDateStr(stay.arrival_date)}–${fmtDateStr(stay.departure_date)}`
 	                  const stars = reviewDraftStars[stay.id] || 0
 	                  const safe = reviewDraftSafe[stay.id] || ''
-	                  const tags = reviewDraftTags[stay.id] || []
 	                  const firstName = (selected.other.full_name || 'them').split(' ')[0]
 	                  return (
 	                    <View key={stay.id} style={styles.reviewCard}>
@@ -1602,35 +1597,19 @@ export default function RequestsScreen() {
 	                        </View>
 	                      )}
 
-	                      {/* What stood out? — tags */}
+	                      {/* Leave a note — free written review */}
 	                      <View style={styles.reviewBlock}>
-	                        <Text style={styles.reviewSection}>What stood out?</Text>
-	                        <View style={styles.reviewTagWrap}>
-	                          {REVIEW_TAGS.map(t => {
-	                            const sel = tags.includes(t)
-	                            return (
-	                              <TouchableOpacity key={t} style={[styles.reviewTag, sel && styles.reviewTagOn]}
-	                                onPress={() => setReviewDraftTags(p => {
-	                                  const cur = p[stay.id] || []
-	                                  return { ...p, [stay.id]: cur.includes(t) ? cur.filter(x => x !== t) : [...cur, t] }
-	                                })}>
-	                                <Text style={[styles.reviewTagText, sel && styles.reviewTagTextOn]}>{t}</Text>
-	                              </TouchableOpacity>
-	                            )
-	                          })}
-	                        </View>
+	                        <Text style={styles.reviewSection}>Leave a note</Text>
+	                        <TextInput
+	                          style={styles.reviewInput}
+	                          placeholder="Tell other riders what to expect…"
+	                          placeholderTextColor={C.placeholder}
+	                          value={reviewDraftBody[stay.id] || ''}
+	                          onChangeText={t => setReviewDraftBody(p => ({ ...p, [stay.id]: t }))}
+	                          multiline
+	                          maxLength={500}
+	                        />
 	                      </View>
-
-	                      {/* Optional words */}
-	                      <TextInput
-	                        style={styles.reviewInput}
-	                        placeholder="Anything to add? (optional)"
-	                        placeholderTextColor={C.placeholder}
-	                        value={reviewDraftBody[stay.id] || ''}
-	                        onChangeText={t => setReviewDraftBody(p => ({ ...p, [stay.id]: t }))}
-	                        multiline
-	                        maxLength={500}
-	                      />
 	                      <Text style={styles.reviewPrivacyHint}>🔒 Keep exact addresses and coordinates out of reviews.</Text>
 
 	                      {/* Say thanks — optional, never required (no charge yet) */}
