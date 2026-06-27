@@ -55,7 +55,8 @@ CREATE TABLE IF NOT EXISTS host_locations (
   photos text[] NOT NULL DEFAULT '{}'::text[],
   price_amount numeric,
   price_unit text,
-  price_currency text
+  price_currency text,
+  paused boolean NOT NULL DEFAULT false
 );
 CREATE TABLE IF NOT EXISTS host_profiles (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -301,6 +302,7 @@ DECLARE
   v_loc_owner uuid;
   v_city text;
   v_country text;
+  v_paused boolean;
   v_msg text := btrim(coalesce(p_message, ''));
 BEGIN
   IF v_guest IS NULL THEN
@@ -325,11 +327,14 @@ BEGIN
       USING errcode = 'check_violation';
   END IF;
 
-  SELECT user_id, location_city, location_country
-    INTO v_loc_owner, v_city, v_country
+  SELECT user_id, location_city, location_country, paused
+    INTO v_loc_owner, v_city, v_country, v_paused
     FROM host_locations WHERE id = p_location_id;
   IF v_loc_owner IS NULL OR v_loc_owner <> p_host_id THEN
     RAISE EXCEPTION 'Stay location does not belong to the host';
+  END IF;
+  IF COALESCE(v_paused, false) THEN
+    RAISE EXCEPTION 'This place is currently paused by the host and not accepting requests.' USING errcode = 'check_violation';
   END IF;
 
   v_ua := LEAST(v_guest, p_host_id);
@@ -716,7 +721,8 @@ CREATE OR REPLACE VIEW host_locations_public WITH (security_invoker=false) AS
     price_amount,
     price_unit,
     price_currency
-   FROM host_locations;
+   FROM host_locations
+  WHERE (NOT COALESCE(paused, false));
 
 -- ── Grants ──
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON bikes TO service_role;

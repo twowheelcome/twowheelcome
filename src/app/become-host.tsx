@@ -49,6 +49,7 @@ const PRICING = [
 
 interface Location {
   id?: string
+  paused: boolean   // coarse "away" pause — hidden from the public map/search until back
   pin: Pin | null
   parkings: string[]
   sleepTypes: string[]
@@ -75,7 +76,7 @@ function makeId(): string {
 // for the new rows and violate the NOT NULL constraint. A stable id also prevents
 // duplicate inserts on a second save.
 function emptyLocation(): Location {
-  return { id: makeId(), pin: null, parkings: [], sleepTypes: [], amenities: [], maxGuests: 2, pricings: ['free'], notes: '', photos: [], priceAmount: '', priceCurrency: 'EUR' }
+  return { id: makeId(), paused: false, pin: null, parkings: [], sleepTypes: [], amenities: [], maxGuests: 2, pricings: ['free'], notes: '', photos: [], priceAmount: '', priceCurrency: 'EUR' }
 }
 
 function toggle(arr: string[], value: string): string[] {
@@ -120,6 +121,7 @@ export default function BecomeHostScreen() {
     if (data && data.length > 0) {
       setLocations(data.map(d => ({
         id: d.id,
+        paused: !!d.paused,
         pin: { lat: d.location_lat, lng: d.location_lng, city: d.location_city, country: d.location_country },
         parkings: d.parkings?.length ? d.parkings : (d.parking ? [d.parking] : []),
         sleepTypes: d.sleep_types || [],
@@ -289,6 +291,7 @@ export default function BecomeHostScreen() {
         .map(l => ({
           id: l.id || makeId(),
           user_id: userId,
+          paused: l.paused,
           location_name: null,
           location_lat: l.pin!.lat,
           location_lng: l.pin!.lng,
@@ -335,6 +338,7 @@ export default function BecomeHostScreen() {
                 <Text style={styles.locationBadgeText}>LOCATION {index + 1}</Text>
               </View>
               {loc.pin?.city ? <Text style={styles.locationNameTag} numberOfLines={1}>{loc.pin.city}</Text> : null}
+              {loc.paused ? <View style={styles.pausedTag}><Text style={styles.pausedTagText}>⏸ PAUSED</Text></View> : null}
             </View>
             {locations.length > 1 && (
               <TouchableOpacity onPress={() => removeLocation(index)}>
@@ -342,6 +346,23 @@ export default function BecomeHostScreen() {
               </TouchableOpacity>
             )}
           </View>
+
+          {/* Availability — coarse "away" pause; a paused place leaves the public map */}
+          <View style={styles.availRow}>
+            <TouchableOpacity
+              style={[styles.availOpt, !loc.paused && styles.availOptOnActive]}
+              onPress={() => updateLocation(index, { paused: false })}
+            >
+              <Text style={[styles.availOptText, !loc.paused && styles.availOptTextActive]}>🟢 Available</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.availOpt, loc.paused && styles.availOptOffActive]}
+              onPress={() => updateLocation(index, { paused: true })}
+            >
+              <Text style={[styles.availOptText, loc.paused && styles.availOptTextActive]}>⏸ Paused (away)</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.privateNote}>{loc.paused ? '⏸ Paused — this place is hidden from the map and search, and riders can’t knock. Flip back to Available when you’re home.' : '🟢 Available — riders can find this place on the map and knock.'}</Text>
 
           {/* Location — search by address or drop a pin on the map */}
           <Text style={styles.label}>📍 WHERE IS IT?</Text>
@@ -583,6 +604,14 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   locationHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
   locationHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1, minWidth: 0 },
   locationNameTag: { color: C.text, fontSize: 14, fontWeight: '700', flexShrink: 1 },
+  pausedTag: { backgroundColor: C.warningSoft, borderWidth: 1, borderColor: C.warningBorder, borderRadius: 100, paddingHorizontal: 9, paddingVertical: 3 },
+  pausedTagText: { color: C.warning, fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  availRow: { flexDirection: 'row', gap: 8 },
+  availOpt: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 11, borderRadius: 12, borderWidth: 1, borderColor: C.border, backgroundColor: C.elevated },
+  availOptOnActive: { borderColor: C.green, backgroundColor: C.greenSoft },
+  availOptOffActive: { borderColor: C.warningBorder, backgroundColor: C.warningSoft },
+  availOptText: { color: C.textMuted, fontSize: 13, fontWeight: '700' },
+  availOptTextActive: { color: C.text },
   locationBadge: { backgroundColor: C.accent, borderRadius: 100, paddingHorizontal: 12, paddingVertical: 5 },
   locationBadgeText: { color: C.white, fontSize: 11, fontWeight: '800', letterSpacing: 1.5 },
   removeLocation: { color: C.textDim, fontSize: 13 },

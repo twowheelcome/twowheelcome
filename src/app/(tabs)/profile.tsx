@@ -244,6 +244,8 @@ export default function ProfileScreen() {
   const initials = profile?.full_name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || '?'
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Rider'
   const isHost = hostLocations.length > 0
+  const pausedCount = hostLocations.filter((l: any) => l.paused).length
+  const activeCount = hostLocations.length - pausedCount
   const avgRating = reviews.length > 0
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
     : null
@@ -469,7 +471,7 @@ export default function ProfileScreen() {
         {/* Menu — compact grouped rows (iOS-settings style) instead of 8 big cards */}
         {([
           { title: 'Your place', rows: [
-            { icon: 'home', label: isHost ? 'My Listings' : 'Become a Host', sub: isHost ? `${hostLocations.length} active ${hostLocations.length === 1 ? 'location' : 'locations'}` : 'Add a listing', onPress: () => router.push('/become-host') },
+            { icon: 'home', label: isHost ? 'My Listings' : 'Become a Host', sub: isHost ? `${activeCount} active${pausedCount ? ` · ${pausedCount} paused` : ''}` : 'Add a listing', onPress: () => router.push('/become-host') },
             { icon: 'clock', label: 'History', sub: 'Your past stays', onPress: () => router.push('/history') },
             { icon: 'star', label: 'Reviews', sub: avgRating ? `⭐ ${avgRating} · ${reviews.length} ${reviews.length === 1 ? 'review' : 'reviews'}` : 'No reviews yet', onPress: () => router.push('/reviews') },
           ] },

@@ -1,5 +1,22 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **History log + nicer messages + per-listing pause (2026-06-27).**
+> - **History = chronological log, robust to deletion.** The city is now snapshotted on the
+>   stay itself (new `stay_requests.location_city/country`, filled by `create_knock` + backfilled
+>   16/16 naostro), so the screen reads from the stay record and survives the listing being deleted.
+>   Rewrote it as a plain log — "You stayed at X in City · dates" / "You hosted Y in City · dates" —
+>   with a status tag and a review link; the only tap is the always-present conversation (never a
+>   broken place link).
+> - **Messages list — card style.** Flat divider rows → separated rounded cards consistent with the
+>   app. Per-row "As rider / Hosting" pill next to the status tag; stronger unread (warm tint +
+>   accent border + left bar + dot). Segment (All / My knocks / Hosting) unchanged.
+> - **Per-listing pause ("away").** New `host_locations.paused` (bool, default false). Available↔Paused
+>   toggle on each listing in the editor (paused shows a ⏸ tag; profile "My Listings" shows
+>   `N active · M paused`). A paused listing is filtered out of `host_locations_public` (so it leaves
+>   the map/search and every public surface at once) and `create_knock` rejects a knock on a paused
+>   place. Coarse away-pause by design (not real-time "open now"). Verified naostro: paused → 0 rows
+>   in the public view, active → 1.
+>
 > **Nationality + cleaner location section (2026-06-27).**
 > - **Nationality replaces city on the person.** New nullable `profiles.nationality` column (CHECK ≤60,
 >   column grants: SELECT anon+auth, INSERT/UPDATE auth — same pattern as full_name/bio). Editable on
