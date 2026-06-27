@@ -1,5 +1,17 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Review form didn't show in chat (launch blocker, fixed 2026-06-27).** From History →
+> "leave a review" the right chat opened but the review card never appeared. Cause: the in-chat
+> reviewable-stays list was derived ONLY from messages carrying a `request_id` (the embedded
+> `request:stay_requests`). A conversation can have a completed, reviewable stay with NO message
+> bearing its request_id (seeded/bare chat, or the request message detached) — so the list came up
+> empty even though the stay exists. Fix: derive reviewable stays by querying `stay_requests`
+> directly for the open conversation (status ACCEPTED + departure in the past), independent of
+> messages. **Verified naostro** on the seeded stay (ACCEPTED, departure past, `msgs_with_reqid=0`):
+> the old message-only path found 0, the direct query returns it → the review card renders. RLS
+> `sr_select` lets both guest and host read it.
+
+
 > **Profile save (bio/name/avatar) was 403 (fixed 2026-06-27).** Saving bio failed with "Could not
 > save your bio" — and name/avatar shared the bug. Root cause was NOT a missing grant: the
 > column-level profiles grants are correct (authenticated has UPDATE on full_name/bio/avatar_url,

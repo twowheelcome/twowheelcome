@@ -995,10 +995,18 @@ export default function RequestsScreen() {
 
     // Every completed (accepted + ended) stay in this conversation is independently
     // reviewable — repeat stays reuse the conversation but each is its own stay_request.
+    // Derive these from stay_requests directly (NOT from messages): a conversation can
+    // have a reviewable stay even when no message carries its request_id (seeded/bare chat,
+    // or the request message was detached), so the message-only path missed them.
+    const { data: stayRows } = await supabase
+      .from('stay_requests')
+      .select(REQUEST_SELECT)
+      .eq('conversation_id', conv.id)
+      .eq('status', 'ACCEPTED')
+    if (currentUserIdRef.current !== userId || selectedConvIdRef.current !== conv.id) return
     const ended = Array.from(
       new Map(
-        normalized
-          .map(m => m.request)
+        (((stayRows as unknown) as RequestData[]) ?? [])
           .filter((req): req is RequestData => !!req && req.status === 'ACCEPTED' && hasStayEnded(req))
           .map(r => [r.id, r])
       ).values()
