@@ -108,6 +108,16 @@
 >    **Verified naostro** (live DB, in a BEGIN/ROLLBACK transaction — no data changed): foreigner
 >    update → 0 rows, guest-on-accepted → 0 rows, host → 1 row; the live row stayed ACCEPTED.
 >    Migration applied to production via the management API. tsc + full eslint green.
+>    **Follow-up (2026-06-27): guest notification.** The host-cancel now also notifies the rider
+>    (email + push), via a new `cancelled_by_host` event in the `notify-request` edge function —
+>    same path as accept/reject, host-only authorized, expects status CANCELLED, idempotent on
+>    (request_id, event). Respects the rider's Email/Push prefs (default on); push only with a
+>    token. The in-chat system note stays. Edge function redeployed. Verified naostro: the new
+>    event passes validation and is gated (cancelled_by_host → 401 for a non-host caller, bogus
+>    event → 400, accepted → 401 — identical routing).
+> 4. **Knock icebreaker hint (2026-06-27).** A subtle, optional tip under the "Message to host"
+>    field nudging riders to say where they're riding from, how long, and about their bike
+>    (cold "Hey, can I stay?" rarely lands). Placeholder unchanged; not required. tsc + eslint green.
 >
 > **UX (2026-06-26): native date picker + host capacity in knock.** 'Other day' on mobile is
 > now a calendar (@react-native-community/datetimepicker, min today; web keeps its date input;

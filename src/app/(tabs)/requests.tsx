@@ -1307,6 +1307,11 @@ export default function RequestsScreen() {
       c.id === selected?.id ? { ...c, requestStatus: 'CANCELLED' } : c
     ))
 
+    // Let the rider know their accepted stay fell through (email + push, prefs-aware).
+    supabase.functions.invoke('notify-request', {
+      body: { request_id: requestId, event: 'cancelled_by_host' },
+    }).catch(() => {})
+
     // System note in the thread (plain bubble, no request_id so it doesn't render a card).
     if (selected) {
       const { data: inserted } = await supabase.from('messages').insert({

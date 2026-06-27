@@ -67,7 +67,7 @@ Deno.serve(async req => {
   const CORS = corsHeaders(req)
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS })
 
-  let body: { request_id?: string; event?: 'new_request' | 'accepted' | 'rejected' }
+  let body: { request_id?: string; event?: 'new_request' | 'accepted' | 'rejected' | 'cancelled_by_host' }
   try {
     body = await req.json()
   } catch {
@@ -75,7 +75,7 @@ Deno.serve(async req => {
   }
 
   const { request_id, event } = body
-  if (!request_id || !event || !['new_request', 'accepted', 'rejected'].includes(event)) {
+  if (!request_id || !event || !['new_request', 'accepted', 'rejected', 'cancelled_by_host'].includes(event)) {
     return new Response('Invalid request', { status: 400, headers: CORS })
   }
 
@@ -95,10 +95,14 @@ Deno.serve(async req => {
 
   if (!request) return new Response('Not found', { status: 404, headers: CORS })
 
-  const expectedStatus = event === 'accepted' ? 'ACCEPTED' : event === 'rejected' ? 'REJECTED' : 'PENDING'
+  const expectedStatus =
+    event === 'accepted' ? 'ACCEPTED'
+    : event === 'rejected' ? 'REJECTED'
+    : event === 'cancelled_by_host' ? 'CANCELLED'
+    : 'PENDING'
   const callerCanNotify =
     (event === 'new_request' && caller.id === request.guest_id) ||
-    ((event === 'accepted' || event === 'rejected') && caller.id === request.host_id)
+    ((event === 'accepted' || event === 'rejected' || event === 'cancelled_by_host') && caller.id === request.host_id)
 
   if (!callerCanNotify) return new Response('Forbidden', { status: 403, headers: CORS })
   if (request.status !== expectedStatus) {
@@ -209,6 +213,28 @@ Deno.serve(async req => {
         guestProfile.push_token,
         'No luck this time 🤙',
         `${hostName} can't host right now. Try another host on the map.`,
+        pushChatUrl,
+      ) : Promise.resolve(),
+    ])
+  }
+
+  if (event === 'cancelled_by_host') {
+    await Promise.all([
+      guest?.email && guestWantsEmail ? sendEmail(
+        guest.email,
+        `Your stay was cancelled — TWOWHEELCOME`,
+        `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#1a1a1a;color:#eee;padding:32px;border-radius:12px">
+          <h2 style="margin:0 0 16px">Your stay was cancelled</h2>
+          <p><strong>${safeHostName}</strong> had to cancel your accepted stay.</p>
+          <p style="color:#aaa">🗓 ${dateInfo}</p>
+          <p>Sometimes life gets in the way. The dates are free again — find another host on the map for these nights.</p>
+          <a href="${webChatUrl}" style="display:inline-block;margin-top:16px;background:#C47050;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Open messages →</a>
+        </div>`
+      ) : Promise.resolve(),
+      guestProfile?.push_token && guestWantsPush ? sendPush(
+        guestProfile.push_token,
+        'Your stay was cancelled',
+        `${hostName} had to cancel your stay — ${request.arrival_date} → ${request.departure_date}`,
         pushChatUrl,
       ) : Promise.resolve(),
     ])
