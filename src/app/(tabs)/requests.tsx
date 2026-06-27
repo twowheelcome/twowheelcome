@@ -15,6 +15,7 @@ import { UserChip } from '../../components/UserChip'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { RequestPhoto } from '../../components/RequestPhoto'
 import { SafetyIcon } from '../../components/SafetyIcon'
+import { ReportButton } from '../../components/ReportButton'
 import { bestSafety } from '../../components/SafetyBlock'
 import { SAFETY } from '../../lib/theme'
 
@@ -1439,6 +1440,7 @@ export default function RequestsScreen() {
               <Text style={styles.chatLocation} numberOfLines={1}>{selected.locationLabel}</Text>
             </View>
           </TouchableOpacity>
+          <ReportButton targetType="conversation" targetId={selected.id} label="Report" style={{ marginRight: 4 }} />
           <UserChip />
         </View>
 

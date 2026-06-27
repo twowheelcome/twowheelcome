@@ -759,6 +759,24 @@ GRANT SELECT, INSERT, DELETE ON public.blocks TO authenticated;
 GRANT SELECT, INSERT, DELETE, UPDATE, REFERENCES, TRIGGER, TRUNCATE ON public.blocks TO service_role;
 
 
+-- ── Reports (DSA notice mechanism — capture + notify only, no moderation UI) ──
+CREATE TABLE IF NOT EXISTS public.reports (
+  id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  reporter_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  target_type text NOT NULL CHECK (target_type IN ('user','listing','message','conversation')),
+  target_id text NOT NULL,
+  reason text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT reports_reason_length CHECK (reason IS NULL OR char_length(reason) <= 2000)
+);
+ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
+-- A signed-in user may file their own report and read only their own (never public).
+CREATE POLICY "reports_insert" ON public.reports FOR INSERT TO public WITH CHECK (auth.uid() = reporter_id);
+CREATE POLICY "reports_select_own" ON public.reports FOR SELECT TO public USING (auth.uid() = reporter_id);
+GRANT SELECT, INSERT ON public.reports TO authenticated;
+GRANT SELECT, INSERT, DELETE, UPDATE, REFERENCES, TRIGGER, TRUNCATE ON public.reports TO service_role;
+
+
 -- ── Storage (buckets + object policies) ──
 INSERT INTO storage.buckets (id, name, public) VALUES ('avatars','avatars',true) ON CONFLICT (id) DO UPDATE SET public=excluded.public;
 INSERT INTO storage.buckets (id, name, public) VALUES ('listing-photos','listing-photos',true) ON CONFLICT (id) DO UPDATE SET public=excluded.public;

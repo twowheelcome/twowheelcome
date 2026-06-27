@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { SafetyBlock } from '../../components/SafetyBlock'
 import { ContributionBadge } from '../../components/ContributionBadge'
+import { ReportButton } from '../../components/ReportButton'
 import { ListingGallery } from '../../components/ListingGallery'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
@@ -330,6 +331,14 @@ export default function PublicHostProfile() {
             </TouchableOpacity>
           )
         ) : null}
+
+        {/* Report — DSA notice. Logged-in viewers, someone else's profile/listing. */}
+        {isLoggedIn && currentUserId && currentUserId !== id ? (
+          <View style={styles.reportRow}>
+            <ReportButton targetType="user" targetId={id} label="Report this rider" />
+            {location ? <ReportButton targetType="listing" targetId={location.id} label="Report this listing" /> : null}
+          </View>
+        ) : null}
       </ScrollView>
 
       {/* Block confirmation */}
@@ -403,6 +412,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   ctaBtn:       { height: 52, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
   ctaBtnText:   { color: C.white, fontSize: 15, fontWeight: '800', letterSpacing: 0.5 },
 
+  reportRow:    { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 18, marginTop: 6 },
   blockBtn:     { alignSelf: 'center', marginTop: 18, paddingVertical: 8, paddingHorizontal: 16 },
   blockText:    { color: C.error, fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
   blockRow:     { marginTop: 18, alignItems: 'center', gap: 6 },
