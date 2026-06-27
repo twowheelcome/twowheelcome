@@ -199,6 +199,22 @@
 >    reviewed person may reply"); nothing persisted. UI: the /reviews screen (where the public
 >    profile + map host-sheet both link) shows "Reply from {name}" under each review and gives the
 >    reviewed person an inline Reply editor. tsc + full eslint green.
+> 3. **Block a user** (post-contact safety, user-vs-user, no moderation). New `blocks` table
+>    (blocker_id, blocked_id, created_at; PK both; no-self CHECK; FKs to auth.users CASCADE).
+>    RLS: a user manages and reads ONLY their own block rows (auth.uid() = blocker_id) — the
+>    blocked person is never told who blocked them. Enforcement is at the DB and bidirectional:
+>    the block check was added to the existing SECURITY DEFINER validators —
+>    `validate_stay_request_write` (knock blocked) and `validate_message_request` (message
+>    blocked) — so a block in EITHER direction stops both knocking and messaging, un-bypassable by
+>    a crafted client. New migration `00000000000003_user_blocks.sql` applied to live + mirrored
+>    into baseline (the validator redefinitions live in the migration because they layer on the
+>    host-cancel version; the table/RLS/grants are also in baseline). **Verified naostro** (live,
+>    BEGIN/ROLLBACK): blocked→message rejected (P0001), blocked→knock rejected (P0001), reverse
+>    block also blocks (bidirectional), a foreigner can't insert a block as someone else (RLS
+>    42501), control message without a block succeeds, unblock restores messaging; nothing
+>    persisted. UI: Block (with confirm) / Unblock on the counterpart's profile (host/[id], reached
+>    from chat header + map + reviews); blocked conversations are hidden from the blocker's
+>    Messages list; a blocked send surfaces the server message instead of failing silently.
 >
 > **UX (2026-06-26): native date picker + host capacity in knock.** 'Other day' on mobile is
 > now a calendar (@react-native-community/datetimepicker, min today; web keeps its date input;

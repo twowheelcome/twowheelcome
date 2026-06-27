@@ -740,7 +740,7 @@ export default function RequestsScreen() {
       .filter((id: string | null): id is string => !!id)
     const locationIds = convData.map((c: any) => c.location_id).filter(Boolean)
 
-    const [{ data: profiles }, { data: locations }, { data: lastMsgs }, { data: requestRows }, { data: readRows }] = await Promise.all([
+    const [{ data: profiles }, { data: locations }, { data: lastMsgs }, { data: requestRows }, { data: readRows }, { data: blockRows }] = await Promise.all([
       otherIds.length ? supabase.from('profiles').select('id, full_name, avatar_url').in('id', otherIds) : Promise.resolve({ data: [] as any[] }),
       locationIds.length ? supabase.from('host_locations_public').select('id, location_city, location_country').in('id', locationIds) : Promise.resolve({ data: [] as any[] }),
       supabase.from('messages')
@@ -754,9 +754,13 @@ export default function RequestsScreen() {
       supabase.from('conversation_reads')
         .select('conversation_id, last_read_at')
         .eq('user_id', userId),
+      // People I've blocked — hide those conversations from my list.
+      supabase.from('blocks').select('blocked_id').eq('blocker_id', userId),
     ])
 
     if (loadUserIdRef.current !== userId || currentUserIdRef.current !== userId) return
+
+    const blockedSet = new Set((blockRows || []).map((b: any) => b.blocked_id))
 
     setReadMap(prev => {
       const next = { ...prev }
@@ -794,7 +798,10 @@ export default function RequestsScreen() {
       if (r.conversation_id) hasRequestMap[r.conversation_id] = true
     })
 
-    setConvs(convData.map((c: any) => {
+    setConvs(convData.filter((c: any) => {
+      const otherId = c.user_a === userId ? c.user_b : c.user_a
+      return !blockedSet.has(otherId)
+    }).map((c: any) => {
       const otherId = c.user_a === userId ? c.user_b : c.user_a
       const last = lastMsgMap[c.id]
       const prof = profileMap[otherId]
@@ -1076,6 +1083,10 @@ export default function RequestsScreen() {
       setText(body)
       sendingMsgRef.current = false
       setSending(false)
+      // Block (P0001) carries a clear server message; otherwise a generic hint.
+      setActionError(error.code === 'P0001' && error.message
+        ? error.message
+        : "Couldn't send your message. Check your connection and try again.")
       return
     }
     if (currentUserIdRef.current !== userId) {

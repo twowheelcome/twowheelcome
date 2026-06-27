@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Modal } from 'react-native'
 import { useLocalSearchParams, router } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
@@ -46,12 +46,45 @@ export default function PublicHostProfile() {
   const [avgRating, setAvgRating] = useState<number | null>(null)
   const [reviewCount, setReviewCount] = useState(0)
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [isBlocked, setIsBlocked] = useState(false)
+  const [blockBusy, setBlockBusy] = useState(false)
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => { setIsLoggedIn(!!session) })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => { setIsLoggedIn(!!session) })
+    supabase.auth.getSession().then(({ data: { session } }) => { setIsLoggedIn(!!session); setCurrentUserId(session?.user?.id ?? null) })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => { setIsLoggedIn(!!session); setCurrentUserId(session?.user?.id ?? null) })
     return () => subscription.unsubscribe()
   }, [])
+
+  // Am I blocking this person? (Only the blocker can read their own block rows.)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!currentUserId || !id || currentUserId === id) { setIsBlocked(false); return }
+    let active = true
+    supabase.from('blocks').select('blocked_id').eq('blocker_id', currentUserId).eq('blocked_id', id).maybeSingle()
+      .then(({ data }) => { if (active) setIsBlocked(!!data) })
+    return () => { active = false }
+  }, [currentUserId, id])
+
+  async function blockUser() {
+    if (!currentUserId || !id || blockBusy) return
+    setBlockBusy(true)
+    const { error } = await supabase.from('blocks').insert({ blocker_id: currentUserId, blocked_id: id })
+    setBlockBusy(false)
+    setShowBlockConfirm(false)
+    if (error) { console.warn('block error:', error.message); return }
+    setIsBlocked(true)
+  }
+
+  async function unblockUser() {
+    if (!currentUserId || !id || blockBusy) return
+    setBlockBusy(true)
+    const { error } = await supabase.from('blocks').delete().eq('blocker_id', currentUserId).eq('blocked_id', id)
+    setBlockBusy(false)
+    if (error) { console.warn('unblock error:', error.message); return }
+    setIsBlocked(false)
+  }
 
   function goToSignup() {
     router.push({ pathname: '/', params: { signup: '1' } })
@@ -280,7 +313,41 @@ export default function PublicHostProfile() {
             </TouchableOpacity>
           </>
         )}
+
+        {/* Block / unblock — only for a logged-in viewer looking at someone else */}
+        {isLoggedIn && currentUserId && currentUserId !== id ? (
+          isBlocked ? (
+            <View style={styles.blockRow}>
+              <Text style={styles.blockedNote}>You blocked this person. They can’t message or knock you.</Text>
+              <TouchableOpacity onPress={unblockUser} disabled={blockBusy}>
+                <Text style={styles.unblockText}>{blockBusy ? '…' : 'Unblock'}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.blockBtn} onPress={() => setShowBlockConfirm(true)}>
+              <Text style={styles.blockText}>Block user</Text>
+            </TouchableOpacity>
+          )
+        ) : null}
       </ScrollView>
+
+      {/* Block confirmation */}
+      <Modal visible={showBlockConfirm} transparent animationType="fade" onRequestClose={() => setShowBlockConfirm(false)}>
+        <View style={styles.blockOverlay}>
+          <View style={styles.blockSheet}>
+            <Text style={styles.blockSheetTitle}>Block this person?</Text>
+            <Text style={styles.blockSheetBody}>
+              They won’t be able to message or knock you, and you won’t see them. You can unblock anytime from their profile.
+            </Text>
+            <TouchableOpacity style={[styles.blockSheetDanger, blockBusy && { opacity: 0.6 }]} onPress={blockUser} disabled={blockBusy}>
+              <Text style={styles.blockSheetDangerText}>{blockBusy ? 'Blocking…' : 'Block'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.blockSheetCancel} onPress={() => setShowBlockConfirm(false)} disabled={blockBusy}>
+              <Text style={styles.blockSheetCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -335,6 +402,19 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   ctaBtn:       { height: 52, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
   ctaBtnText:   { color: C.white, fontSize: 15, fontWeight: '800', letterSpacing: 0.5 },
 
+  blockBtn:     { alignSelf: 'center', marginTop: 18, paddingVertical: 8, paddingHorizontal: 16 },
+  blockText:    { color: C.error, fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
+  blockRow:     { marginTop: 18, alignItems: 'center', gap: 6 },
+  blockedNote:  { color: C.textDim, fontSize: 12, textAlign: 'center', lineHeight: 17 },
+  unblockText:  { color: C.accent, fontSize: 13, fontWeight: '700' },
+  blockOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  blockSheet:   { backgroundColor: C.bg, borderRadius: 20, padding: 24, width: '100%', maxWidth: 400, gap: 12, borderWidth: 1, borderColor: C.errorBorder },
+  blockSheetTitle: { color: C.text, fontSize: 20, fontWeight: '900' },
+  blockSheetBody:  { color: C.textMuted, fontSize: 14, lineHeight: 21 },
+  blockSheetDanger: { height: 50, borderRadius: 100, backgroundColor: C.error, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  blockSheetDangerText: { color: C.white, fontSize: 14, fontWeight: '800' },
+  blockSheetCancel: { alignItems: 'center', paddingVertical: 8 },
+  blockSheetCancelText: { color: C.textMuted, fontSize: 14, textDecorationLine: 'underline' },
   notFoundEmoji: { fontSize: 52, textAlign: 'center' },
   notFoundTitle: { color: C.text, fontSize: 20, fontWeight: '800', textAlign: 'center' },
   notFoundSub:   { color: C.textMuted, fontSize: 14, textAlign: 'center', lineHeight: 20 },
