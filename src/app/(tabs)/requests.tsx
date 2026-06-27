@@ -192,7 +192,8 @@ function conversationStatus(C: ThemeColors, conv: ConvRow, isUnread: boolean, us
   if (pendingHosting && isUnread) {
     return { label: 'New request', color: C.info, bg: C.infoSoft, border: C.infoBorder }
   }
-  return makeStatus(C)[conv.requestStatus || 'PENDING'] || makeStatus(C).PENDING
+  const m = makeStatus(C)
+  return m[conv.requestStatus || 'PENDING'] || m.PENDING
 }
 
 // Unread = last message is from the other person and is newer than my last read.
