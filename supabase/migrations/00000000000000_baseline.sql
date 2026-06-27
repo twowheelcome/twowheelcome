@@ -99,8 +99,11 @@ CREATE TABLE IF NOT EXISTS profiles (
   bike_model text,
   cover_url text,
   notify_email boolean NOT NULL DEFAULT true,
-  notify_push boolean NOT NULL DEFAULT true
+  notify_push boolean NOT NULL DEFAULT true,
+  nationality text
 );
+ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_nationality_length;
+ALTER TABLE profiles ADD CONSTRAINT profiles_nationality_length CHECK (((nationality IS NULL) OR (char_length(nationality) <= 60)));
 CREATE TABLE IF NOT EXISTS request_notification_events (
   request_id uuid NOT NULL,
   event text NOT NULL,
@@ -733,10 +736,10 @@ GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON profiles 
 -- identity columns and own-profile writes would otherwise fail on permissions.
 -- push_token is deliberately NOT readable (written only via set_push_token / own UPDATE),
 -- and notify_email/notify_push stay off the public surface, matching production.
-GRANT SELECT (id, full_name, bio, avatar_url) ON profiles TO anon;
-GRANT SELECT (id, full_name, bio, avatar_url) ON profiles TO authenticated;
-GRANT INSERT (id, full_name, bio, avatar_url, push_token) ON profiles TO authenticated;
-GRANT UPDATE (full_name, bio, avatar_url, push_token) ON profiles TO authenticated;
+GRANT SELECT (id, full_name, bio, avatar_url, nationality) ON profiles TO anon;
+GRANT SELECT (id, full_name, bio, avatar_url, nationality) ON profiles TO authenticated;
+GRANT INSERT (id, full_name, bio, avatar_url, push_token, nationality) ON profiles TO authenticated;
+GRANT UPDATE (full_name, bio, avatar_url, push_token, nationality) ON profiles TO authenticated;
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON request_notification_events TO service_role;
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON reviews TO anon;
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON reviews TO authenticated;

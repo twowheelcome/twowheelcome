@@ -1,5 +1,19 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Nationality + cleaner location section (2026-06-27).**
+> - **Nationality replaces city on the person.** New nullable `profiles.nationality` column (CHECK ≤60,
+>   column grants: SELECT anon+auth, INSERT/UPDATE auth — same pattern as full_name/bio). Editable on
+>   your own profile (inline, like name/bio) and shown next to the name (🌍) instead of a single city —
+>   a host with places in different towns no longer gets one misleading city. Public host profile shows
+>   `🌍 nationality · N places`; per-listing city stays on each place. Verified naostro: owner sets
+>   "Czech" (204), reads back; a foreigner's UPDATE changes 0 rows (RLS), value unchanged.
+> - **Edit my place — location section decluttered.** Dropped the private "Location name" field entirely
+>   (UI + save flow; `location_name` now written null, DB column kept nullable, data untouched). Removed
+>   the 3 extra rows (label/input/helper). Added an **inline address/city search** (`AddressSearch`,
+>   reuses the map's Nominatim geocoder) above the map — type an address, pick a result, the pin drops
+>   (sets lat/lng + city/country). The fullscreen map picker (with its own search) still works to
+>   fine-tune by hand. Header tag now shows the resolved city instead of the private name.
+>
 > **Feedback channel (2026-06-27).** "Send feedback" in the profile menu opens a form (optional
 > Bug/Idea/Other + free message). Submitting stores it in a new `feedback` table (user_id, category,
 > message; RLS: own insert/read) and emails the developer inbox (privacy@twowheelcome.com via Resend,

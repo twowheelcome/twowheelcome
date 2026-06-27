@@ -25,6 +25,9 @@ export default function ProfileScreen() {
   const [editingBio, setEditingBio] = useState(false)
   const [bioInput, setBioInput] = useState('')
   const [savingBio, setSavingBio] = useState(false)
+  const [editingNat, setEditingNat] = useState(false)
+  const [natInput, setNatInput] = useState('')
+  const [savingNat, setSavingNat] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [avatarError, setAvatarError] = useState<string | null>(null)
   const [reviews, setReviews] = useState<{ rating: number; body: string | null; reviewer_name: string | null; created_at: string }[]>([])
@@ -59,6 +62,9 @@ export default function ProfileScreen() {
     setEditingBio(false)
     setBioInput('')
     setSavingBio(false)
+    setEditingNat(false)
+    setNatInput('')
+    setSavingNat(false)
     setUploadingAvatar(false)
     setAvatarError(null)
     setReviews([])
@@ -76,7 +82,7 @@ export default function ProfileScreen() {
     userIdRef.current = resolvedUser.id
     setUser(resolvedUser)
     const [p, h, r] = await Promise.all([
-      supabase.from('profiles').select('id, full_name, bio, avatar_url').eq('id', resolvedUser.id).maybeSingle(),
+      supabase.from('profiles').select('id, full_name, bio, avatar_url, nationality').eq('id', resolvedUser.id).maybeSingle(),
       supabase.from('host_locations').select('*').eq('user_id', resolvedUser.id).order('created_at', { ascending: true }),
       // Reviews received by this user. reviewer_id has no FK to profiles, so a PostgREST
       // embed fails — fetch the reviewers' names in a separate query (like the public profile).
@@ -87,6 +93,7 @@ export default function ProfileScreen() {
     setHostLocations(h.data || [])
     setNameInput(p.data?.full_name || '')
     setBioInput(p.data?.bio || '')
+    setNatInput(p.data?.nationality || '')
     const revRows = (r.data || []) as any[]
     const reviewerIds = [...new Set(revRows.map(rev => rev.reviewer_id).filter(Boolean))]
     const reviewerMap: Record<string, string> = {}
@@ -135,6 +142,16 @@ export default function ProfileScreen() {
     setProfile((p: any) => ({ ...p, full_name: nameInput.trim() }))
     setEditingName(false)
     refreshUserChip()
+  }
+
+  async function saveNationality() {
+    setSavingNat(true)
+    const trimmed = natInput.trim()
+    const { error } = await supabase.from('profiles').update({ nationality: trimmed || null }).eq('id', user.id)
+    setSavingNat(false)
+    if (error) { console.warn('save nationality error:', error.message); setAvatarError('Could not save your nationality. Please try again.'); return }
+    setProfile((p: any) => ({ ...p, nationality: trimmed || null }))
+    setEditingNat(false)
   }
 
   async function saveBio() {
@@ -345,11 +362,44 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         )}
         <Text style={styles.email}>{user?.email}</Text>
-        {(avgRating || hostLocations[0]?.location_city) ? (
-          <Text style={styles.profileMeta}>
-            {avgRating ? `⭐ ${avgRating}` : ''}{avgRating && hostLocations[0]?.location_city ? '  ·  ' : ''}{hostLocations[0]?.location_city ? `📍 ${hostLocations[0].location_city}` : ''}
-          </Text>
-        ) : null}
+        {/* Rating + nationality (a person has one nationality; city lives per-listing) */}
+        {editingNat ? (
+          <View style={styles.nameEdit}>
+            <TextInput
+              style={styles.nameInput}
+              value={natInput}
+              onChangeText={setNatInput}
+              placeholder="Your nationality — e.g. Czech, German"
+              placeholderTextColor={C.textFaint}
+              maxLength={60}
+              autoFocus
+            />
+            <View style={styles.nameActions}>
+              <TouchableOpacity style={styles.saveNameBtn} onPress={saveNationality} disabled={savingNat}>
+                <Text style={styles.saveNameBtnText}>{savingNat ? '...' : 'Save'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { setNatInput(profile?.nationality || ''); setEditingNat(false) }}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.metaRow}>
+            {avgRating ? <Text style={styles.profileMeta}>⭐ {avgRating}</Text> : null}
+            {avgRating && profile?.nationality ? <Text style={styles.profileMeta}>  ·  </Text> : null}
+            {profile?.nationality ? (
+              <TouchableOpacity style={styles.metaRow} onPress={() => setEditingNat(true)} activeOpacity={0.7}>
+                <Text style={styles.profileMeta}>🌍 {profile.nationality}</Text>
+                <Feather name="edit-2" size={11} color={C.textDim} style={{ marginLeft: 5 }} />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.natAddBtn} onPress={() => setEditingNat(true)} activeOpacity={0.7}>
+                <Feather name="plus" size={12} color={C.accent} />
+                <Text style={styles.natAddText}>Add nationality</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
 
         {/* Bio — what riders see on your public profile */}
         {editingBio ? (
@@ -626,6 +676,9 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   name: { color: C.text, fontSize: 24, fontWeight: '800', letterSpacing: 0.3 },
   email: { color: C.textDim, fontSize: 13, marginTop: -12, fontFamily: FONT.body },
   profileMeta: { color: C.accent, fontSize: 13, fontWeight: '700', marginTop: 2 },
+  metaRow: { flexDirection: 'row', alignItems: 'center' },
+  natAddBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', marginTop: 2, backgroundColor: C.accentSoft, borderRadius: 100, borderWidth: 1, borderColor: C.accentBorder, paddingHorizontal: 12, paddingVertical: 6 },
+  natAddText: { color: C.accent, fontSize: 12, fontWeight: '700' },
   placeCard: { backgroundColor: C.surface, borderRadius: 22, padding: 16, borderWidth: 1, borderColor: C.border },
   placeCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   placeCardTitle: { color: C.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 2 },

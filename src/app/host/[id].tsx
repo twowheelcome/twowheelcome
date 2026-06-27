@@ -96,7 +96,7 @@ export default function PublicHostProfile() {
     // Public profiles only read the coarse, privacy-safe view. Load ALL of the host's
     // places (a host can offer several), approximate coords only.
     const [{ data: prof }, { data: locs }, { data: revs }] = await Promise.all([
-      supabase.from('profiles').select('id, full_name, bio, avatar_url').eq('id', userId).maybeSingle(),
+      supabase.from('profiles').select('id, full_name, bio, avatar_url, nationality').eq('id', userId).maybeSingle(),
       supabase.from('host_locations_public').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
       supabase.from('reviews')
         .select('rating, body, reviewer_id')
@@ -176,8 +176,12 @@ export default function PublicHostProfile() {
                 {`${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} ${avgRating.toFixed(1)} · ${reviewCount} ${reviewCount === 1 ? 'review' : 'reviews'}`}
               </Text>
             )}
-            {locations[0]?.location_city && (
-              <Text style={styles.meta}>📍 {locations[0].location_city}, {locations[0].location_country}{locations.length > 1 ? ` · ${locations.length} places` : ''}</Text>
+            {(profile.nationality || locations.length > 1) && (
+              <Text style={styles.meta}>
+                {profile.nationality ? `🌍 ${profile.nationality}` : ''}
+                {profile.nationality && locations.length > 1 ? ' · ' : ''}
+                {locations.length > 1 ? `${locations.length} places` : ''}
+              </Text>
             )}
           </View>
         </View>
