@@ -1917,13 +1917,21 @@ export default function RequestsScreen() {
                 ? '🤞 Stay request'
                 : (conv.lastMsgBody ?? '')
               const status = conversationStatus(C, conv, isUnread, currentUser?.id)
+              const direction = conversationDirection(conv, currentUser?.id)
+              const dir = direction === 'knocks'
+                ? { label: 'As rider', bg: C.accentSoft, color: C.accent }
+                : direction === 'hosting'
+                  ? { label: 'Hosting', bg: C.infoSoft, color: C.info }
+                  : null
               return (
                 <TouchableOpacity
                   key={conv.id}
                   style={styles.convRow}
                   onPress={() => openConv(conv)}
+                  activeOpacity={0.75}
                 >
                   <View style={[styles.convCard, isUnread && styles.convCardUnread]}>
+                    {isUnread && <View style={styles.convAccentBar} />}
                     <View style={styles.convAvatarWrap}>
                       {conv.other.avatar_url ? (
                         <Image source={{ uri: conv.other.avatar_url }} style={styles.convAvatarImg} />
@@ -1936,21 +1944,28 @@ export default function RequestsScreen() {
                     </View>
                     <View style={styles.convInfo}>
                       <View style={styles.convTopRow}>
-                        <Text style={[styles.convName, isUnread && styles.convNameUnread]}>{name}</Text>
+                        <Text style={[styles.convName, isUnread && styles.convNameUnread]} numberOfLines={1}>{name}</Text>
                         <Text style={[styles.convTime, isUnread && styles.convTimeUnread]}>{fmtDate(conv.last_message_at)}</Text>
                       </View>
-                      <Text style={styles.convLocation} numberOfLines={1}>📍 {conv.locationLabel}</Text>
+                      <View style={styles.convMetaRow}>
+                        {dir ? (
+                          <View style={[styles.dirPill, { backgroundColor: dir.bg }]}>
+                            <Text style={[styles.dirText, { color: dir.color }]}>{dir.label}</Text>
+                          </View>
+                        ) : null}
+                        {conv.hasRequest && (
+                          <View style={[styles.convStatusBadge, { backgroundColor: status.bg, borderColor: status.border }]}>
+                            <Text style={[styles.convStatusText, { color: status.color }]}>{status.label}</Text>
+                          </View>
+                        )}
+                        <Text style={styles.convLocation} numberOfLines={1}>📍 {conv.locationLabel}</Text>
+                      </View>
                       {preview ? (
                         <Text style={[styles.convPreview, isUnread && styles.convPreviewUnread]} numberOfLines={1}>
                           {preview}
                         </Text>
                       ) : null}
                     </View>
-                    {conv.hasRequest && (
-                      <View style={[styles.convStatusBadge, { backgroundColor: status.bg, borderColor: status.border }]}>
-                        <Text style={[styles.convStatusText, { color: status.color }]}>{status.label}</Text>
-                      </View>
-                    )}
                   </View>
                 </TouchableOpacity>
               )
@@ -2264,24 +2279,26 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   },
   convRow: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 0, paddingVertical: 0,
   },
+  // Each conversation is its own rounded card (consistent with the rest of the app),
+  // not a flat divider row.
   convCard: {
     flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12,
     minHeight: 78,
-    paddingVertical: 13,
-    paddingLeft: 10,
-    // A transparent left bar on read rows keeps content aligned with unread rows,
-    // which add a coloured bar.
-    borderLeftWidth: 3, borderLeftColor: 'transparent',
-    borderBottomWidth: 1,
-    borderBottomColor: C.border,
+    paddingVertical: 13, paddingHorizontal: 14,
+    backgroundColor: C.surface,
+    borderRadius: 18,
+    borderWidth: 1, borderColor: C.border,
+    overflow: 'hidden',
   },
-  // Unread: a clear tint over the whole row + a left accent bar, so a new message
-  // is impossible to miss. Clears once read.
+  // Unread: warm tint + accent border + a left accent bar, impossible to miss.
   convCardUnread: {
     backgroundColor: C.accentSoft,
-    borderLeftColor: C.accent,
+    borderColor: C.accentBorder,
+  },
+  convAccentBar: {
+    position: 'absolute', left: 0, top: 0, bottom: 0, width: 4,
+    backgroundColor: C.accent,
   },
   convAvatarWrap: { position: 'relative' },
   convAvatar: {
@@ -2304,7 +2321,10 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   convTime: { color: C.textDim, fontSize: 12 },
   convTimeUnread: { color: C.accent, fontWeight: '800' },
   convPreview: { color: C.textDim, fontSize: 13, lineHeight: 18 },
-  convLocation: { color: C.textMuted, fontSize: 11, lineHeight: 16 },
+  convMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dirPill: { borderRadius: 100, paddingHorizontal: 8, paddingVertical: 2 },
+  dirText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4, textTransform: 'uppercase' },
+  convLocation: { color: C.textMuted, fontSize: 11, lineHeight: 16, flex: 1, minWidth: 0 },
   // Unread: dark + bold so a new message is obvious at a glance in the list.
   convPreviewUnread: { color: C.text, fontWeight: '800' },
   convStatusBadge: {
