@@ -41,7 +41,7 @@ function guestHtml(hostName: string, url: string): string {
 
 function hostHtml(guestName: string, url: string): string {
   return '<div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#1a1a1a;color:#eee;padding:32px;border-radius:12px">'
-    + '<h2 style="color:#C47050;margin:0 0 16px">&#11088; How was your guest?</h2>'
+    + '<h2 style="color:#C47050;margin:0 0 16px">&#11088; How was this rider?</h2>'
     + '<p><strong>' + guestName + '</strong> stayed with you yesterday. A short review helps other hosts in the community.</p>'
     + '<a href="' + url + '" style="display:inline-block;margin-top:16px;background:#C47050;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">Leave a review &#8594;</a>'
     + '</div>'
@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
   for (const stay of stays) {
     const guestProfile = profileMap[stay.guest_id]
     const hostProfile = profileMap[stay.host_id]
-    const guestName = escapeHtml(guestProfile?.full_name || 'your guest')
+    const guestName = escapeHtml(guestProfile?.full_name || 'this rider')
     const hostName = escapeHtml(hostProfile?.full_name || 'your host')
 
     const webUrl = stay.conversation_id
@@ -114,8 +114,8 @@ Deno.serve(async (req) => {
 
     if (!reviewedSet.has(stay.id + ':' + stay.host_id)) {
       const email = emailMap[stay.host_id]
-      if (email && hostProfile?.notify_email !== false) tasks.push(sendEmail(email, 'How was your guest? - TWOWHEELCOME', hostHtml(guestName, webUrl)))
-      if (hostProfile?.push_token && hostProfile?.notify_push !== false) tasks.push(sendPush(hostProfile.push_token, 'How was your guest?', 'Leave a review for ' + (guestProfile?.full_name || 'your guest'), pushUrl))
+      if (email && hostProfile?.notify_email !== false) tasks.push(sendEmail(email, 'How was this rider? - TWOWHEELCOME', hostHtml(guestName, webUrl)))
+      if (hostProfile?.push_token && hostProfile?.notify_push !== false) tasks.push(sendPush(hostProfile.push_token, 'How was this rider?', 'Leave a review for ' + (guestProfile?.full_name || 'this rider'), pushUrl))
     }
   }
 

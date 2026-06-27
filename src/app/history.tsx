@@ -133,7 +133,7 @@ export default function HistoryScreen() {
 
                 <Text style={styles.place}>📍 {s.place}</Text>
                 <Text style={styles.with}>
-                  {s.role === 'guest' ? 'Host: ' : 'Guest: '}{s.otherName}
+                  {s.role === 'guest' ? 'Host: ' : 'Rider: '}{s.otherName}
                 </Text>
                 <Text style={styles.dates}>{fmtDateStr(s.arrival)} → {fmtDateStr(s.departure)}</Text>
 

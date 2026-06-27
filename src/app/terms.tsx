@@ -40,7 +40,7 @@ export default function TermsScreen() {
           <Bullet>Use the app honestly and respectfully.</Bullet>
           <Bullet>Only offer places you are allowed to offer.</Bullet>
           <Bullet>Do not share false listings, spam, abusive messages or unsafe instructions.</Bullet>
-          <Bullet>Guests and hosts are responsible for agreeing on timing, access, house rules and any contribution.</Bullet>
+          <Bullet>Riders and hosts are responsible for agreeing on timing, access, house rules and any contribution.</Bullet>
         </Section>
 
         <Section title="Stay requests">
