@@ -1,5 +1,20 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Map/chat/edit polish (2026-06-27).**
+> - **No ETA** anywhere (confirmed by grep; not added — riders use their own nav).
+> - **"Navigate to approximate area"** — opens external maps on the fuzzed/approximate coords
+>   *before* acceptance, next to the in-app "Show approximate area" in the chat request card and on
+>   the map host sheet. Privacy unchanged; the exact-point nav after accept stays as-is.
+> - **"🔓 Address unlocked"** — the exact-meeting-point chat card is now a green success moment
+>   (tinted card + unlock icon + full-width green "Navigate" button); pre-unlock keeps approximate.
+> - **Review = written note** (Petr's preference): replaced the tag chips with a "Leave a note" free
+>   field ("Tell other riders what to expect…"); kept stars + "Did your bike feel safe?" + thanks.
+>   (tags column left unused; bike_safe still saved; coord strip on the note.)
+> - **Edit my place layout**: parking is radio cards (safety icon + UPPERCASE label + sub + colored
+>   radio dot per level), amenities chips turn green when active ("What can guests use?"), pricing is
+>   "The vibe (always free)" with a free-hospitality note — Paid option kept; photos/name/map/price
+>   fields unchanged.
+
 > **Design pass (2026-06-27, Petr's screens).**
 > 1. **Review hero redesign** — "How was your stay?": centered avatar/name/dates, 5 stars with
 >    labels, "Did your bike feel safe?" (🔒/😐/⚠️), "What stood out?" tags, optional words + an

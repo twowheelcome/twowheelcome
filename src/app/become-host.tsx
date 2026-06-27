@@ -371,8 +371,8 @@ export default function BecomeHostScreen() {
           </View>
           <Text style={styles.privateNote}>🔒 Riders only ever see an approximate area — your pin is shown fuzzed on the public map, never the exact spot. You send the precise coordinates yourself in chat, as a next step, after you accept a request.</Text>
 
-          {/* Parking */}
-          <Text style={styles.label}>🅿️ PARKING</Text>
+          {/* Parking — radio cards, coloured by safety level */}
+          <Text style={styles.label}>🅿️ HOW SAFE IS THE PARKING?</Text>
           {PARKING.map(p => {
             const active = loc.parkings.includes(p.value)
             return (
@@ -383,10 +383,12 @@ export default function BecomeHostScreen() {
               >
                 <View style={styles.optIconWrap}><SafetyIcon level={getSafetyKey(p.value)} size={24} color={active ? p.color : C.textDim} strokeWidth={2.2} /></View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.optLabel, active && { color: p.color }]}>{p.label}</Text>
+                  <Text style={[styles.optLabelUpper, active && { color: p.color }]}>{p.label}</Text>
                   <Text style={styles.optDesc}>{p.desc}</Text>
                 </View>
-                {active && <Text style={[styles.check, { color: p.color }]}>✓</Text>}
+                <View style={[styles.radio, { borderColor: active ? p.color : C.borderMid }]}>
+                  {active ? <View style={[styles.radioDot, { backgroundColor: p.color }]} /> : null}
+                </View>
               </TouchableOpacity>
             )
           })}
@@ -409,7 +411,7 @@ export default function BecomeHostScreen() {
           ))}
 
           {/* Amenities */}
-          <Text style={styles.label}>🔧 WHAT DO YOU OFFER?</Text>
+          <Text style={styles.label}>🔧 WHAT CAN GUESTS USE?</Text>
           <View style={styles.chipsWrap}>
             {AMENITIES.map(a => {
               const active = loc.amenities.includes(a.value)
@@ -439,8 +441,8 @@ export default function BecomeHostScreen() {
             <Text style={styles.cDesc}>rider{loc.maxGuests !== 1 ? 's' : ''} at a time</Text>
           </View>
 
-          {/* Cena */}
-          <Text style={styles.label}>💰 WHAT DO YOU WANT IN RETURN?</Text>
+          {/* The vibe */}
+          <Text style={styles.label}>💰 THE VIBE (ALWAYS FREE)</Text>
           <View style={styles.pricingRow}>
             {PRICING.map(p => {
               const active = loc.pricings.includes(p.value)
@@ -457,6 +459,7 @@ export default function BecomeHostScreen() {
               )
             })}
           </View>
+          <Text style={styles.privateNote}>🤝 twowheelcome is free — a bed for the night is hospitality, not business. Anything beyond that (a beer, a tip, an agreed contribution) is settled directly in chat.</Text>
 
           {/* Price — only for a Paid listing, so riders know the cost before they knock */}
           {loc.pricings.includes('fixed') && (
@@ -607,6 +610,9 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   optIcon: { fontSize: 22, width: 32, textAlign: 'center' },
   optIconWrap: { width: 32, alignItems: 'center', justifyContent: 'center' },
   optLabel: { color: C.text, fontWeight: '700', fontSize: 14 },
+  optLabelUpper: { color: C.text, fontWeight: '800', fontSize: 13, letterSpacing: 1, textTransform: 'uppercase' },
+  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  radioDot: { width: 11, height: 11, borderRadius: 6 },
   optDesc: { color: C.textMuted, fontSize: 12, marginTop: 2, fontFamily: FONT.body },
   check: { fontSize: 18, fontWeight: '900' },
 
@@ -616,10 +622,10 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
 
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.elevated, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1, borderColor: C.border },
-  chipActive: { borderColor: C.accent, backgroundColor: C.accentSoft },
+  chipActive: { borderColor: C.green, backgroundColor: C.greenSoft },
   chipIcon: { fontSize: 15 },
   chipLabel: { color: C.textMuted, fontSize: 13, fontWeight: '600' },
-  chipLabelActive: { color: C.accent },
+  chipLabelActive: { color: C.green },
 
   counter: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 4 },
   cBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: C.elevated, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
