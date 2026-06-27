@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Platform, Modal } from 'react-native'
+import DateTimePicker from '@react-native-community/datetimepicker'
 import { supabase } from '../../lib/supabase'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
@@ -15,6 +16,18 @@ import { UserChip } from '../../components/UserChip'
 
 function placeLabel(city?: string | null, country?: string | null): string {
   return [city, country].filter(Boolean).join(', ') || 'Location on the map'
+}
+
+// Local-day YYYY-MM-DD (avoids the UTC off-by-one that toISOString would cause for a
+// picker date at local midnight).
+function localYMD(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+function prettyDate(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  if (!y || !m || !d) return ymd
+  return `${d} ${MONTH_ABBR[m - 1]} ${y}`
 }
 
 export default function MapScreen() {
@@ -42,6 +55,7 @@ export default function MapScreen() {
   const [arrivalChip, setArrivalChip] = useState<'tonight' | 'tomorrow' | 'other'>('tonight')
   const [arrivalDate, setArrivalDate] = useState(() => new Date().toISOString().split('T')[0])
   const [departureDate, setDepartureDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0])
+  const [showDatePicker, setShowDatePicker] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [HostMap, setHostMap] = useState<any>(null)
   const [showFilters, setShowFilters] = useState(false)
@@ -390,6 +404,12 @@ export default function MapScreen() {
                 <Text style={styles.cardLocation}>📍 {placeLabel(selected.location_city, selected.location_country)}</Text>
               </View>
             </View>
+            {selected.max_guests != null && (
+              <View style={styles.capacityBadge}>
+                <Text style={styles.capacityText}>👥 Up to {selected.max_guests} {selected.max_guests === 1 ? 'rider' : 'riders'}</Text>
+                <Text style={styles.capacitySub}>This is how many the host can take at once.</Text>
+              </View>
+            )}
             <SafetyBlock parkings={selectedParkings} />
             <HostOffer loc={selected} />
           </View>
@@ -436,17 +456,27 @@ export default function MapScreen() {
                     style={{ background: C.bg, border: `1px solid ${C.borderMid}`, borderRadius: 8, padding: '10px 12px', color: C.text, fontSize: 16, colorScheme: 'dark', outline: 'none', width: '100%', boxSizing: 'border-box' } as any}
                   />
                 ) : (
-                  <TextInput
-                    style={styles.dateInput}
-                    value={arrivalDate}
-                    onChangeText={d => {
-                      setArrivalDate(d)
-                      const dep = new Date(new Date(d).getTime() + 86400000).toISOString().split('T')[0]
-                      setDepartureDate(dep)
-                    }}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#777"
-                  />
+                  <>
+                    <TouchableOpacity style={styles.dateInput} onPress={() => setShowDatePicker(true)} activeOpacity={0.7}>
+                      <Text style={{ color: C.text, fontSize: 16 }}>📅 {prettyDate(arrivalDate)}</Text>
+                    </TouchableOpacity>
+                    {showDatePicker && (
+                      <DateTimePicker
+                        mode="date"
+                        display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                        value={(() => { const [y, m, d] = arrivalDate.split('-').map(Number); return new Date(y, (m || 1) - 1, d || 1) })()}
+                        minimumDate={new Date()}
+                        onChange={(event, date) => {
+                          if (Platform.OS !== 'ios') setShowDatePicker(false)
+                          if (event.type === 'dismissed' || !date) return
+                          const arr = localYMD(date)
+                          const dep = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1)
+                          setArrivalDate(arr)
+                          setDepartureDate(localYMD(dep))
+                        }}
+                      />
+                    )}
+                  </>
                 )}
               </View>
             )}
@@ -703,6 +733,9 @@ export default function MapScreen() {
                 <View style={{ flex: 1, gap: 3 }}>
                   <Text style={{ color: C.text, fontSize: 18, fontWeight: '900' }}>{selected.profiles?.full_name || 'Anonymous Rider'}</Text>
                   <Text style={{ color: C.textMuted, fontSize: 13 }}>📍 {placeLabel(selected.location_city, selected.location_country)}</Text>
+                  {selected.max_guests != null && (
+                    <Text style={{ color: C.text, fontSize: 13, fontWeight: '700' }}>👥 Up to {selected.max_guests} {selected.max_guests === 1 ? 'rider' : 'riders'}</Text>
+                  )}
                   {selected.avg_rating != null && (
                     <Text style={{ color: C.accent, fontSize: 13, fontWeight: '700' }}>
                       {'★'.repeat(Math.round(selected.avg_rating))}{'☆'.repeat(5 - Math.round(selected.avg_rating))} {selected.avg_rating.toFixed(1)} · {selected.review_count} {selected.review_count === 1 ? 'stay' : 'stays'}
@@ -1026,7 +1059,10 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   buttonText:       { color: C.white, fontWeight: '800', fontSize: 14, letterSpacing: 1 },
   sectionLabel:     { color: C.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10, fontWeight: '700' },
   dateFieldLabel:   { color: C.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
-  dateInput:        { backgroundColor: C.elevated, borderRadius: 10, padding: 12, color: C.text, fontSize: 16, borderWidth: 1, borderColor: C.border },
+  dateInput:        { backgroundColor: C.elevated, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: C.border },
+  capacityBadge:    { backgroundColor: C.accentSoft, borderWidth: 1, borderColor: C.accentBorder, borderRadius: 14, paddingVertical: 11, paddingHorizontal: 14, marginTop: 4 },
+  capacityText:     { color: C.accent, fontSize: 15, fontWeight: '900' },
+  capacitySub:      { color: C.textMuted, fontSize: 12, marginTop: 2 },
   counter:          { flexDirection: 'row', alignItems: 'center', gap: 16 },
   counterBtn:       { width: 36, height: 36, borderRadius: 18, backgroundColor: C.elevated, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
   counterBtnText:   { color: C.text, fontSize: 20, fontWeight: '700' },
