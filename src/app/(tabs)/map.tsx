@@ -531,7 +531,7 @@ export default function MapScreen() {
             <Text style={styles.sectionLabel}>MESSAGE TO HOST</Text>
             <TextInput
               style={styles.textarea}
-              placeholder="Hey, I'm riding through on this date. Is your spot free for one rider and bike?"
+              placeholder="Hi! I'm riding down from Berlin and hoping for one night with my KTM 790. Is your spot free? 🙏"
               placeholderTextColor={C.placeholder}
               value={message}
               onChangeText={setMessage}
@@ -539,9 +539,6 @@ export default function MapScreen() {
               numberOfLines={4}
               maxLength={1000}
             />
-            <Text style={styles.msgHint}>
-              {"💡 Tip: tell the host where you're riding from, how long you'd like to stay, and a little about your bike. A personal note gets far more yeses than “Hey, can I stay?”"}
-            </Text>
           </View>
 
           {selectedPricings.includes('tip') && (
@@ -1078,7 +1075,6 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   loadErrorText:    { color: C.error, fontSize: 13, fontWeight: '600', flex: 1 },
   loadErrorRetry:   { color: C.accent, fontSize: 13, fontWeight: '800' },
   textarea:         { backgroundColor: C.elevated, borderRadius: 12, padding: 14, color: C.text, fontSize: 16, minHeight: 100, borderWidth: 1, borderColor: C.border, textAlignVertical: 'top', lineHeight: 22 },
-  msgHint:          { color: C.textDim, fontSize: 12, lineHeight: 18, marginTop: 8 },
   infoBox:          { borderRadius: 12, borderWidth: 1, padding: 14 },
   infoText:         { fontSize: 13, lineHeight: 19 },
   photoBtn:         { borderWidth: 1, borderColor: C.border, borderRadius: 12, borderStyle: 'dashed', padding: 24, alignItems: 'center', justifyContent: 'center' },
