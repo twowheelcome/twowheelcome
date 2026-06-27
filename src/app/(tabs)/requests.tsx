@@ -36,6 +36,7 @@ type ConvRow = {
   lastMsgIsRequest: boolean
   hasRequest: boolean
   requestStatus: string | null
+  requestArrival: string | null
   requestDeparture: string | null
   requestHostId: string | null
   requestGuestId: string | null
@@ -165,12 +166,14 @@ function makeStatus(C: ThemeColors): Record<string, { label: string; color: stri
   }
 }
 
-// A pending knock whose stay date is already in the past is effectively EXPIRED —
-// nobody replied and there's nothing left to wait for. Derived in the UI (we don't
-// flip the DB status, to avoid disturbing stats/history/other flows).
-function isExpiredPending(status: string | null, departure: string | null): boolean {
-  if (status !== 'PENDING' || !departure) return false
-  return departure < new Date().toISOString().split('T')[0]
+// A pending knock is effectively EXPIRED once its ARRIVAL day has arrived (or passed)
+// with no reply — there's nothing left to wait for. Keyed on arrival, not departure,
+// so a "tonight" knock (arrival today, departure tomorrow) can be closed the same
+// evening. Derived in the UI (we don't flip the DB status, to avoid disturbing
+// stats/history/other flows).
+function isExpiredPending(status: string | null, arrival: string | null): boolean {
+  if (status !== 'PENDING' || !arrival) return false
+  return arrival <= new Date().toISOString().split('T')[0]
 }
 
 function conversationDirection(conv: ConvRow, userId?: string | null): ConversationFilter {
@@ -181,7 +184,7 @@ function conversationDirection(conv: ConvRow, userId?: string | null): Conversat
 }
 
 function conversationStatus(C: ThemeColors, conv: ConvRow, isUnread: boolean, userId?: string | null) {
-  if (isExpiredPending(conv.requestStatus, conv.requestDeparture)) {
+  if (isExpiredPending(conv.requestStatus, conv.requestArrival)) {
     return { label: 'Expired', color: C.textMuted, bg: C.surface, border: C.border }
   }
   const direction = conversationDirection(conv, userId)
@@ -759,7 +762,7 @@ export default function RequestsScreen() {
       last_message_at: c.last_message_at,
       other: { id: otherId, full_name: prof?.full_name ?? null, avatar_url: prof?.avatar_url ?? null },
       lastMsgBody: null, lastMsgSenderId: null, lastMsgIsRequest: false,
-      hasRequest: false, requestStatus: null, requestDeparture: null, requestHostId: null, requestGuestId: null,
+      hasRequest: false, requestStatus: null, requestArrival: null, requestDeparture: null, requestHostId: null, requestGuestId: null,
     }
   }
 
@@ -853,7 +856,7 @@ export default function RequestsScreen() {
         .in('conversation_id', convIds)
         .order('created_at', { ascending: false }),
       supabase.from('stay_requests')
-        .select('conversation_id, status, host_id, guest_id, created_at, departure_date')
+        .select('conversation_id, status, host_id, guest_id, created_at, arrival_date, departure_date')
         .in('conversation_id', convIds)
         .order('created_at', { ascending: false }),
       supabase.from('conversation_reads')
@@ -890,6 +893,7 @@ export default function RequestsScreen() {
     const lastMsgMap: Record<string, { body: string | null; sender_id: string; request_id: string | null }> = {}
     const hasRequestMap: Record<string, boolean> = {}
     const requestStatusMap: Record<string, string> = {}
+    const requestArrivalMap: Record<string, string> = {}
     const requestDepartureMap: Record<string, string> = {}
     const requestHostMap: Record<string, string> = {}
     const requestGuestMap: Record<string, string> = {}
@@ -902,6 +906,7 @@ export default function RequestsScreen() {
     requestRows?.forEach((r: any) => {
       if (r.conversation_id && !requestStatusMap[r.conversation_id]) {
         requestStatusMap[r.conversation_id] = r.status
+        requestArrivalMap[r.conversation_id] = r.arrival_date
         requestDepartureMap[r.conversation_id] = r.departure_date
         requestHostMap[r.conversation_id] = r.host_id
         requestGuestMap[r.conversation_id] = r.guest_id
@@ -933,6 +938,7 @@ export default function RequestsScreen() {
         lastMsgIsRequest: !!last?.request_id,
         hasRequest: !!hasRequestMap[c.id],
         requestStatus: requestStatusMap[c.id] ?? null,
+        requestArrival: requestArrivalMap[c.id] ?? null,
         requestDeparture: requestDepartureMap[c.id] ?? null,
         requestHostId: requestHostMap[c.id] ?? null,
         requestGuestId: requestGuestMap[c.id] ?? null,
@@ -948,9 +954,9 @@ export default function RequestsScreen() {
   function canRemoveConv(conv: ConvRow): boolean {
     const s = conv.requestStatus
     const today = new Date().toISOString().split('T')[0]
-    // A pending knock blocks removal only while its stay date is still in the FUTURE.
-    // Once it's passed with no reply it's expired → removable like any dead chat.
-    if (s === 'PENDING') return isExpiredPending(s, conv.requestDeparture)
+    // A pending knock blocks removal only while its ARRIVAL is still in the FUTURE.
+    // Once the arrival day is here/past with no reply it's expired → removable.
+    if (s === 'PENDING') return isExpiredPending(s, conv.requestArrival)
     if (s === 'ACCEPTED') {
       if (conv.requestDeparture && conv.requestDeparture >= today) return false
     }

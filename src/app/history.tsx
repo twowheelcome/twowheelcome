@@ -125,8 +125,8 @@ export default function HistoryScreen() {
         <ScrollView contentContainerStyle={styles.list}>
           {stays.map(s => {
             const meta = STATUS_META[s.status] || STATUS_META.PENDING
-            // Pending knock with a past date = expired (no reply); show it muted.
-            const expired = s.status === 'PENDING' && !!s.departure && s.departure < todayStr()
+            // Pending knock whose arrival day is here/past = expired (no reply); show muted.
+            const expired = s.status === 'PENDING' && !!s.arrival && s.arrival <= todayStr()
             return (
               <TouchableOpacity key={s.id} style={styles.row} onPress={() => openConversation(s)} activeOpacity={0.7}>
                 <Text style={styles.rowIcon}>{s.role === 'guest' ? '🏍' : '🏠'}</Text>

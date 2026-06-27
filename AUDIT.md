@@ -1,12 +1,14 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
 > **Expired pending chats + onboarding glyphs keep the orange (2026-06-27).**
-> - **Expired pending = removable.** A pending knock whose stay date is already in the past is now
->   treated as expired (no reply, nothing to wait for): the chat shows an "Expired" tag (chat list +
->   History) and can be removed/hidden like any dead chat. Hide rule: a pending chat blocks removal
->   only while its date is still in the FUTURE. Derived in the UI (`isExpiredPending`) — the DB status
->   stays PENDING so stats/history/other flows are untouched. Verified naostro (read-only): the
->   future-pending case is correctly held; past-pending uses the same `departure < today` comparison.
+> - **Expired pending = removable.** A pending knock with no reply is now treated as expired: the chat
+>   shows an "Expired" tag (chat list + History) and can be removed/hidden like any dead chat. Keyed on
+>   **arrival_date** (not departure): a pending whose arrival day is today or past is expired/removable;
+>   only a future-arrival pending is still held. (Fix: a "tonight" knock has arrival=today but
+>   departure=tomorrow, so a departure-based check wrongly kept it active — couldn't be closed the same
+>   evening.) Derived in the UI (`isExpiredPending`) — DB status stays PENDING so stats/history/flows
+>   are untouched. Verified naostro: the real pending row (arrival 26th, departure 27th, today 27th)
+>   now classifies removable.
 > - **Onboarding glyphs keep the orange accent.** Reverted the flat foreground tint (which killed the
 >   terracotta). Generated cream variants of bike/roof/gear (graphite→cream, terracotta kept) and the
 >   onboarding now picks them by theme — graphite+terracotta on light, cream+terracotta on dark, same
