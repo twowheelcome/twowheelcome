@@ -26,6 +26,18 @@ const base = {
   purpleSoft:   '#8A6A8A18',
   purpleBorder: '#8A6A8A55',
 
+  // ── Road & Trail: green = secondary / open / "trail" ──────────────
+  green:       '#3E7D4F',
+  greenSoft:   '#3E7D4F18',
+  greenBorder: '#3E7D4F55',
+  greenDim:    '#2F6240',
+
+  // ── Bike-safety colours (green = safest … red = basic) ────────────
+  safe:  '#4A9E5C',
+  good:  '#5A8FAE',
+  okay:  '#D08049',
+  basic: '#CB4636',
+
   white: '#ffffff',
   black: '#000000',
 } as const
@@ -37,9 +49,16 @@ export const DARK = {
   bg:        '#2F3438',
   surface:   '#373D42',
   elevated:  '#42484E',
+  sunken:    '#262B2E',
   border:    '#50585F',
   borderMid: '#687178',
   hover:     '#3C4247',
+
+  // ── Map tints ───────────────────────────────────────────────────
+  mapBg:    '#20262A',
+  mapLand:  '#262C30',
+  mapWater: '#1E2A2C',
+  mapRoad:  '#3A4248',
 
   // ── Text ────────────────────────────────────────────────────────
   text:        '#F2EBDD',
@@ -70,34 +89,41 @@ export const DARK = {
 export const LIGHT = {
   ...base,
 
-  // ── Backgrounds ─────────────────────────────────────────────────
-  bg:        '#F2EBDD',
-  surface:   '#E8DFCE',
-  elevated:  '#FFF8EA',
-  border:    '#D4C5AA',
-  borderMid: '#BDAE93',
-  hover:     '#ECE2D1',
+  // ── Backgrounds (Road & Trail, light) ───────────────────────────
+  bg:        '#F7F1E6',
+  surface:   '#FBF7EE',
+  elevated:  '#FFFFFF',
+  sunken:    '#EDE6D6',
+  border:    '#DCCFB8',   // hairline
+  borderMid: '#C3B79C',
+  hover:     '#F0E9DA',
+
+  // ── Map tints ───────────────────────────────────────────────────
+  mapBg:    '#E7E0CF',
+  mapLand:  '#EDE7D7',
+  mapWater: '#D7DBC9',
+  mapRoad:  '#C8BCA2',
 
   // ── Text ────────────────────────────────────────────────────────
-  text:        '#2F3438',
-  textMuted:   '#64605A',
-  textDim:     '#8E8577',
-  textFaint:   '#B8AD9C',
-  placeholder: '#9A907F',
+  text:        '#2B2C2E',
+  textMuted:   '#5E5F63',
+  textDim:     '#90897C',
+  textFaint:   '#B3AC9E',
+  placeholder: '#A39B8C',
 
-  // ── Accent — orange (PRIMARY action) ────────────────────────────
-  accent:       '#C96E2A',
-  accentSoft:   '#C96E2A18',
-  accentBorder: '#C96E2A55',
+  // ── Accent — terracotta (PRIMARY action / "road") ───────────────
+  accent:       '#D9621F',
+  accentSoft:   '#D9621F18',
+  accentBorder: '#D9621F55',
 
   // ── Legacy aliases ────────────────────────────────────────────────
-  forest:       '#F2EBDD',
-  forestSoft:   '#F2EBDD30',
-  forestBorder: '#F2EBDD80',
+  forest:       '#F7F1E6',
+  forestSoft:   '#F7F1E630',
+  forestBorder: '#F7F1E680',
 
-  leather:       '#FFF8EA',
-  leatherSoft:   '#FFF8EA18',
-  leatherBorder: '#FFF8EA55',
+  leather:       '#FFFFFF',
+  leatherSoft:   '#FFFFFF18',
+  leatherBorder: '#DCCFB855',
 
   secondary:       '#8A7A6A',
   secondarySoft:   '#8A7A6A18',
