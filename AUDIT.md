@@ -53,6 +53,13 @@
 > reviews per-stay, RLS matrix, rate limits, atomic delete, private-photo signing.
 > See dated sections below for history.
 >
+> **UX (2026-06-26): native date picker + host capacity in knock.** 'Other day' on mobile is
+> now a calendar (@react-native-community/datetimepicker, min today; web keeps its date input;
+> the package's web stub is a safe no-op). The Request-a-stay window shows a highlighted
+> capacity badge (👥 Up to N riders) from host_locations.max_guests, and the pin-tap detail
+> sheet shows the capacity line too (was missing in both). No per-request rider count
+> reintroduced. Verified: max_guests is in the public view; tsc clean.
+>
 > **Pre-launch pass (2026-06-26).** (A) Rider/host walkthrough — flows are solid (map has
 > load-error+retry / empty states, knock validates, chat coordinate-send tray, reviews
 > reachable). Fixed: the Paid price now also shows in the knock form (not only the host
