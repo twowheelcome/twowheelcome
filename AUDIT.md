@@ -168,6 +168,18 @@
 > 4. **Listing description placeholder** no longer nudges hosts to publish access details: now
 >    "Quiet fenced yard, dog on site, late arrivals okay. Exact meeting point stays in chat after I
 >    accept." tsc + full eslint green.
+> 5. **Become-a-Host photo upload silent click (logged out).** Tapping the "+" add-photo tile did
+>    nothing for a logged-out visitor. Now it routes to sign-up (no silent click), with an explicit
+>    "🔒 Create a free account to add photos →" line under the photo row.
+> 6. **Accept-request confirmation.** Accepting a stay was a one-tap action (unlike cancel) — easy to
+>    misfire. Added a confirm: "Accept this rider? Your exact meeting point stays hidden until you
+>    send it." DECLINE stays one-tap (non-destructive).
+> 7. **Send-coordinates confirmation.** Sharing the exact meeting point is sensitive and one-way, so
+>    it now confirms first: "Send exact meeting point to this rider? Only do this once you're
+>    comfortable hosting them."
+> 8. **History copy:** "Confirmed" → "Accepted" (consistent with the rest of the de-booking wording).
+> Deliberately NOT changed (Petr removed these on purpose): per-request rider count and arrival time
+> — stays p_guests:1 / arrival null; the details are agreed in chat.
 >
 > **UX (2026-06-26): native date picker + host capacity in knock.** 'Other day' on mobile is
 > now a calendar (@react-native-community/datetimepicker, min today; web keeps its date input;

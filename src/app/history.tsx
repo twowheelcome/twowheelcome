@@ -32,7 +32,7 @@ function todayStr() {
 
 const STATUS_META: Record<string, { label: string; key: 'success' | 'warning' | 'error' | 'info' }> = {
   PENDING: { label: 'Pending', key: 'warning' },
-  ACCEPTED: { label: 'Confirmed', key: 'success' },
+  ACCEPTED: { label: 'Accepted', key: 'success' },
   REJECTED: { label: 'Declined', key: 'error' },
 }
 
