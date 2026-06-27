@@ -882,6 +882,20 @@ export default function MapScreen() {
                 </View>
               )}
 
+              {/* Full profile — where block / report live (reachable from the pin) */}
+              {!isOwn && (
+                <TouchableOpacity
+                  style={{ paddingVertical: 4, alignItems: 'center' }}
+                  onPress={() => {
+                    reopenHostSheetRef.current = true
+                    setShowHostProfile(false)
+                    router.push({ pathname: '/host/[id]', params: { id: selected.user_id, location: selected.id } })
+                  }}
+                >
+                  <Text style={{ color: C.accent, fontSize: 14, fontWeight: '700' }}>View full profile · block or report</Text>
+                </TouchableOpacity>
+              )}
+
               {/* CTAs */}
               {!isOwn ? (
                 <>

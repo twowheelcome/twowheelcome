@@ -329,10 +329,11 @@ export default function PublicHostProfile() {
           )
         ) : null}
 
-        {/* Report — DSA notice. Logged-in viewers, someone else's profile/listing. */}
+        {/* Report — DSA notice. Logged-in viewers, someone else's profile/listing.
+            Copy is contextual: a profile with a listing is a host, otherwise a rider. */}
         {isLoggedIn && currentUserId && currentUserId !== id ? (
           <View style={styles.reportRow}>
-            <ReportButton targetType="user" targetId={id} label="Report this rider" />
+            <ReportButton targetType="user" targetId={id} label={location ? 'Report this host' : 'Report this rider'} />
             {location ? <ReportButton targetType="listing" targetId={location.id} label="Report this listing" /> : null}
           </View>
         ) : null}
