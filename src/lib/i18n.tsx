@@ -6,10 +6,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 // `t()` falls back to English until real translations land in a later step.
 export const LANGUAGES = [
   { code: 'en', label: 'English' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'fr', label: 'Français' },
   { code: 'es', label: 'Español' },
-  { code: 'it', label: 'Italiano' },
+  { code: 'fr', label: 'Français' },
   { code: 'cs', label: 'Čeština' },
   { code: 'pl', label: 'Polski' },
 ] as const
@@ -39,7 +37,7 @@ const EN: Record<string, string> = {
 }
 
 const STRINGS: Record<LangCode, Record<string, string>> = {
-  en: EN, de: {}, fr: {}, es: {}, it: {}, cs: {}, pl: {},
+  en: EN, es: {}, fr: {}, cs: {}, pl: {},
 }
 
 type Ctx = {
