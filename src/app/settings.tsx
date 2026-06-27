@@ -5,7 +5,7 @@ import { router } from 'expo-router'
 import { supabase } from '../lib/supabase'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 import { FONT } from '../lib/theme'
-import { LANGUAGES, useLanguage } from '../lib/i18n'
+import { LANGUAGES, useLanguage, type LangCode } from '../lib/i18n'
 import { AppHeader, HeaderBackButton } from '../components/AppHeader'
 
 export default function SettingsScreen() {
@@ -15,6 +15,9 @@ export default function SettingsScreen() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [showLangModal, setShowLangModal] = useState(false)
+  const [tempLang, setTempLang] = useState<LangCode>(lang)
+  const currentLangLabel = LANGUAGES.find(l => l.code === lang)?.label ?? 'English'
 
   async function deleteAccount() {
     setDeleting(true)
@@ -49,23 +52,18 @@ export default function SettingsScreen() {
       </AppHeader>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Language */}
+        {/* Language — row shows the current choice; tap opens a picker */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('settings.preferences')}</Text>
           <View style={styles.card}>
-            <View style={styles.cardHead}>
-              <Feather name="globe" size={16} color={C.accent} />
-              <Text style={styles.cardHeadText}>{t('settings.language')}</Text>
-            </View>
-            {LANGUAGES.map((l, i) => {
-              const active = l.code === lang
-              return (
-                <TouchableOpacity key={l.code} style={[styles.langRow, i > 0 && styles.rowBorder]} onPress={() => setLang(l.code)} activeOpacity={0.6}>
-                  <Text style={[styles.langLabel, active && styles.langLabelActive]}>{l.label}</Text>
-                  {active ? <Feather name="check" size={18} color={C.accent} /> : null}
-                </TouchableOpacity>
-              )
-            })}
+            <TouchableOpacity style={styles.menuRow} onPress={() => { setTempLang(lang); setShowLangModal(true) }} activeOpacity={0.6}>
+              <View style={styles.menuRowIcon}><Feather name="globe" size={17} color={C.accent} /></View>
+              <View style={styles.menuRowText}>
+                <Text style={styles.menuRowTitle}>{t('settings.language')}</Text>
+                <Text style={styles.menuRowSub}>{currentLangLabel}</Text>
+              </View>
+              <Feather name="chevron-right" size={20} color={C.textDim} />
+            </TouchableOpacity>
           </View>
           <Text style={styles.hint}>{t('settings.languageHint')}</Text>
         </View>
@@ -91,6 +89,31 @@ export default function SettingsScreen() {
           <Text style={styles.deleteBtnText}>{t('settings.deleteAccount')}</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <Modal visible={showLangModal} transparent animationType="fade" onRequestClose={() => setShowLangModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <Text style={styles.modalTitle}>{t('settings.language')}</Text>
+            <ScrollView style={{ maxHeight: 360 }}>
+              {LANGUAGES.map((l, i) => {
+                const active = l.code === tempLang
+                return (
+                  <TouchableOpacity key={l.code} style={[styles.langRow, i > 0 && styles.rowBorder]} onPress={() => setTempLang(l.code)} activeOpacity={0.6}>
+                    <Text style={[styles.langLabel, active && styles.langLabelActive]}>{l.label}</Text>
+                    {active ? <Feather name="check" size={18} color={C.accent} /> : null}
+                  </TouchableOpacity>
+                )
+              })}
+            </ScrollView>
+            <TouchableOpacity style={styles.modalDone} onPress={() => { setLang(tempLang); setShowLangModal(false) }}>
+              <Text style={styles.modalDoneText}>Done</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalCancel} onPress={() => setShowLangModal(false)}>
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={showDeleteConfirm} transparent animationType="fade" onRequestClose={() => setShowDeleteConfirm(false)}>
         <View style={styles.deleteOverlay}>
@@ -121,8 +144,6 @@ function makeStyles(C: ThemeColors) {
     section: { gap: 8 },
     sectionTitle: { color: C.textDim, fontSize: 11, fontFamily: FONT.head, letterSpacing: 1.5, textTransform: 'uppercase', marginLeft: 4 },
     card: { backgroundColor: C.surface, borderRadius: 18, borderWidth: 1, borderColor: C.border, overflow: 'hidden' },
-    cardHead: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 },
-    cardHeadText: { color: C.text, fontSize: 13, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' },
     rowBorder: { borderTopWidth: 1, borderTopColor: C.border },
     langRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 13 },
     langLabel: { color: C.textMuted, fontSize: 15, fontFamily: FONT.body },
@@ -133,6 +154,13 @@ function makeStyles(C: ThemeColors) {
     menuRowTitle: { color: C.text, fontSize: 15, fontWeight: '700' },
     menuRowSub: { color: C.textDim, fontSize: 12, fontFamily: FONT.body },
     hint: { color: C.textDim, fontSize: 12, lineHeight: 17, fontFamily: FONT.body, marginLeft: 4 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+    modalSheet: { backgroundColor: C.bg, borderRadius: 20, padding: 20, width: '100%', maxWidth: 400, gap: 8, borderWidth: 1, borderColor: C.border },
+    modalTitle: { color: C.text, fontSize: 18, fontFamily: FONT.headBold, marginBottom: 4 },
+    modalDone: { height: 48, borderRadius: 100, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+    modalDoneText: { color: C.white, fontSize: 15, fontFamily: FONT.head, letterSpacing: 0.5, textTransform: 'uppercase' },
+    modalCancel: { alignItems: 'center', paddingVertical: 8 },
+    modalCancelText: { color: C.textMuted, fontSize: 14, textDecorationLine: 'underline' },
     deleteBtn: { alignItems: 'center', paddingVertical: 10, marginTop: 4 },
     deleteBtnText: { color: C.error, fontSize: 13, textDecorationLine: 'underline' },
     deleteOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },

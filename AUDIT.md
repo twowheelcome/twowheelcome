@@ -1,5 +1,23 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Remove chats + single-place edit + support digest + language modal (2026-06-27).**
+> - **Remove a finished chat (per-user hide).** New `conversation_hides` (user_id, conversation_id,
+>   hidden_at; RLS own-only). "Remove this chat" in the conversation header — only when there's no
+>   active pending/accepted request — hides it from MY list without touching the other person's copy
+>   or any shared data; it resurfaces when a newer message arrives (hidden_at < last_message_at).
+>   `delete_account_data` cleans it up. RLS verified naostro (own insert/read; foreigner blocked 403).
+> - **Single-place editor.** `become-host` now takes a `place` param: tapping a My Places card edits
+>   only that one (upsert by id — never touches siblings, verified naostro), "Add another place" opens
+>   a blank new place, Save returns to My Places. Removed the multi-location stack + the old
+>   delete-reconcile that could clobber other places.
+> - **Support interest log + weekly digest.** Tapping Support logs to `support_clicks` (RLS own-insert).
+>   New `support-digest` edge function (x-cron-secret, deployed --no-verify-jwt) emails the dev a weekly
+>   list of who clicked in the last 7 days — nothing when nobody did. pg_cron Mondays 09:00 UTC.
+>   Verified naostro: no-clicks→200 (no send), wrong secret→401, with-clicks→200 (emailed), RLS 201/403.
+> - **Language as a modal picker.** Settings shows a single "Language" row with the current language;
+>   tap → modal list → select + Done. Selection persists (AsyncStorage, device-local). Still EN-only
+>   strings (scaffold); full translations + dark mode remain a later step.
+>
 > **Support link + My Places + Settings + i18n scaffold (2026-06-27).**
 > - **Low-key dev support.** Optional "🍺 Support twowheelcome — buy the dev a beer" row at the
 >   bottom of the profile, wired to a configurable `SUPPORT_URL` constant (`src/lib/support.ts`,
