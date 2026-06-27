@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { pendingChatStore } from '../../lib/pendingChatStore'
+import { pendingKnockStore } from '../../lib/pendingKnockStore'
 import { mapFocusStore } from '../../lib/mapFocusStore'
 import { fuzzCoords } from '../../lib/geo'
 import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
@@ -44,6 +45,8 @@ export default function MapScreen() {
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState('')
   const [sendSuccess, setSendSuccess] = useState(false)
+  // Logged-out rider tapped "Send request": show a sign-up CTA instead of failing silently.
+  const [authPrompt, setAuthPrompt] = useState(false)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const fileInputRef = useRef<any>(null)
   const handledKnockHostRef = useRef<string | null>(null)
@@ -263,7 +266,31 @@ export default function MapScreen() {
     // beginRequest is intentionally excluded; this runs only on a new knock target.
   }, [hosts, knockHost, knockLocation])
 
+  // A rider who started a knock while logged out, then signed up, lands back here:
+  // reopen the Request-a-stay form pre-filled with their host + message + dates.
+  useEffect(() => {
+    if (!currentUser || hosts.length === 0) return
+    const pk = pendingKnockStore.consume()
+    if (!pk) return
+    const host = hosts.find(h => h.id === pk.locationId && h.user_id === pk.hostUserId)
+      ?? hosts.find(h => h.user_id === pk.hostUserId)
+    if (!host) return
+    void Promise.resolve().then(() => {
+      setSelected(host)
+      setShowHostProfile(false)
+      setAuthPrompt(false)
+      setPhotoFile(null)
+      setArrivalChip(pk.arrivalChip)
+      setArrivalDate(pk.arrivalDate)
+      setDepartureDate(pk.departureDate)
+      setMessage(pk.message)
+      setRequesting(true)
+    })
+    // One-shot restore once the user is back and hosts are loaded.
+  }, [hosts, currentUser])
+
   function beginRequest(_targetLocationId?: string) {
+    setAuthPrompt(false)
     // A rider may have an active request here already and still knock for OTHER, non-
     // overlapping dates (matches the DB: only date-overlapping active requests are
     // blocked, and that's enforced at submit). So we always open the form.
@@ -276,7 +303,9 @@ export default function MapScreen() {
 
   async function sendRequest() {
     if (sendingRef.current) return  // guard against a double-tap creating two requests
-    if (!currentUser || !selected) return
+    if (!selected) return
+    // Logged out: don't fail silently — prompt to create an account and keep this knock ready.
+    if (!currentUser) { setSendError(''); setAuthPrompt(true); return }
     const userId = currentUser.id
     if (currentUserIdRef.current !== userId) {
       setSendError('Your session changed. Please start the request again.')
@@ -564,9 +593,38 @@ export default function MapScreen() {
               <Text style={[styles.infoText, { color: C.error }]}>⚠️ {sendError}</Text>
             </View>
           ) : null}
-          <TouchableOpacity style={styles.button} onPress={sendRequest} disabled={sending || sendSuccess}>
-            <Text style={styles.buttonText}>{sending ? 'Sending...' : 'Send request'}</Text>
-          </TouchableOpacity>
+
+          {authPrompt ? (
+            <View style={[styles.infoBox, { borderColor: C.accentBorder, backgroundColor: C.accentSoft, gap: 12 }]}>
+              <Text style={{ color: C.text, fontSize: 15, fontWeight: '800' }}>Create a free account to knock on this door</Text>
+              <Text style={[styles.infoText, { color: C.textMuted }]}>
+                We&apos;ll keep this host and your message ready, so you can pick up right where you left off.
+              </Text>
+              <TouchableOpacity
+                style={styles.button}
+                onPress={() => {
+                  pendingKnockStore.set({
+                    hostUserId: selected.user_id,
+                    locationId: selected.id,
+                    message,
+                    arrivalDate,
+                    departureDate,
+                    arrivalChip,
+                  })
+                  router.push({ pathname: '/', params: { signup: '1' } })
+                }}
+              >
+                <Text style={styles.buttonText}>Create a free account</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push({ pathname: '/' })} style={{ alignItems: 'center', paddingVertical: 4 }}>
+                <Text style={{ color: C.accent, fontSize: 13, fontWeight: '700' }}>Already have an account? Log in</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.button} onPress={sendRequest} disabled={sending || sendSuccess}>
+              <Text style={styles.buttonText}>{sending ? 'Sending...' : 'Send request'}</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </View>
     )
@@ -624,8 +682,8 @@ export default function MapScreen() {
               <Text style={styles.filterSection}>Where to sleep</Text>
               {([
                 { value: 'tent', icon: '⛺', label: 'Tent', desc: 'Bring your own — space available' },
-                { value: 'roof', icon: '🏠', label: 'Roof Over Head', desc: 'Couch, mat, anything dry' },
-                { value: 'room', icon: '🛏', label: 'Private Room', desc: 'Bed, privacy, proper sleep' },
+                { value: 'roof', icon: '🏠', label: 'Roof over head', desc: 'Couch, mat, anything dry' },
+                { value: 'room', icon: '🛏', label: 'Private room', desc: 'Bed, privacy, proper sleep' },
               ] as const).map(o => {
                 const on = filterSleep.includes(o.value)
                 return (
@@ -680,7 +738,7 @@ export default function MapScreen() {
               <View style={styles.pricingRow}>
                 {([
                   { value: 'free', icon: '🤝', label: 'Free', desc: 'Pure hospitality' },
-                  { value: 'tip',  icon: '🙏', label: 'Tip Welcome', desc: 'Give what you feel' },
+                  { value: 'tip',  icon: '🙏', label: 'Tip welcome', desc: 'Give what you feel' },
                   { value: 'fixed', icon: '💶', label: 'Paid', desc: 'Agreed upfront' },
                 ] as const).map(o => {
                   const on = filterPricings.includes(o.value)
