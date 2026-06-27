@@ -38,7 +38,7 @@ function Onboarding({ C, onDone }: { C: ThemeColors; onDone: () => void }) {
     {
       image: dark ? require('../../assets/images/kruh-cream.png') : require('../../assets/images/kruh.png'),
       title: "It's riders looking after riders.",
-      body: 'No prices. Just a safe night, passed on by someone who gets it.',
+      body: 'No paywall. Just a safe night, passed on by someone who gets it.',
     },
   ]
   const current = slides[step]
