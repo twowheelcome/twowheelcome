@@ -165,6 +165,14 @@ function makeStatus(C: ThemeColors): Record<string, { label: string; color: stri
   }
 }
 
+// A pending knock whose stay date is already in the past is effectively EXPIRED —
+// nobody replied and there's nothing left to wait for. Derived in the UI (we don't
+// flip the DB status, to avoid disturbing stats/history/other flows).
+function isExpiredPending(status: string | null, departure: string | null): boolean {
+  if (status !== 'PENDING' || !departure) return false
+  return departure < new Date().toISOString().split('T')[0]
+}
+
 function conversationDirection(conv: ConvRow, userId?: string | null): ConversationFilter {
   if (!userId || !conv.hasRequest) return 'all'
   if (conv.requestGuestId === userId) return 'knocks'
@@ -173,6 +181,9 @@ function conversationDirection(conv: ConvRow, userId?: string | null): Conversat
 }
 
 function conversationStatus(C: ThemeColors, conv: ConvRow, isUnread: boolean, userId?: string | null) {
+  if (isExpiredPending(conv.requestStatus, conv.requestDeparture)) {
+    return { label: 'Expired', color: C.textMuted, bg: C.surface, border: C.border }
+  }
   const direction = conversationDirection(conv, userId)
   const pendingHosting = direction === 'hosting' && (conv.requestStatus ?? 'PENDING') === 'PENDING'
   if (pendingHosting && isUnread) {
@@ -936,9 +947,11 @@ export default function RequestsScreen() {
   // withdrawn and cancelled chats are "behind us" and can be cleared.
   function canRemoveConv(conv: ConvRow): boolean {
     const s = conv.requestStatus
-    if (s === 'PENDING') return false
+    const today = new Date().toISOString().split('T')[0]
+    // A pending knock blocks removal only while its stay date is still in the FUTURE.
+    // Once it's passed with no reply it's expired → removable like any dead chat.
+    if (s === 'PENDING') return isExpiredPending(s, conv.requestDeparture)
     if (s === 'ACCEPTED') {
-      const today = new Date().toISOString().split('T')[0]
       if (conv.requestDeparture && conv.requestDeparture >= today) return false
     }
     return true

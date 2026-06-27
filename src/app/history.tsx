@@ -125,6 +125,8 @@ export default function HistoryScreen() {
         <ScrollView contentContainerStyle={styles.list}>
           {stays.map(s => {
             const meta = STATUS_META[s.status] || STATUS_META.PENDING
+            // Pending knock with a past date = expired (no reply); show it muted.
+            const expired = s.status === 'PENDING' && !!s.departure && s.departure < todayStr()
             return (
               <TouchableOpacity key={s.id} style={styles.row} onPress={() => openConversation(s)} activeOpacity={0.7}>
                 <Text style={styles.rowIcon}>{s.role === 'guest' ? '🏍' : '🏠'}</Text>
@@ -136,8 +138,10 @@ export default function HistoryScreen() {
                   </Text>
                   <View style={styles.metaRow}>
                     <Text style={styles.date}>{dateRange(s.arrival, s.departure)}</Text>
-                    <View style={[styles.statusChip, { backgroundColor: C[`${meta.key}Soft`], borderColor: C[`${meta.key}Border`] }]}>
-                      <Text style={[styles.statusText, { color: C[meta.key] }]}>{meta.label}</Text>
+                    <View style={[styles.statusChip, expired
+                      ? { backgroundColor: C.surface, borderColor: C.border }
+                      : { backgroundColor: C[`${meta.key}Soft`], borderColor: C[`${meta.key}Border`] }]}>
+                      <Text style={[styles.statusText, { color: expired ? C.textMuted : C[meta.key] }]}>{expired ? 'Expired' : meta.label}</Text>
                     </View>
                   </View>
                   {s.canReview ? <Text style={styles.reviewHint}>⭐ Leave a review →</Text> : null}
