@@ -1,5 +1,16 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Profile layout + reviews-first + expired threshold (2026-06-27).**
+> - **Reviews above places** on the full public profile (`host/[id]`): the "Reviews from riders" link
+>   now sits directly under the bio, above the place card(s) — track record before the place.
+> - **Own profile header is horizontal** (`profile.tsx`): avatar on the left with name (+ edit pencil),
+>   ⭐ rating · 🌍 nationality (+ pencil) and email stacked beside it, inside the same Road & Trail
+>   gradient band; "Share profile" sits below. Edit pencils kept; no new colours.
+> - **Expired-pending threshold tightened to `arrival < today`** (was `<=`): a knock for tonight stays
+>   Pending all day and flips to Expired (removable) only at midnight once its arrival day is past.
+>   `isExpiredPending` + History tag updated. Verified naostro: arrival=yesterday → Expired/removable,
+>   arrival=today → Pending/held, arrival=future → held.
+>
 > **Expired pending chats + onboarding glyphs keep the orange (2026-06-27).**
 > - **Expired pending = removable.** A pending knock with no reply is now treated as expired: the chat
 >   shows an "Expired" tag (chat list + History) and can be removed/hidden like any dead chat. Keyed on

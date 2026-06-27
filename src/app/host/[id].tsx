@@ -219,6 +219,23 @@ export default function PublicHostProfile() {
           </View>
         ) : null}
 
+        {/* Reviews first — riders care about the person's track record before the place. */}
+        <TouchableOpacity
+          style={styles.reviewsLink}
+          activeOpacity={0.8}
+          onPress={() => router.push({ pathname: '/reviews', params: { user: profile.id } })}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.reviewsLinkTitle}>Reviews from riders</Text>
+            <Text style={styles.reviewsLinkSub}>
+              {reviewCount > 0 && avgRating != null
+                ? `⭐ ${avgRating.toFixed(1)} · ${reviewCount} ${reviewCount === 1 ? 'review' : 'reviews'}`
+                : 'No reviews yet'}
+            </Text>
+          </View>
+          <Text style={styles.reviewsLinkChevron}>›</Text>
+        </TouchableOpacity>
+
         {/* Every place this host offers */}
         {locations.map((loc, idx) => {
           const parkings: string[] = loc.parkings?.length ? loc.parkings : (loc.parking ? [loc.parking] : [])
@@ -295,23 +312,6 @@ export default function PublicHostProfile() {
             </View>
           )
         })}
-
-        {/* Reviews as a tappable folder, consistent with the profile menu. */}
-        <TouchableOpacity
-          style={styles.reviewsLink}
-          activeOpacity={0.8}
-          onPress={() => router.push({ pathname: '/reviews', params: { user: profile.id } })}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.reviewsLinkTitle}>Reviews from riders</Text>
-            <Text style={styles.reviewsLinkSub}>
-              {reviewCount > 0 && avgRating != null
-                ? `⭐ ${avgRating.toFixed(1)} · ${reviewCount} ${reviewCount === 1 ? 'review' : 'reviews'}`
-                : 'No reviews yet'}
-            </Text>
-          </View>
-          <Text style={styles.reviewsLinkChevron}>›</Text>
-        </TouchableOpacity>
 
         {/* Block / unblock — only for a logged-in viewer looking at someone else */}
         {isLoggedIn && currentUserId && currentUserId !== id ? (

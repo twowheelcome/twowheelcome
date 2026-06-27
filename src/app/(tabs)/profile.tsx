@@ -242,6 +242,7 @@ export default function ProfileScreen() {
 
       {/* Avatar + QR — warm Road→Trail gradient band */}
       <LinearGradient colors={[C.accentSoft, C.greenSoft]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+        <View style={styles.heroRow}>
         {Platform.OS === 'web' ? (
           <div style={{ position: 'relative', width: 96, height: 96, flexShrink: 0 } as any}>
             <View style={styles.avatarCircle}>
@@ -288,6 +289,76 @@ export default function ProfileScreen() {
             </View>
           </TouchableOpacity>
         )}
+          {/* Name + rating · nationality + email, beside the avatar */}
+          <View style={styles.heroInfo}>
+            {editingName ? (
+              <View style={styles.nameEdit}>
+                <TextInput
+                  style={styles.nameInput}
+                  value={nameInput}
+                  onChangeText={setNameInput}
+                  placeholder="Your name"
+                  placeholderTextColor={C.textFaint}
+                  autoFocus
+                />
+                <View style={styles.nameActions}>
+                  <TouchableOpacity style={styles.saveNameBtn} onPress={saveName} disabled={savingName}>
+                    <Text style={styles.saveNameBtnText}>{savingName ? '...' : 'Save'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setEditingName(false)}>
+                    <Text style={styles.cancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity onPress={() => setEditingName(true)} style={styles.nameRow}>
+                <Text style={styles.name} numberOfLines={1}>{displayName}</Text>
+                <Feather name="edit-2" size={14} color={C.textDim} style={{ marginLeft: 8 }} />
+              </TouchableOpacity>
+            )}
+
+            {editingNat ? (
+              <View style={[styles.nameEdit, { marginTop: 6 }]}>
+                <TextInput
+                  style={styles.nameInput}
+                  value={natInput}
+                  onChangeText={setNatInput}
+                  placeholder="Your nationality — e.g. Czech, German"
+                  placeholderTextColor={C.textFaint}
+                  maxLength={60}
+                  autoFocus
+                />
+                <View style={styles.nameActions}>
+                  <TouchableOpacity style={styles.saveNameBtn} onPress={saveNationality} disabled={savingNat}>
+                    <Text style={styles.saveNameBtnText}>{savingNat ? '...' : 'Save'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => { setNatInput(profile?.nationality || ''); setEditingNat(false) }}>
+                    <Text style={styles.cancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.metaRow}>
+                {avgRating ? <Text style={styles.profileMeta}>⭐ {avgRating}</Text> : null}
+                {avgRating && profile?.nationality ? <Text style={styles.profileMeta}>  ·  </Text> : null}
+                {profile?.nationality ? (
+                  <TouchableOpacity style={styles.metaRow} onPress={() => setEditingNat(true)} activeOpacity={0.7}>
+                    <Text style={styles.profileMeta}>🌍 {profile.nationality}</Text>
+                    <Feather name="edit-2" size={11} color={C.textDim} style={{ marginLeft: 5 }} />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity style={styles.natAddBtn} onPress={() => setEditingNat(true)} activeOpacity={0.7}>
+                    <Feather name="plus" size={12} color={C.accent} />
+                    <Text style={styles.natAddText}>Add nationality</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
+            <Text style={styles.email} numberOfLines={1}>{user?.email}</Text>
+          </View>
+        </View>
+
         <TouchableOpacity style={styles.qrBtn} onPress={() => setShowQR(true)}>
           <Feather name="share-2" size={16} color={C.accent} />
           <Text style={styles.qrBtnText}>Share profile</Text>
@@ -322,72 +393,6 @@ export default function ProfileScreen() {
             <Text style={styles.inlineErrorText}>⚠️ {avatarError}</Text>
           </View>
         )}
-        {/* Name */}
-        {editingName ? (
-          <View style={styles.nameEdit}>
-            <TextInput
-              style={styles.nameInput}
-              value={nameInput}
-              onChangeText={setNameInput}
-              placeholder="Your name"
-              placeholderTextColor={C.textFaint}
-              autoFocus
-            />
-            <View style={styles.nameActions}>
-              <TouchableOpacity style={styles.saveNameBtn} onPress={saveName} disabled={savingName}>
-                <Text style={styles.saveNameBtnText}>{savingName ? '...' : 'Save'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setEditingName(false)}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : (
-          <TouchableOpacity onPress={() => setEditingName(true)} style={styles.nameRow}>
-            <Text style={styles.name}>{displayName}</Text>
-            <Feather name="edit-2" size={14} color={C.textDim} style={{ marginLeft: 8, marginTop: 2 }} />
-          </TouchableOpacity>
-        )}
-        <Text style={styles.email}>{user?.email}</Text>
-        {/* Rating + nationality (a person has one nationality; city lives per-listing) */}
-        {editingNat ? (
-          <View style={styles.nameEdit}>
-            <TextInput
-              style={styles.nameInput}
-              value={natInput}
-              onChangeText={setNatInput}
-              placeholder="Your nationality — e.g. Czech, German"
-              placeholderTextColor={C.textFaint}
-              maxLength={60}
-              autoFocus
-            />
-            <View style={styles.nameActions}>
-              <TouchableOpacity style={styles.saveNameBtn} onPress={saveNationality} disabled={savingNat}>
-                <Text style={styles.saveNameBtnText}>{savingNat ? '...' : 'Save'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => { setNatInput(profile?.nationality || ''); setEditingNat(false) }}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.metaRow}>
-            {avgRating ? <Text style={styles.profileMeta}>⭐ {avgRating}</Text> : null}
-            {avgRating && profile?.nationality ? <Text style={styles.profileMeta}>  ·  </Text> : null}
-            {profile?.nationality ? (
-              <TouchableOpacity style={styles.metaRow} onPress={() => setEditingNat(true)} activeOpacity={0.7}>
-                <Text style={styles.profileMeta}>🌍 {profile.nationality}</Text>
-                <Feather name="edit-2" size={11} color={C.textDim} style={{ marginLeft: 5 }} />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={styles.natAddBtn} onPress={() => setEditingNat(true)} activeOpacity={0.7}>
-                <Feather name="plus" size={12} color={C.accent} />
-                <Text style={styles.natAddText}>Add nationality</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-
         {/* Bio — what riders see on your public profile */}
         {editingBio ? (
           <View style={styles.bioEdit}>
@@ -509,10 +514,21 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     maxWidth: 760,
     alignSelf: 'center',
     paddingTop: 28,
-    paddingBottom: 12,
+    paddingBottom: 14,
     paddingHorizontal: 24,
     gap: 14,
     backgroundColor: C.bg,
+  },
+  heroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    width: '100%',
+  },
+  heroInfo: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
   },
   avatarWrap: {
     width: 96, height: 96,
@@ -578,8 +594,8 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     gap: 14,
   },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
-  name: { color: C.text, fontSize: 24, fontWeight: '800', letterSpacing: 0.3 },
-  email: { color: C.textDim, fontSize: 13, marginTop: -12, fontFamily: FONT.body },
+  name: { color: C.text, fontSize: 22, fontWeight: '800', letterSpacing: 0.3, flexShrink: 1 },
+  email: { color: C.textDim, fontSize: 13, marginTop: 2, fontFamily: FONT.body },
   profileMeta: { color: C.accent, fontSize: 13, fontWeight: '700', marginTop: 2 },
   metaRow: { flexDirection: 'row', alignItems: 'center' },
   natAddBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', marginTop: 2, backgroundColor: C.accentSoft, borderRadius: 100, borderWidth: 1, borderColor: C.accentBorder, paddingHorizontal: 12, paddingVertical: 6 },

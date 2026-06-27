@@ -166,14 +166,14 @@ function makeStatus(C: ThemeColors): Record<string, { label: string; color: stri
   }
 }
 
-// A pending knock is effectively EXPIRED once its ARRIVAL day has arrived (or passed)
-// with no reply — there's nothing left to wait for. Keyed on arrival, not departure,
-// so a "tonight" knock (arrival today, departure tomorrow) can be closed the same
-// evening. Derived in the UI (we don't flip the DB status, to avoid disturbing
-// stats/history/other flows).
+// A pending knock is EXPIRED once its ARRIVAL day is in the PAST with no reply —
+// nothing left to wait for. Keyed on arrival, not departure, and strictly past
+// (< today): a knock for tonight stays Pending all day and flips to Expired at
+// midnight once its arrival day has passed. Derived in the UI (we don't flip the DB
+// status, to avoid disturbing stats/history/other flows).
 function isExpiredPending(status: string | null, arrival: string | null): boolean {
   if (status !== 'PENDING' || !arrival) return false
-  return arrival <= new Date().toISOString().split('T')[0]
+  return arrival < new Date().toISOString().split('T')[0]
 }
 
 function conversationDirection(conv: ConvRow, userId?: string | null): ConversationFilter {
