@@ -1,5 +1,25 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **"Road & Trail" visual system (2026-06-27, Petr's design). Shipped in steps, commit each.**
+> 1. **Colours (light).** theme.ts LIGHT moved to the Road & Trail palette — warm cream
+>    backgrounds, hairline borders (#DCCFB8), terracotta accent #D9621F (primary/"road"), new
+>    tokens: green #3E7D4F (secondary/"trail"), safety (safe/good/okay/basic) and map tints. Shape
+>    preserved (same keys mirrored into DARK for type parity; dark not shipped — app uses LIGHT only).
+> 2. **Typography.** Loaded @expo-google-fonts/oswald + rye in the root layout (splash waits).
+>    FONT tokens: Rye = wordmark/logo only, Oswald = headings/labels/buttons (UPPERCASE, tracked),
+>    body = system. Applied to the AppHeader wordmark (Rye) and the login buttons/tagline + the
+>    legal/info kicker+title (Oswald). (Reverses the older "system font only" preference — Petr
+>    changed it for this design; memory updated.)
+> 3. **Flat UI.** Removed the last React-Native shadow (a dead satellite-button style block in
+>    map.tsx — the toggle now lives inline in HostMap), so cards/buttons are fully flat with
+>    hairline borders + pill radius 100; bumped the main cards to radius 22. Map's floating controls
+>    keep a subtle web shadow for legibility.
+> 4. **Safety pin icons.** Replaced the ambiguous emoji on the map pins with clean white SVG line
+>    icons — padlock (locked_garage), open roof on posts (carport), fence (fenced_yard), road
+>    (street) — drawn inside the safety-coloured teardrop. (SafetyBlock cards still use emoji;
+>    pins were the ask.) tsc + eslint green after each step.
+
+
 > ## Production hardening — full re-audit (2026-06-25)
 > Goal: make the app bulletproof. Worked autonomously, every fix **verified live**
 > against the production DB (anon / foreign-authenticated / service-role contexts, all

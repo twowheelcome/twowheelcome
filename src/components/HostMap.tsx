@@ -15,6 +15,19 @@ const SAFETY_PIN_COLOR: Record<keyof typeof SAFETY, string> = {
   street:        '#CB4636',   // basic
 }
 
+// Clean white line icons drawn inside the pin — clearer than emoji at marker size.
+// padlock (locked garage), open roof on posts (carport), fence (yard), road (street).
+const PIN_SVG: Record<keyof typeof SAFETY, string> = {
+  locked_garage: '<rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  carport:       '<path d="M3 11l9-6 9 6"/><path d="M6 11v8"/><path d="M18 11v8"/>',
+  fenced_yard:   '<path d="M5 20V8l2-2 2 2v12"/><path d="M15 20V8l2-2 2 2v12"/><path d="M3 12h18"/><path d="M3 16h18"/>',
+  street:        '<path d="M7 20 9.5 4"/><path d="M17 20 14.5 4"/><path d="M12 6v2.5"/><path d="M12 11v2.5"/><path d="M12 16v2.5"/>',
+}
+
+function pinIconSvg(level: keyof typeof SAFETY): string {
+  return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${PIN_SVG[level]}</svg>`
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -203,7 +216,7 @@ export default function HostMap({
           display:flex;align-items:center;justify-content:center;
           cursor:pointer;
         ">
-          <span style="transform:rotate(45deg);font-size:17px;line-height:1;">${safety.icon}</span>
+          <span style="transform:rotate(45deg);display:flex;align-items:center;justify-content:center;">${pinIconSvg(level)}</span>
         </div>
       `
 
