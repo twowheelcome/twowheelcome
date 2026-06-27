@@ -985,7 +985,7 @@ export default function MapScreen() {
               ) : (
                 <TouchableOpacity
                   style={{ height: 54, borderRadius: 100, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
-                  onPress={() => { setShowHostProfile(false); router.push('/become-host') }}
+                  onPress={() => { setShowHostProfile(false); router.push({ pathname: '/become-host', params: { place: selected.id } }) }}
                 >
                   <Text style={{ color: C.text, fontSize: 15, fontWeight: '700' }}>Edit your listing</Text>
                 </TouchableOpacity>
@@ -1111,7 +1111,7 @@ export default function MapScreen() {
                       <Text style={styles.requestButtonText}>{myActiveByLocation[host.id] ? 'Knock again' : 'Ask to stay'}</Text>
                     </TouchableOpacity>
                   ) : (
-                    <TouchableOpacity style={styles.editButton} onPress={() => router.push('/become-host')}>
+                    <TouchableOpacity style={styles.editButton} onPress={() => router.push({ pathname: '/become-host', params: { place: host.id } })}>
                       <Text style={styles.editButtonText}>Edit listing</Text>
                     </TouchableOpacity>
                   )}
