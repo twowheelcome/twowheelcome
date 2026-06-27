@@ -704,6 +704,22 @@ GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON stay_requ
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON stay_requests TO service_role;
 
 
+-- ── User blocks (post-contact safety; enforced in the stay_request + message validators) ──
+CREATE TABLE IF NOT EXISTS public.blocks (
+  blocker_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  blocked_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (blocker_id, blocked_id),
+  CONSTRAINT blocks_no_self CHECK (blocker_id <> blocked_id)
+);
+ALTER TABLE public.blocks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "blocks_select" ON public.blocks FOR SELECT TO public USING (auth.uid() = blocker_id);
+CREATE POLICY "blocks_insert" ON public.blocks FOR INSERT TO public WITH CHECK (auth.uid() = blocker_id);
+CREATE POLICY "blocks_delete" ON public.blocks FOR DELETE TO public USING (auth.uid() = blocker_id);
+GRANT SELECT, INSERT, DELETE ON public.blocks TO authenticated;
+GRANT SELECT, INSERT, DELETE, UPDATE, REFERENCES, TRIGGER, TRUNCATE ON public.blocks TO service_role;
+
+
 -- ── Storage (buckets + object policies) ──
 INSERT INTO storage.buckets (id, name, public) VALUES ('avatars','avatars',true) ON CONFLICT (id) DO UPDATE SET public=excluded.public;
 INSERT INTO storage.buckets (id, name, public) VALUES ('listing-photos','listing-photos',true) ON CONFLICT (id) DO UPDATE SET public=excluded.public;
