@@ -177,7 +177,7 @@ export default function AuthScreen() {
         : 'Could not create your account right now. Please try again.')
     } else {
       if (data.user) {
-        await supabase.from('profiles').upsert({ id: data.user.id, full_name: name })
+        await supabase.from('profiles').update({ full_name: name }).eq('id', data.user.id)
       }
       setAuthSuccess('Done! Check your email to confirm your account.')
       setCanResend(true)

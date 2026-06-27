@@ -62,7 +62,7 @@ export default function RootLayout() {
         if (metaName) {
           const { data: prof } = await supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle()
           if (!prof?.full_name) {
-            await supabase.from('profiles').upsert({ id: user.id, full_name: metaName })
+            await supabase.from('profiles').update({ full_name: metaName }).eq('id', user.id)
           }
         }
       }

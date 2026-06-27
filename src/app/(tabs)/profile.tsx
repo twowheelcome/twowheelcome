@@ -119,7 +119,7 @@ export default function ProfileScreen() {
   async function saveName() {
     if (!nameInput.trim()) return
     setSavingName(true)
-    const { error } = await supabase.from('profiles').upsert({ id: user.id, full_name: nameInput.trim() })
+    const { error } = await supabase.from('profiles').update({ full_name: nameInput.trim() }).eq('id', user.id)
     setSavingName(false)
     if (error) { console.warn('save name error:', error.message); setAvatarError('Could not save your name. Please try again.'); return }
     setProfile((p: any) => ({ ...p, full_name: nameInput.trim() }))
@@ -130,7 +130,7 @@ export default function ProfileScreen() {
   async function saveBio() {
     setSavingBio(true)
     const trimmed = bioInput.trim()
-    const { error } = await supabase.from('profiles').upsert({ id: user.id, bio: trimmed || null })
+    const { error } = await supabase.from('profiles').update({ bio: trimmed || null }).eq('id', user.id)
     setSavingBio(false)
     if (error) { console.warn('save bio error:', error.message); setAvatarError('Could not save your bio. Please try again.'); return }
     setProfile((p: any) => ({ ...p, bio: trimmed || null }))
@@ -173,7 +173,7 @@ export default function ProfileScreen() {
       if (upErr) { console.warn('avatar upload error:', upErr.message); setAvatarError('Could not upload the photo. Please try again.'); return }
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
       const url = `${publicUrl}?t=${Date.now()}`
-      const { error: dbErr } = await supabase.from('profiles').upsert({ id: user.id, avatar_url: url })
+      const { error: dbErr } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id)
       if (dbErr) { console.warn('avatar save error:', dbErr.message); setAvatarError('Could not update your profile photo. Please try again.'); return }
       setProfile((p: any) => ({ ...p, avatar_url: url }))
       refreshUserChip()

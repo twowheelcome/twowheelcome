@@ -1,5 +1,18 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Profile save (bio/name/avatar) was 403 (fixed 2026-06-27).** Saving bio failed with "Could not
+> save your bio" — and name/avatar shared the bug. Root cause was NOT a missing grant: the
+> column-level profiles grants are correct (authenticated has UPDATE on full_name/bio/avatar_url,
+> not on id; push_token stays write-only-via-RPC and unreadable). The client used
+> `profiles.upsert({ id, … })`, which PostgREST runs as `INSERT … ON CONFLICT DO UPDATE SET id=…` —
+> that needs UPDATE on **id** (deliberately not granted), so it 403'd ("permission denied for
+> table profiles"). The profile row always exists (handle_new_user trigger), so the fix is a plain
+> `.update({ … }).eq('id', uid)` instead of upsert (changed in profile.tsx ×3, plus the redundant
+> registration/_layout writes). No DB change — least privilege intact. **Verified naostro:** owner
+> updates own bio (204, stored); a foreigner PATCHing another profile changes 0 rows (RLS); push_token
+> still unreadable.
+
+
 > **Host card avatar = real photo (2026-06-27).** New shared `Avatar` component shows the host's
 > profile photo (avatar_url) in the map host sheet, the request-a-stay card and the list card (and
 > the public profile hero), tappable to a fullscreen lightbox (same pattern as listing/bike photos);
