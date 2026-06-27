@@ -20,13 +20,13 @@ export default function TermsScreen() {
         <Text style={styles.updated}>Last updated: 26 June 2026</Text>
 
         <Text style={styles.body}>
-          TWOWHEELCOME is a rider-to-rider community for finding and offering safe overnight spots. It is not a hotel, booking agency, travel operator or emergency service.
+          TWOWHEELCOME is a small rider-built community tool. It helps riders find each other, ask for a safe overnight spot, and agree on details directly in chat. We do not provide, inspect or guarantee any place, host, rider or stay. Use your own judgement, protect yourself and your bike, and only meet or host when it feels right.
         </Text>
 
         <View style={styles.disclaimer}>
           <Text style={styles.disclaimerTitle}>⚠️ Important — please read</Text>
           <Text style={styles.disclaimerText}>
-            TWOWHEELCOME only helps riders and hosts find and message each other. We do not provide, inspect, operate or guarantee any place or stay, and we are not a party to arrangements made between users. You decide whether to meet, stay, host or pay, and you remain responsible for your own safety, belongings, insurance and legal compliance. To the maximum extent permitted by law, TWOWHEELCOME is not liable for losses, disputes or harm arising from user-to-user arrangements.
+            TWOWHEELCOME is a rider-to-rider directory and messaging tool, not a booking service, hotel, travel operator or emergency service. Any stay, payment, meeting point or arrangement is strictly between the rider and the host. You are responsible for your own safety, belongings, bike, insurance and local legal compliance. To the maximum extent permitted by law, TWOWHEELCOME is not liable for losses, disputes or harm arising from user-to-user arrangements.
           </Text>
         </View>
 
