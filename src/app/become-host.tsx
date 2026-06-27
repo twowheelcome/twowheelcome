@@ -9,6 +9,7 @@ import { compressBikePhoto } from '../lib/compressImage'
 import { FONT } from '../lib/theme'
 import { SafetyIcon } from '../components/SafetyIcon'
 import { getSafetyKey } from '../components/SafetyBlock'
+import { AddressSearch } from '../components/AddressSearch'
 
 const LISTING_BUCKET = 'listing-photos'
 const MAX_LISTING_PHOTOS = 3
@@ -48,7 +49,6 @@ const PRICING = [
 
 interface Location {
   id?: string
-  name: string   // private, owner-only label to tell listings apart
   pin: Pin | null
   parkings: string[]
   sleepTypes: string[]
@@ -75,7 +75,7 @@ function makeId(): string {
 // for the new rows and violate the NOT NULL constraint. A stable id also prevents
 // duplicate inserts on a second save.
 function emptyLocation(): Location {
-  return { id: makeId(), name: '', pin: null, parkings: [], sleepTypes: [], amenities: [], maxGuests: 2, pricings: ['free'], notes: '', photos: [], priceAmount: '', priceCurrency: 'EUR' }
+  return { id: makeId(), pin: null, parkings: [], sleepTypes: [], amenities: [], maxGuests: 2, pricings: ['free'], notes: '', photos: [], priceAmount: '', priceCurrency: 'EUR' }
 }
 
 function toggle(arr: string[], value: string): string[] {
@@ -120,7 +120,6 @@ export default function BecomeHostScreen() {
     if (data && data.length > 0) {
       setLocations(data.map(d => ({
         id: d.id,
-        name: d.location_name || '',
         pin: { lat: d.location_lat, lng: d.location_lng, city: d.location_city, country: d.location_country },
         parkings: d.parkings?.length ? d.parkings : (d.parking ? [d.parking] : []),
         sleepTypes: d.sleep_types || [],
@@ -290,7 +289,7 @@ export default function BecomeHostScreen() {
         .map(l => ({
           id: l.id || makeId(),
           user_id: userId,
-          location_name: l.name.trim() || null,
+          location_name: null,
           location_lat: l.pin!.lat,
           location_lng: l.pin!.lng,
           location_city: l.pin!.city || '',
@@ -335,7 +334,7 @@ export default function BecomeHostScreen() {
               <View style={styles.locationBadge}>
                 <Text style={styles.locationBadgeText}>LOCATION {index + 1}</Text>
               </View>
-              {loc.name.trim() ? <Text style={styles.locationNameTag} numberOfLines={1}>{loc.name.trim()}</Text> : null}
+              {loc.pin?.city ? <Text style={styles.locationNameTag} numberOfLines={1}>{loc.pin.city}</Text> : null}
             </View>
             {locations.length > 1 && (
               <TouchableOpacity onPress={() => removeLocation(index)}>
@@ -344,23 +343,12 @@ export default function BecomeHostScreen() {
             )}
           </View>
 
-          {/* Private name */}
-          <Text style={styles.label}>🏷 LOCATION NAME (only you see this)</Text>
-          <TextInput
-            style={styles.nameInput}
-            placeholder="e.g. Chalupa, Garáž doma"
-            placeholderTextColor="#666"
-            value={loc.name}
-            onChangeText={text => updateLocation(index, { name: text })}
-            maxLength={60}
-          />
-          <Text style={styles.privateNote}>🔒 Private label to tell your places apart. Guests never see it.</Text>
-
-          {/* Mapa */}
-          <Text style={styles.label}>📍 LOCATION</Text>
+          {/* Location — search by address or drop a pin on the map */}
+          <Text style={styles.label}>📍 WHERE IS IT?</Text>
+          <AddressSearch onPick={pin => updateLocation(index, { pin })} />
           {loc.pin && (
             <Text style={styles.pinLabel}>
-              {loc.pin.city ? `${loc.pin.city}${loc.pin.country ? ', ' + loc.pin.country : ''}` : `${loc.pin.lat.toFixed(4)}, ${loc.pin.lng.toFixed(4)}`}
+              📌 {loc.pin.city ? `${loc.pin.city}${loc.pin.country ? ', ' + loc.pin.country : ''}` : `${loc.pin.lat.toFixed(4)}, ${loc.pin.lng.toFixed(4)}`}
             </Text>
           )}
           <View style={styles.mapWrap}>
@@ -595,13 +583,12 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   locationHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
   locationHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1, minWidth: 0 },
   locationNameTag: { color: C.text, fontSize: 14, fontWeight: '700', flexShrink: 1 },
-  nameInput: { backgroundColor: C.elevated, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, color: C.text, fontSize: 16, borderWidth: 1, borderColor: C.border },
   locationBadge: { backgroundColor: C.accent, borderRadius: 100, paddingHorizontal: 12, paddingVertical: 5 },
   locationBadgeText: { color: C.white, fontSize: 11, fontWeight: '800', letterSpacing: 1.5 },
   removeLocation: { color: C.textDim, fontSize: 13 },
 
   label: { color: C.textDim, fontSize: 11, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' },
-  pinLabel: { color: C.accent, fontSize: 13, fontWeight: '600', marginTop: -8 },
+  pinLabel: { color: C.accent, fontSize: 13, fontWeight: '600' },
 
   mapWrap: { height: 400, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: C.border },
   mapLoading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.elevated },
