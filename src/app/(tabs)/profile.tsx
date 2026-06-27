@@ -393,7 +393,7 @@ export default function ProfileScreen() {
             <Text style={styles.reviewPromptText}>
               ⭐ You have {pendingReviews} {pendingReviews === 1 ? 'stay' : 'stays'} to review
             </Text>
-            <Text style={styles.reviewPromptSub}>Tap to rate your hosts and guests →</Text>
+            <Text style={styles.reviewPromptSub}>Tap to rate your hosts and riders →</Text>
           </TouchableOpacity>
         )}
 

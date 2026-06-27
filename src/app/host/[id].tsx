@@ -21,14 +21,14 @@ const AMENITY_LABELS: Record<string, string> = {
 const SLEEP_LABELS: Record<string, string> = {
   tent: '⛺ Tent', roof: '🏠 Roof over head', room: '🛏 Private room',
 }
-const PRICING_LABELS: Record<string, string> = { free: 'Free', tip: 'Tip welcome', fixed: 'Paid' }
+const PRICING_LABELS: Record<string, string> = { free: 'Free', tip: 'Tip welcome', fixed: 'Agreed contribution' }
 
 function pricingText(loc: any): string {
   const pricings: string[] = loc?.pricings?.length ? loc.pricings : (loc?.pricing ? [loc.pricing] : [])
   const currency = loc?.price_currency || 'EUR'
   return pricings.map((v: string) => {
     if (v === 'fixed') {
-      return loc?.price_amount != null ? `${loc.price_amount} ${currency} / night` : 'Paid'
+      return loc?.price_amount != null ? `${loc.price_amount} ${currency} / night` : 'Agreed contribution'
     }
     return PRICING_LABELS[v] || v
   }).join(' · ')

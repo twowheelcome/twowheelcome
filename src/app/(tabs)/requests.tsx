@@ -133,7 +133,7 @@ const AMENITY_LABELS: Record<string, string> = {
 const PRICING_LABELS: Record<string, string> = {
   free: 'Free',
   tip: 'Tip welcome',
-  fixed: 'Paid',
+  fixed: 'Agreed contribution',
 }
 
 // Same Feather icon set the request card uses, keyed by the meeting-point line label.
@@ -1469,7 +1469,7 @@ export default function RequestsScreen() {
 	                  return (
 	                    <View key={stay.id} style={styles.reviewCard}>
 	                      <Text style={styles.reviewTitle}>
-	                        {isReviewingGuest ? '⭐ RATE THIS GUEST' : '⭐ RATE THIS STAY'} · {dates}
+	                        {isReviewingGuest ? '⭐ RATE THIS RIDER' : '⭐ RATE THIS STAY'} · {dates}
 	                      </Text>
 	                      <View style={styles.reviewStars}>
 	                        {[1,2,3,4,5].map(n => (
@@ -1480,7 +1480,7 @@ export default function RequestsScreen() {
 	                      </View>
 	                      <TextInput
 	                        style={styles.reviewInput}
-	                        placeholder={isReviewingGuest ? 'How was this guest? (optional)' : 'How was this stay? (optional)'}
+	                        placeholder={isReviewingGuest ? 'How was this rider? (optional)' : 'How was this stay? (optional)'}
 	                        placeholderTextColor={C.placeholder}
 	                        value={reviewDraftBody[stay.id] || ''}
 	                        onChangeText={t => setReviewDraftBody(p => ({ ...p, [stay.id]: t }))}
@@ -1514,7 +1514,7 @@ export default function RequestsScreen() {
 	              return (
 	                <View style={styles.reviewDone}>
 	                  <Text style={styles.reviewDoneText}>
-	                    {'⭐'.repeat(item.review.rating)}{'☆'.repeat(5 - item.review.rating)}{'  '}{item.reviewingGuest ? 'You rated this guest' : 'You rated this stay'} · {dates}
+	                    {'⭐'.repeat(item.review.rating)}{'☆'.repeat(5 - item.review.rating)}{'  '}{item.reviewingGuest ? 'You rated this rider' : 'You rated this stay'} · {dates}
 	                  </Text>
 	                  {item.review.body ? <Text style={styles.reviewDoneBody}>“{item.review.body}”</Text> : null}
 	                  <Text style={styles.reviewDoneTime}>{fmtTime(item.review.created_at)}</Text>

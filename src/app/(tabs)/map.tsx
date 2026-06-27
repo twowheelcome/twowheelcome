@@ -739,7 +739,7 @@ export default function MapScreen() {
                 {([
                   { value: 'free', icon: '🤝', label: 'Free', desc: 'Pure hospitality' },
                   { value: 'tip',  icon: '🙏', label: 'Tip welcome', desc: 'Give what you feel' },
-                  { value: 'fixed', icon: '💶', label: 'Paid', desc: 'Agreed upfront' },
+                  { value: 'fixed', icon: '💶', label: 'Agreed contribution', desc: 'Agreed upfront' },
                 ] as const).map(o => {
                   const on = filterPricings.includes(o.value)
                   return (
@@ -854,7 +854,7 @@ export default function MapScreen() {
                       borderWidth: 1, borderColor: myStatus === 'ACCEPTED' ? C.successBorder : C.warningBorder,
                     }}>
                       <Text style={{ color: myStatus === 'ACCEPTED' ? C.success : C.warning, fontSize: 14, fontWeight: '900', letterSpacing: 0.5 }}>
-                        {myStatus === 'ACCEPTED' ? "✅ ACCEPTED — YOU'RE BOOKED" : '⏳ REQUEST SENT — PENDING'}
+                        {myStatus === 'ACCEPTED' ? '✅ STAY ACCEPTED' : '⏳ REQUEST SENT — PENDING'}
                       </Text>
                       <Text style={{ color: C.textMuted, fontSize: 12, textAlign: 'center' }}>
                         {myStatus === 'ACCEPTED'

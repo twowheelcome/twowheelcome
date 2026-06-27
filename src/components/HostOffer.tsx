@@ -5,7 +5,7 @@ import { ListingGallery } from './ListingGallery'
 // The host's full public offer (everything except parking, which SafetyBlock shows on its
 // own). Fed from host_locations_public — public fields only, never the exact address/GPS.
 const SLEEP_LABELS: Record<string, string> = { tent: 'Tent space', roof: 'Roof over head', room: 'Private room' }
-const PRICING_LABELS: Record<string, string> = { free: 'Free', tip: 'Tip welcome', fixed: 'Paid' }
+const PRICING_LABELS: Record<string, string> = { free: 'Free', tip: 'Tip welcome', fixed: 'Agreed contribution' }
 const VEHICLE_LABELS: Record<string, string> = { moto: 'Motorcycle', car: 'Car', bicycle: 'Bicycle', van: 'Van', scooter: 'Scooter' }
 const AMENITY_ICON: Record<string, string> = {
   shower: '🚿', toilet: '🚽', kitchen: '🍳', laundry: '👕', electricity: '⚡', wifi: '📶',
@@ -47,7 +47,7 @@ export function HostOffer({ loc }: { loc: OfferLoc }) {
   const currency = loc.price_currency || 'EUR'
   const pricingText = pricings.map(v => {
     if (v === 'fixed') {
-      return loc.price_amount != null ? `${loc.price_amount} ${currency} / night` : (PRICING_LABELS.fixed || 'Paid')
+      return loc.price_amount != null ? `${loc.price_amount} ${currency} / night` : (PRICING_LABELS.fixed || 'Agreed contribution')
     }
     return PRICING_LABELS[v] || v
   }).join(' · ')

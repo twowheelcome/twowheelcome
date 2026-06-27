@@ -112,7 +112,7 @@ export default function HistoryScreen() {
         <View style={styles.center}>
           <Text style={styles.emptyEmoji}>🏍</Text>
           <Text style={styles.emptyTitle}>No stays yet</Text>
-          <Text style={styles.emptyText}>Your past stays — as a guest and as a host — will show up here.</Text>
+          <Text style={styles.emptyText}>Your past stays — as a rider and as a host — will show up here.</Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
@@ -123,7 +123,7 @@ export default function HistoryScreen() {
                 <View style={styles.cardTop}>
                   <View style={[styles.roleChip, s.role === 'guest' ? styles.roleGuest : styles.roleHost]}>
                     <Text style={[styles.roleText, { color: s.role === 'guest' ? C.accent : C.info }]}>
-                      {s.role === 'guest' ? 'As guest' : 'As host'}
+                      {s.role === 'guest' ? 'As rider' : 'As host'}
                     </Text>
                   </View>
                   <View style={[styles.statusChip, { backgroundColor: C[`${meta.key}Soft`], borderColor: C[`${meta.key}Border`] }]}>

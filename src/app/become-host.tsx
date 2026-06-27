@@ -43,7 +43,7 @@ const AMENITIES = [
 const PRICING = [
   { value: 'free', icon: '🤝', label: 'Free', desc: 'Pure hospitality' },
   { value: 'tip', icon: '🙏', label: 'Tip welcome', desc: 'Give what you feel' },
-  { value: 'fixed', icon: '💶', label: 'Paid', desc: 'Agreed upfront' },
+  { value: 'fixed', icon: '💶', label: 'Agreed contribution', desc: 'Agreed upfront' },
 ]
 
 interface Location {
@@ -497,7 +497,7 @@ export default function BecomeHostScreen() {
           <Text style={styles.label}>✍️ DESCRIPTION FOR RIDERS</Text>
           <TextInput
             style={styles.textarea}
-            placeholder={'What should riders know about this place? e.g. "Quiet street, gate code on arrival", "Women only", "Dog on site". Riders read this before they knock.'}
+            placeholder={'What should riders know about this place? e.g. "Quiet fenced yard, dog on site, late arrivals okay. Exact meeting point stays in chat after I accept." Riders read this before they knock.'}
             placeholderTextColor="#666"
             value={loc.notes}
             onChangeText={text => updateLocation(index, { notes: text })}
