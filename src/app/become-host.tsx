@@ -13,17 +13,17 @@ const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'JPY', 'CAD', 'AUD', 'CZK']
 
 function makePARKING(C: ThemeColors) {
   return [
-    { value: 'garage_locked', icon: '🔒', label: 'Locked Garage', desc: 'Locked indoor parking — highest protection', color: C.success },
-    { value: 'carport', icon: '🔐', label: 'Covered Carport', desc: 'Covered and gated', color: C.info },
-    { value: 'yard', icon: '🛡', label: 'Fenced Yard', desc: 'Secure yard', color: C.accent },
-    { value: 'street', icon: '🛣', label: 'Street Parking', desc: 'At your own risk', color: '#94a3b8' },
+    { value: 'garage_locked', icon: '🔒', label: 'Locked garage', desc: 'Locked indoor parking — highest protection', color: C.success },
+    { value: 'carport', icon: '🔐', label: 'Covered carport', desc: 'Covered and gated', color: C.info },
+    { value: 'yard', icon: '🛡', label: 'Fenced yard', desc: 'Secure yard', color: C.accent },
+    { value: 'street', icon: '🛣', label: 'Street parking', desc: 'At your own risk', color: '#94a3b8' },
   ]
 }
 
 const SLEEP = [
   { value: 'tent', icon: '⛺', label: 'Tent', desc: 'Bring your own — space available' },
-  { value: 'roof', icon: '🏠', label: 'Roof Over Head', desc: 'Couch, mat, anything dry' },
-  { value: 'room', icon: '🛏', label: 'Private Room', desc: 'Bed, privacy, proper sleep' },
+  { value: 'roof', icon: '🏠', label: 'Roof over head', desc: 'Couch, mat, anything dry' },
+  { value: 'room', icon: '🛏', label: 'Private room', desc: 'Bed, privacy, proper sleep' },
 ]
 
 const AMENITIES = [
@@ -42,7 +42,7 @@ const AMENITIES = [
 
 const PRICING = [
   { value: 'free', icon: '🤝', label: 'Free', desc: 'Pure hospitality' },
-  { value: 'tip', icon: '🙏', label: 'Tip Welcome', desc: 'Give what you feel' },
+  { value: 'tip', icon: '🙏', label: 'Tip welcome', desc: 'Give what you feel' },
   { value: 'fixed', icon: '💶', label: 'Paid', desc: 'Agreed upfront' },
 ]
 
@@ -92,6 +92,7 @@ export default function BecomeHostScreen() {
   const [saveError, setSaveError] = useState('')
   const [saveOk, setSaveOk] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const [authChecked, setAuthChecked] = useState(false)
   const [LocationPicker, setLocationPicker] = useState<any>(null)
   const currentUserIdRef = useRef<string | null>(null)
 
@@ -124,6 +125,7 @@ export default function BecomeHostScreen() {
     import('../components/LocationPicker').then(m => setLocationPicker(() => m.default))
     supabase.auth.getUser().then(({ data: { user } }) => {
       currentUserIdRef.current = user?.id ?? null
+      setAuthChecked(true)
       if (user) { setCurrentUser(user); loadExisting(user.id) }
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -527,17 +529,33 @@ export default function BecomeHostScreen() {
         </View>
       ) : null}
 
-      {/* Save */}
-      <TouchableOpacity style={styles.saveBtn} onPress={save} disabled={saving}>
-        {saving
-          ? <ActivityIndicator color={C.white} />
-          : <Text style={styles.saveBtnText}>🏠 SAVE AND GO TO MAP →</Text>
-        }
-      </TouchableOpacity>
+      {/* Save — logged-out riders are nudged to create an account first */}
+      {authChecked && !currentUser ? (
+        <>
+          <TouchableOpacity
+            style={styles.saveBtn}
+            onPress={() => router.push({ pathname: '/', params: { signup: '1' } })}
+          >
+            <Text style={styles.saveBtnText}>Create a free account to publish your safe spot</Text>
+          </TouchableOpacity>
+          <Text style={styles.hint}>
+            You need an account to publish a listing. It’s free — your spot then appears on the map for riders browsing TWOWHEELCOME.
+          </Text>
+        </>
+      ) : (
+        <>
+          <TouchableOpacity style={styles.saveBtn} onPress={save} disabled={saving}>
+            {saving
+              ? <ActivityIndicator color={C.white} />
+              : <Text style={styles.saveBtnText}>🏠 SAVE AND GO TO MAP →</Text>
+            }
+          </TouchableOpacity>
 
-      <Text style={styles.hint}>
-        Your listing will appear immediately on the map for all registered riders.
-      </Text>
+          <Text style={styles.hint}>
+            Your listing appears on the map for riders browsing TWOWHEELCOME.
+          </Text>
+        </>
+      )}
     </ScrollView>
   )
 }
