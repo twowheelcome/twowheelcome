@@ -13,11 +13,11 @@ import { UserChip } from '../../components/UserChip'
 
 const AMENITY_ICONS: Record<string, string> = {
   shower: '🚿', toilet: '🚽', kitchen: '🍳', laundry: '👕',
-  electricity: '⚡', wifi: '📶', pub_nearby: '🍺',
+  electricity: '⚡', wifi: '📶', pub_nearby: '🍺', tools: '🔧',
 }
 const AMENITY_LABELS: Record<string, string> = {
   shower: 'Shower', toilet: 'Toilet', kitchen: 'Kitchen', laundry: 'Laundry',
-  electricity: 'Power', wifi: 'WiFi', pub_nearby: 'Pub nearby',
+  electricity: 'Power', wifi: 'WiFi', pub_nearby: 'Pub nearby', tools: 'Tools',
 }
 const SLEEP_LABELS: Record<string, string> = {
   tent: '⛺ Tent', roof: '🏠 Roof over head', room: '🛏 Private room',

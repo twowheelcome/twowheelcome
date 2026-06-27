@@ -752,6 +752,7 @@ export default function MapScreen() {
                   { value: 'electricity', icon: '⚡', label: 'Electricity' },
                   { value: 'wifi', icon: '📶', label: 'WiFi' },
                   { value: 'pub_nearby', icon: '🍺', label: 'Pub nearby' },
+                  { value: 'tools', icon: '🔧', label: 'Tools' },
                 ] as const).map(o => {
                   const on = filterAmenities.includes(o.value)
                   return (
@@ -1031,8 +1032,8 @@ export default function MapScreen() {
                     </Text>
                   )}
                   {(() => {
-                    const icons: Record<string, string> = { shower: '🚿', toilet: '🚽', kitchen: '🍳', laundry: '👕', electricity: '⚡', wifi: '📶', pub_nearby: '🍺' }
-                    const labels: Record<string, string> = { shower: 'Shower', toilet: 'Toilet', kitchen: 'Kitchen', laundry: 'Laundry', electricity: 'Power', wifi: 'WiFi', pub_nearby: 'Pub nearby' }
+                    const icons: Record<string, string> = { shower: '🚿', toilet: '🚽', kitchen: '🍳', laundry: '👕', electricity: '⚡', wifi: '📶', pub_nearby: '🍺', tools: '🔧' }
+                    const labels: Record<string, string> = { shower: 'Shower', toilet: 'Toilet', kitchen: 'Kitchen', laundry: 'Laundry', electricity: 'Power', wifi: 'WiFi', pub_nearby: 'Pub nearby', tools: 'Tools' }
                     const shown = (host.amenities as string[] | undefined)?.filter(a => labels[a]) ?? []
                     if (!shown.length) return null
                     return (

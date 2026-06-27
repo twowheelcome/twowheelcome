@@ -128,6 +128,7 @@ const AMENITY_LABELS: Record<string, string> = {
   electricity: 'Electricity',
   wifi: 'WiFi',
   pub_nearby: 'Pub nearby',
+  tools: 'Tools',
 }
 
 const PRICING_LABELS: Record<string, string> = {

@@ -36,6 +36,7 @@ const AMENITIES = [
   { value: 'electricity', icon: '⚡', label: 'Electricity' },
   { value: 'wifi', icon: '📶', label: 'WiFi' },
   { value: 'pub_nearby', icon: '🍺', label: 'Pub within 10 min' },
+  { value: 'tools', icon: '🔧', label: 'Tools to wrench' },
 ]
 
 const PRICING = [

@@ -9,11 +9,11 @@ const SLEEP_LABELS: Record<string, string> = { tent: 'Tent space', roof: 'Roof o
 const VEHICLE_LABELS: Record<string, string> = { moto: 'Motorcycle', car: 'Car', bicycle: 'Bicycle', van: 'Van', scooter: 'Scooter' }
 const AMENITY_ICON: Record<string, string> = {
   shower: '🚿', toilet: '🚽', kitchen: '🍳', laundry: '👕', electricity: '⚡', wifi: '📶',
-  pub_nearby: '🍺',
+  pub_nearby: '🍺', tools: '🔧',
 }
 const AMENITY_LABELS: Record<string, string> = {
   shower: 'Shower', toilet: 'Toilet', kitchen: 'Kitchen', laundry: 'Laundry', electricity: 'Power',
-  wifi: 'WiFi', pub_nearby: 'Pub nearby',
+  wifi: 'WiFi', pub_nearby: 'Pub nearby', tools: 'Tools',
 }
 
 type OfferLoc = {
