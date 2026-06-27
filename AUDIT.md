@@ -1,5 +1,16 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Chat-remove rules + swipe; single-place Save label (2026-06-27).**
+> - **Chat removal less strict.** A chat is now removable unless it has an UPCOMING/active stay —
+>   i.e. only a PENDING knock or an ACCEPTED stay whose departure is still in the future blocks it.
+>   Past accepted stays (even reviewed), declined, withdrawn and cancelled chats can be cleared.
+>   `loadConvs` now carries each conversation's latest request `departure_date` for this check.
+>   (Hide mechanism unchanged: per-user `conversation_hides`, RLS own-only — verified naostro earlier.)
+> - **Swipe-to-remove.** Conversation rows support iOS-style swipe-left → red Remove (PanResponder +
+>   Animated, works on web and native, no gesture-root needed). The header trash button stays too.
+> - **Single-place Save.** The editor's button is now "Save place" (edit) / "Add place" (new) instead
+>   of "Save and go to map", and returns to My Places on success (was already wired).
+>
 > **Dark mode + narrower language set (2026-06-27).**
 > - **Languages** trimmed to English, Español, Français, Čeština, Polski (dropped Deutsch/Italiano);
 >   still EN-only strings.

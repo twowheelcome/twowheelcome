@@ -522,7 +522,7 @@ export default function BecomeHostScreen() {
           <TouchableOpacity style={styles.saveBtn} onPress={save} disabled={saving}>
             {saving
               ? <ActivityIndicator color={C.white} />
-              : <Text style={styles.saveBtnText}>🏠 SAVE AND GO TO MAP →</Text>
+              : <Text style={styles.saveBtnText}>{placeParam ? 'SAVE PLACE' : 'ADD PLACE'}</Text>
             }
           </TouchableOpacity>
 
