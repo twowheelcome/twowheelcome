@@ -216,6 +216,16 @@
 >    from chat header + map + reviews); blocked conversations are hidden from the blocker's
 >    Messages list; a blocked send surfaces the server message instead of failing silently.
 >
+> **Map pins = bike safety, not avatars (2026-06-27, Petr's design).** The core promise is
+> "bike safety first", so map markers now show the parking-safety level instead of the host's
+> face. Each pin is a teardrop coloured on a green→red semantic — locked_garage #4A9E5C (safest),
+> carport #5A8FAE, fenced_yard #D08049, street #CB4636 (basic) — with the matching SAFETY icon
+> (🔒/🏠/🚧/🛣️) inside. The level is derived with the shared `bestSafety()` (best of the host's
+> parking options; falls back to street/basic when none), so it reuses the same normalisation as
+> the SafetyBlock cards (garage_locked→locked_garage, yard→fenced_yard, …). The dashed ~500 m fuzz
+> circle (now tinted to the safety colour), clustering, tap→host sheet and approximate location are
+> all unchanged. Marker aria-label now leads with the safety level. Avatar marker code removed.
+>
 > **Pre-launch audit round 4 (2026-06-27).**
 > 1. **Persist the pending knock.** pendingKnockStore was in-memory only, so the "we'll keep this
 >    host and your message ready" promise broke on a reload / confirmation-email round-trip. Now it

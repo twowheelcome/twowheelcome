@@ -3,6 +3,17 @@ import { useFocusEffect } from 'expo-router'
 import L from 'leaflet'
 import 'leaflet.markercluster'  // side-effect: patches the same L with markerClusterGroup
 import { useTheme } from '../lib/ThemeContext'
+import { SAFETY } from '../lib/theme'
+import { bestSafety } from './SafetyBlock'
+
+// Map markers represent BIKE SAFETY, not the host's face — green (safest) → red (basic).
+// Icons/labels come from the shared SAFETY scale; colours follow the green→red semantic.
+const SAFETY_PIN_COLOR: Record<keyof typeof SAFETY, string> = {
+  locked_garage: '#4A9E5C',  // safest
+  carport:       '#5A8FAE',
+  fenced_yard:   '#D08049',
+  street:        '#CB4636',   // basic
+}
 
 function escapeHtml(value: string): string {
   return value
@@ -11,16 +22,6 @@ function escapeHtml(value: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
-}
-
-function safeImageUrl(value?: string | null): string | null {
-  if (!value) return null
-  try {
-    const url = new URL(value)
-    return url.protocol === 'https:' || url.protocol === 'http:' ? escapeHtml(url.href) : null
-  } catch {
-    return null
-  }
 }
 
 let savedMapView: { center: [number, number]; zoom: number } | null = null
@@ -167,11 +168,17 @@ export default function HostMap({
 
     currentHosts.forEach(host => {
       if (!host.location_lat || !host.location_lng) return
-      const pinColor = C.accent
+
+      // The pin represents the host's BIKE SAFETY level (best of their parking options).
+      const parkings: string[] = host.parkings?.length ? host.parkings : (host.parking ? [host.parking] : [])
+      const level = bestSafety(parkings)        // locked_garage | carport | fenced_yard | street
+      const safety = SAFETY[level]
+      const pinColor = SAFETY_PIN_COLOR[level]
       const size = 38
+
       const circle = L.circle([host.location_lat, host.location_lng], {
         radius: 500,
-        color: C.accent,
+        color: pinColor,
         fill: false,
         dashArray: '8 6',
         weight: 2,
@@ -179,39 +186,32 @@ export default function HostMap({
       }).addTo(map)
       circlesRef.current.push(circle)
 
-      const avatarUrl = safeImageUrl(host.profiles?.avatar_url)
-      const initial = escapeHtml(host.profiles?.full_name?.[0]?.toUpperCase() || '?')
-      const avatarInner = avatarUrl
-        ? `<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
-        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;">${initial}</div>`
-
-      const totalH = size + 8  // circle + arrow
-      // Screen-reader label: name + city, so the marker isn't an empty button.
+      // Screen-reader label leads with the safety level (the point of the map), then place.
       const ariaName = escapeHtml(host.profiles?.full_name || 'A rider')
       const ariaPlace = escapeHtml([host.location_city, host.location_country].filter(Boolean).join(', '))
-      const ariaLabel = `Host ${ariaName}${ariaPlace ? `, ${ariaPlace}` : ''} — safe spot for your bike`
+      const ariaLabel = `${ariaName}${ariaPlace ? `, ${ariaPlace}` : ''} — bike safety: ${safety.label} (${safety.rank})`
+
+      // Teardrop pin coloured by safety level, with the safety icon inside (not an avatar).
       const markerHtml = `
-        <div role="button" tabindex="0" aria-label="${ariaLabel}" style="position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;">
-          <div style="
-            width:${size}px;height:${size}px;
-            background:${pinColor};
-            border-radius:50%;
-            border:2.5px solid #fff;
-            box-shadow:0 2px 10px rgba(0,0,0,0.35);
-            overflow:hidden;
-            flex-shrink:0;
-          ">
-            ${avatarInner}
-          </div>
-          <div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid ${pinColor};"></div>
+        <div role="button" tabindex="0" aria-label="${ariaLabel}" style="
+          width:${size}px;height:${size}px;
+          background:${pinColor};
+          border-radius:50% 50% 50% 0;
+          transform:rotate(-45deg);
+          border:2.5px solid #fff;
+          box-shadow:0 2px 10px rgba(0,0,0,0.4);
+          display:flex;align-items:center;justify-content:center;
+          cursor:pointer;
+        ">
+          <span style="transform:rotate(45deg);font-size:17px;line-height:1;">${safety.icon}</span>
         </div>
       `
 
       const markerIcon = L.divIcon({
         html: markerHtml,
         className: '',
-        iconSize: [90, totalH],
-        iconAnchor: [45, totalH],
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size],
       })
 
       const marker = L.marker([host.location_lat, host.location_lng], { icon: markerIcon })
