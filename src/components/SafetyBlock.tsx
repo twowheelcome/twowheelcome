@@ -46,10 +46,13 @@ export function SafetyBlock({ parkings }: { parkings: string[] }) {
       </View>
       {secondary.length > 0 && (
         <View style={[sb.secondaryRow, { borderTopColor: C.border }]}>
+          {/* Other parking the host also has — shown muted/neutral so they don't compete
+              with the headline level. One place = one clear level at a glance. */}
+          <Text style={[sb.alsoLabel, { color: C.textDim }]}>Also here:</Text>
           {secondary.map(k => (
-            <View key={k} style={[sb.chip, { borderColor: SAFETY[k].color + '55' }]}>
-              <SafetyIcon level={k} size={14} color={SAFETY[k].color} strokeWidth={2} />
-              <Text style={[sb.chipText, { color: SAFETY[k].color }]}>{SAFETY[k].label}</Text>
+            <View key={k} style={[sb.chip, { borderColor: C.border, backgroundColor: C.elevated }]}>
+              <SafetyIcon level={k} size={13} color={C.textDim} strokeWidth={2} />
+              <Text style={[sb.chipText, { color: C.textDim }]}>{SAFETY[k].label}</Text>
             </View>
           ))}
         </View>
@@ -69,7 +72,8 @@ const sb = StyleSheet.create({
   rankPill:     { borderRadius: 100, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2 },
   rankText:     { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
   sub:          { fontSize: 13, lineHeight: 19, fontFamily: FONT.body },
-  secondaryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10, paddingTop: 10, borderTopWidth: 1 },
+  secondaryRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 10, paddingTop: 10, borderTopWidth: 1 },
+  alsoLabel:    { fontSize: 11, fontWeight: '700', marginRight: 2 },
   chip:         { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 100, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
   chipText:     { fontSize: 11, fontWeight: '600' },
 })
