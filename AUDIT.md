@@ -1,5 +1,20 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Pre-launch E2E round (2026-06-27).**
+> - **Report flow (DSA notice, no moderation).** New `reports` table (RLS: own insert/read),
+>   `report` edge function (stores + emails privacy@twowheelcome.com via Resend), and a
+>   ReportButton (modal + optional reason + confirm) on the profile (report user + listing) and the
+>   chat header (report conversation). Verified end-to-end on live (200, row stored, RLS own-only).
+> - **Server-side notes scrub.** `strip_location_notes` trigger on host_locations cuts GPS/email/
+>   phone from public notes regardless of client (backstop to the client guard). Live + baseline.
+> - **Message placeholder** reverted to the generic tip (no Berlin/KTM example).
+> - **Legal wording** refreshed (own-risk + who-is-behind, Codex phrasing; kept "to the maximum
+>   extent permitted by law"). Operator placeholders left for Petr.
+> - **Lint** clean (the unused PRICING_LABELS in HostOffer is gone with the ContributionBadge work).
+> - **New E2E test accounts + seeded ended stay** (host + rider, pre-confirmed) with an ACCEPTED
+>   stay whose departure is in the past and one seeded review, so review→reply is testable now.
+
+
 > **🔴 Account deletion was broken (GDPR launch blocker, fixed 2026-06-27).** Codex's E2E hit
 > "Could not delete your account" (delete-account returned 500). Root cause found naostro: the RPC
 > `delete_account_data` failed at `UPDATE conversations SET user_b = NULL` — the
