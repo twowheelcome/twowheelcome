@@ -4,7 +4,7 @@ import {
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { Feather } from '@expo/vector-icons'
-import { router, useFocusEffect } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { unreadStore } from '../../lib/unreadStore'
@@ -520,6 +520,9 @@ export default function RequestsScreen() {
   // into (the other person's profile, or the map preview), so the next focus keeps the
   // chat instead of resetting to the list. A plain tab switch leaves it false.
   const keepChatOpenRef = useRef(false)
+  // Cold-open deep link from an email / push notification: /requests?openConv=...&reviewRequest=...
+  const deepLinkParams = useLocalSearchParams<{ openConv?: string; reviewRequest?: string }>()
+  const handledDeepLinkRef = useRef<string | null>(null)
   const locCoordsRef = useRef<{ lat: number; lng: number } | null>(null)  // open conversation's approximate map point
 
 
@@ -597,10 +600,17 @@ export default function RequestsScreen() {
       const userId = currentUser.id
       loadConvs(userId)
       const pending = pendingChatStore.consume()
-      if (pending) {
+      // Deep link from an email/push URL (?openConv=...). Handle each convId once (no
+      // setParams clearing — that would re-run this effect and reset us to the list); the
+      // ref guard makes a stale param a no-op on later focuses so "return to list" still works.
+      const paramConv = typeof deepLinkParams.openConv === 'string' && deepLinkParams.openConv ? deepLinkParams.openConv : null
+      const deepLinkConv = paramConv && handledDeepLinkRef.current !== paramConv ? paramConv : null
+      const openId = pending?.convId ?? deepLinkConv
+      if (openId) {
+        if (deepLinkConv) handledDeepLinkRef.current = deepLinkConv
         // A deep-link / "Open chat" wins: open that exact conversation.
         void (async () => {
-          const conv = convs.find(c => c.id === pending.convId) ?? await fetchConvById(pending.convId, userId)
+          const conv = convs.find(c => c.id === openId) ?? await fetchConvById(openId, userId)
           if (conv && currentUserIdRef.current === userId) openConv(conv)
         })()
       } else if (keepChatOpenRef.current) {
@@ -614,7 +624,7 @@ export default function RequestsScreen() {
       }
       // convs/fetchConvById/openConv intentionally excluded; this must run on focus only.
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentUser])
+    }, [currentUser, deepLinkParams.openConv])
   )
 
   // Fetch one conversation by id, shaped like a list row. Used when the openConv
