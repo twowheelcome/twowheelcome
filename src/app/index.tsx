@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase'
 import { useTheme, useThemeMode, type ThemeColors } from '../lib/ThemeContext'
 import { FONT } from '../lib/theme'
 import { Wordmark } from '../components/Wordmark'
+import { AppWordmark } from '../components/AppHeader'
 
 const ONBOARDING_KEY = '@twowheelcome/onboarding-seen'
 
@@ -42,10 +43,7 @@ function Onboarding({ C, onDone }: { C: ThemeColors; onDone: () => void }) {
   return (
     <View style={{ flex: 1, backgroundColor: C.bg, paddingHorizontal: 24, paddingTop: 56, paddingBottom: 34 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Image source={require('../../assets/images/icon.png')} style={{ width: 32, height: 32, borderRadius: 8 }} />
-          <Wordmark size={16} />
-        </View>
+        <AppWordmark compact />
         <TouchableOpacity onPress={onDone} hitSlop={10}>
           <Text style={{ color: C.textDim, fontSize: 13, fontWeight: '700' }}>Skip</Text>
         </TouchableOpacity>

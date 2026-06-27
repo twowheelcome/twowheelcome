@@ -1,17 +1,21 @@
 import { ReactNode } from 'react'
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { router } from 'expo-router'
-import { useTheme, type ThemeColors } from '../lib/ThemeContext'
+import { useTheme, useThemeMode, type ThemeColors } from '../lib/ThemeContext'
 import { Wordmark } from './Wordmark'
 
-const mark = require('../../assets/images/mark.png')
+// Theme-aware round mark: cream+terracotta on dark, graphite+terracotta on light —
+// the same lockup as the login hero, so the brand looks identical everywhere.
+const MARK_LIGHT = require('../../assets/images/mark.png')
+const MARK_DARK = require('../../assets/images/mark-cream.png')
 
 export function AppWordmark({ compact = false }: { compact?: boolean }) {
   const C = useTheme()
+  const { scheme } = useThemeMode()
   const styles = makeStyles(C)
   return (
     <View style={styles.brand}>
-      <Image source={mark} style={[styles.mark, compact && styles.markCompact]} resizeMode="contain" />
+      <Image source={scheme === 'dark' ? MARK_DARK : MARK_LIGHT} style={[styles.mark, compact && styles.markCompact]} resizeMode="contain" />
       <Wordmark size={compact ? 19 : 22} style={{ flexShrink: 1 }} />
     </View>
   )
