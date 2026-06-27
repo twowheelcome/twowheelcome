@@ -13,7 +13,7 @@ const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'JPY', 'CAD', 'AUD', 'CZK']
 
 function makePARKING(C: ThemeColors) {
   return [
-    { value: 'garage_locked', icon: '🔒', label: 'Locked Garage', desc: 'Fort Knox — best protection', color: C.success },
+    { value: 'garage_locked', icon: '🔒', label: 'Locked Garage', desc: 'Locked indoor parking — highest protection', color: C.success },
     { value: 'carport', icon: '🔐', label: 'Covered Carport', desc: 'Covered and gated', color: C.info },
     { value: 'yard', icon: '🛡', label: 'Fenced Yard', desc: 'Secure yard', color: C.accent },
     { value: 'street', icon: '🛣', label: 'Street Parking', desc: 'At your own risk', color: '#94a3b8' },

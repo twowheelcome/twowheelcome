@@ -156,7 +156,7 @@ export default function PublicHostProfile() {
           <View style={styles.joinBanner}>
             <Text style={styles.joinBannerTitle}>New here? Join the ride.</Text>
             <Text style={styles.joinBannerText}>
-              twowheelcome connects riders on the road. Find a safe overnight spot for you and your bike — or open your own place to fellow riders. Free, rider to rider.
+              twowheelcome connects riders on the road. Find a safe overnight spot for you and your bike — or open your own place to fellow riders. Free to join. Any contribution is agreed directly in chat.
             </Text>
             <TouchableOpacity style={styles.joinBannerBtn} onPress={goToSignup}>
               <Text style={styles.joinBannerBtnText}>Create your free account</Text>

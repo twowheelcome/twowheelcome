@@ -18,7 +18,7 @@ export async function registerPushToken(userId: string): Promise<void> {
   try {
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
-        name: 'TWOwheelCOME',
+        name: 'TWOWHEELCOME',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
       })

@@ -275,7 +275,7 @@ function hasStayEnded(req: RequestData): boolean {
 }
 
 async function openNavigation(lat: number, lng: number) {
-  const label = encodeURIComponent('Twowheelcome meeting point')
+  const label = encodeURIComponent('TWOWHEELCOME meeting point')
   const coords = `${lat},${lng}`
   const url = Platform.select({
     android: `geo:${coords}?q=${coords}(${label})`,

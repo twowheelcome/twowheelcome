@@ -531,7 +531,7 @@ export default function MapScreen() {
             <Text style={styles.sectionLabel}>MESSAGE TO HOST</Text>
             <TextInput
               style={styles.textarea}
-              placeholder="Hey, I'm riding through your town, got space?..."
+              placeholder="Hey, I'm riding through on this date. Is your spot free for one rider and bike?"
               placeholderTextColor={C.placeholder}
               value={message}
               onChangeText={setMessage}

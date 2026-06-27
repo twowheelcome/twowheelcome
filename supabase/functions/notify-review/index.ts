@@ -4,7 +4,7 @@ const RESEND_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const CRON_SECRET = Deno.env.get('CRON_SECRET')!
-const FROM = 'TWOwheelCOME <noreply@twowheelcome.com>'
+const FROM = 'TWOWHEELCOME <noreply@twowheelcome.com>'
 const APP_URL = 'https://twowheelcome.com'
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send'
 
@@ -108,13 +108,13 @@ Deno.serve(async (req) => {
     // Respect each recipient's notification preferences (default on when unset).
     if (!reviewedSet.has(stay.id + ':' + stay.guest_id)) {
       const email = emailMap[stay.guest_id]
-      if (email && guestProfile?.notify_email !== false) tasks.push(sendEmail(email, 'How was your stay? - TWOwheelCOME', guestHtml(hostName, webUrl)))
+      if (email && guestProfile?.notify_email !== false) tasks.push(sendEmail(email, 'How was your stay? - TWOWHEELCOME', guestHtml(hostName, webUrl)))
       if (guestProfile?.push_token && guestProfile?.notify_push !== false) tasks.push(sendPush(guestProfile.push_token, 'How was your stay?', 'Leave a review for ' + (hostProfile?.full_name || 'your host'), pushUrl))
     }
 
     if (!reviewedSet.has(stay.id + ':' + stay.host_id)) {
       const email = emailMap[stay.host_id]
-      if (email && hostProfile?.notify_email !== false) tasks.push(sendEmail(email, 'How was your guest? - TWOwheelCOME', hostHtml(guestName, webUrl)))
+      if (email && hostProfile?.notify_email !== false) tasks.push(sendEmail(email, 'How was your guest? - TWOWHEELCOME', hostHtml(guestName, webUrl)))
       if (hostProfile?.push_token && hostProfile?.notify_push !== false) tasks.push(sendPush(hostProfile.push_token, 'How was your guest?', 'Leave a review for ' + (guestProfile?.full_name || 'your guest'), pushUrl))
     }
   }

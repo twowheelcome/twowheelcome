@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const RESEND_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const FROM = 'TWOwheelCOME <noreply@twowheelcome.com>'
+const FROM = 'TWOWHEELCOME <noreply@twowheelcome.com>'
 const APP_URL = 'https://twowheelcome.com'
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send'
 
@@ -154,7 +154,7 @@ Deno.serve(async req => {
     await Promise.all([
       host?.email && hostWantsEmail ? sendEmail(
         host.email,
-        `🚪 Someone's knocking! — TWOwheelCOME`,
+        `🚪 Someone's knocking! — TWOWHEELCOME`,
         `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#1a1a1a;color:#eee;padding:32px;border-radius:12px">
           <h2 style="color:#C47050;margin:0 0 16px">🚪 Someone's knocking!</h2>
           <p><strong>${safeGuestName}</strong> sent you a stay request.</p>
@@ -176,7 +176,7 @@ Deno.serve(async req => {
     await Promise.all([
       guest?.email && guestWantsEmail ? sendEmail(
         guest.email,
-        `✅ Request accepted — TWOwheelCOME`,
+        `✅ Request accepted — TWOWHEELCOME`,
         `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#1a1a1a;color:#eee;padding:32px;border-radius:12px">
           <h2 style="color:#76C085;margin:0 0 16px">Request accepted</h2>
           <p><strong>${safeHostName}</strong> accepted your request.</p>
@@ -198,7 +198,7 @@ Deno.serve(async req => {
     await Promise.all([
       guest?.email && guestWantsEmail ? sendEmail(
         guest.email,
-        `Knock declined — TWOwheelCOME`,
+        `Knock declined — TWOWHEELCOME`,
         `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#1a1a1a;color:#eee;padding:32px;border-radius:12px">
           <h2 style="margin:0 0 16px">No luck this time 🤙</h2>
           <p><strong>${safeHostName}</strong> can't host right now. Find another host on the map.</p>

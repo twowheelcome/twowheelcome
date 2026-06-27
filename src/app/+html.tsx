@@ -21,7 +21,7 @@ export default function Root({ children }: PropsWithChildren) {
         {/* iOS — add to home screen, fullscreen standalone */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Twowheelcome" />
+        <meta name="apple-mobile-web-app-title" content="TWOWHEELCOME" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
         <ScrollViewStyleReset />
