@@ -137,7 +137,9 @@ CREATE TABLE IF NOT EXISTS stay_requests (
   guest_vehicle text,
   conversation_id uuid NOT NULL,
   photo_url text,
-  location_id uuid NOT NULL
+  location_id uuid NOT NULL,
+  location_city text,
+  location_country text
 );
 
 -- ── Constraints (PK / unique / check / exclude) ──
@@ -297,6 +299,8 @@ DECLARE
   v_conv uuid;
   v_req uuid;
   v_loc_owner uuid;
+  v_city text;
+  v_country text;
   v_msg text := btrim(coalesce(p_message, ''));
 BEGIN
   IF v_guest IS NULL THEN
@@ -321,7 +325,9 @@ BEGIN
       USING errcode = 'check_violation';
   END IF;
 
-  SELECT user_id INTO v_loc_owner FROM host_locations WHERE id = p_location_id;
+  SELECT user_id, location_city, location_country
+    INTO v_loc_owner, v_city, v_country
+    FROM host_locations WHERE id = p_location_id;
   IF v_loc_owner IS NULL OR v_loc_owner <> p_host_id THEN
     RAISE EXCEPTION 'Stay location does not belong to the host';
   END IF;
@@ -341,10 +347,12 @@ BEGIN
 
   INSERT INTO stay_requests (
     guest_id, host_id, location_id, status, guests_count, message,
-    arrival_date, departure_date, arrival_time, conversation_id, photo_url
+    arrival_date, departure_date, arrival_time, conversation_id, photo_url,
+    location_city, location_country
   ) VALUES (
     v_guest, p_host_id, p_location_id, 'PENDING', GREATEST(coalesce(p_guests, 1), 1), v_msg,
-    p_arrival, p_departure, nullif(btrim(coalesce(p_arrival_time, '')), ''), v_conv, p_photo_url
+    p_arrival, p_departure, nullif(btrim(coalesce(p_arrival_time, '')), ''), v_conv, p_photo_url,
+    v_city, v_country
   ) RETURNING id INTO v_req;
 
   INSERT INTO messages (conversation_id, sender_id, body, request_id)
