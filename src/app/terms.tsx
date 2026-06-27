@@ -25,23 +25,15 @@ export default function TermsScreen() {
         <View style={styles.disclaimer}>
           <Text style={styles.disclaimerTitle}>⚠️ Important — please read</Text>
           <Text style={styles.disclaimerText}>
-            TWOWHEELCOME is only an intermediary — a platform that helps riders and hosts find each other. We do not provide accommodation, we are not present at any stay and we are not a party to any agreement between a rider and a host. Everything you arrange and do through the app is entirely at your own risk. To the fullest extent allowed by law, TWOWHEELCOME and its operator accept no liability for any harm, injury, death, loss, theft, damage, cost or dispute arising from your use of the app or any stay, contact or arrangement made through it.
+            TWOWHEELCOME only helps riders and hosts find and message each other. We do not provide, inspect, operate or guarantee any place or stay, and we are not a party to arrangements made between users. You decide whether to meet, stay, host or pay, and you remain responsible for your own safety, belongings, insurance and legal compliance. To the maximum extent permitted by law, TWOWHEELCOME is not liable for losses, disputes or harm arising from user-to-user arrangements.
           </Text>
         </View>
 
         <Section title="What TWOWHEELCOME is — and is not">
-          <Bullet>It is a directory and messaging tool that connects riders with hosts. Nothing more.</Bullet>
+          <Bullet>It is a directory and messaging tool that connects riders with hosts.</Bullet>
           <Bullet>It does not own, run, inspect, endorse or guarantee any place, host, rider or listing.</Bullet>
           <Bullet>It is not a party to any stay. Any stay, payment or arrangement is strictly between the rider and the host.</Bullet>
-          <Bullet>It gives no warranty that any listing, person, place or information is accurate, safe, lawful or suitable.</Bullet>
-        </Section>
-
-        <Section title="No liability — use at your own risk">
-          <Bullet>You use the app and arrange every stay entirely at your own risk and on your own judgement.</Bullet>
-          <Bullet>To the fullest extent permitted by law, TWOWHEELCOME and its operator are not liable for any injury, death, illness, loss, theft, property damage, financial loss, or any direct, indirect or consequential damages connected with the app or any stay, meeting, payment or dispute arranged through it.</Bullet>
-          <Bullet>You are responsible for vetting the other person, for your own safety and belongings, for any insurance, and for complying with local laws.</Bullet>
-          <Bullet>Any dispute about a stay, payment or behaviour is between the rider and the host to resolve. TWOWHEELCOME is not an arbiter and takes no responsibility for the outcome.</Bullet>
-          <Bullet>You agree to indemnify TWOWHEELCOME and its operator against claims arising from your listings, your conduct or your stays.</Bullet>
+          <Bullet>You decide whether to meet, stay, host or pay, and you remain responsible for your own safety, belongings, insurance and legal compliance.</Bullet>
         </Section>
 
         <Section title="Community use">

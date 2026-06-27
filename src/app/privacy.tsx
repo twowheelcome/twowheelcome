@@ -28,14 +28,14 @@ export default function PrivacyScreen() {
 
         <Section title="Who controls your data">
           <Text style={styles.body}>
-            The TWOWHEELCOME operator is the data controller: [OPERATOR LEGAL NAME], [LEGAL FORM], [REGISTERED ADDRESS], [COUNTRY], ID/registration no. [ID]. These details must be completed before public launch. Privacy requests can be sent to {CONTACT_EMAIL}.
+            The TWOWHEELCOME operator is the data controller: [OPERATOR LEGAL NAME], [LEGAL FORM], [REGISTERED ADDRESS], [COUNTRY], ID/registration no. [ID]. These details must be completed before public launch. Privacy requests can be sent to {CONTACT_EMAIL}, which is also the single point of contact for users and authorities under the Digital Services Act.
           </Text>
         </Section>
 
         <Section title="Data we collect">
           <Bullet>Email address and authentication data, used to create and protect your account.</Bullet>
           <Bullet>Profile details you add, such as name, avatar and public host profile information.</Bullet>
-          <Bullet>Host listing details, including approximate public location, parking type, sleep options and amenities. Private location notes are not published.</Bullet>
+          <Bullet>Host listing details, including approximate public location, parking type, sleep options, amenities, public description and listing photos. Exact coordinates and private listing labels are not public.</Bullet>
           <Bullet>Stay requests, messages, reviews, push tokens and account activity needed to run the service.</Bullet>
         </Section>
 
