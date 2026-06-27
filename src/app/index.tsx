@@ -19,20 +19,24 @@ function isValidEmail(e: string) {
 // ── First-run onboarding ─────────────────────────────────────────────────────
 
 function Onboarding({ C, onDone }: { C: ThemeColors; onDone: () => void }) {
+  const { scheme } = useThemeMode()
   const [step, setStep] = useState(0)
+  // Theme-aware glyphs: graphite+terracotta on light, cream+terracotta on dark
+  // (orange accent kept in both — same treatment as the logo).
+  const dark = scheme === 'dark'
   const slides = [
     {
-      image: require('../../assets/images/bike.png'),
+      image: dark ? require('../../assets/images/bike-cream.png') : require('../../assets/images/bike.png'),
       title: 'Where will your bike sleep tonight?',
       body: 'Find riders who can offer a safe spot for your bike and a place for you to rest.',
     },
     {
-      image: require('../../assets/images/roof.png'),
+      image: dark ? require('../../assets/images/roof-cream.png') : require('../../assets/images/roof.png'),
       title: 'Bike safety comes first.',
       body: 'See the parking situation before anything else: locked garage, covered parking, fenced yard, or street.',
     },
     {
-      image: require('../../assets/images/kruh.png'),
+      image: dark ? require('../../assets/images/kruh-cream.png') : require('../../assets/images/kruh.png'),
       title: 'From riders to riders.',
       body: 'A safe night for your bike and you, shared by someone who understands why both matter.',
     },
@@ -51,9 +55,7 @@ function Onboarding({ C, onDone }: { C: ThemeColors; onDone: () => void }) {
 
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 18 }}>
         <View style={{ width: 160, height: 160, alignItems: 'center', justifyContent: 'center' }}>
-          {/* Tint to the foreground colour (graphite on light, cream on dark) so the
-              illustrations match the onboarding text — no terracotta in the glyphs. */}
-          <Image source={current.image} style={{ width: 160, height: 160, tintColor: C.text }} resizeMode="contain" />
+          <Image source={current.image} style={{ width: 160, height: 160 }} resizeMode="contain" />
         </View>
         <Text style={{ color: C.text, fontSize: 28, lineHeight: 34, fontWeight: '800', textAlign: 'center', maxWidth: 330 }}>
           {current.title}

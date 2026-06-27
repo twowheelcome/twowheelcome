@@ -1,5 +1,17 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Expired pending chats + onboarding glyphs keep the orange (2026-06-27).**
+> - **Expired pending = removable.** A pending knock whose stay date is already in the past is now
+>   treated as expired (no reply, nothing to wait for): the chat shows an "Expired" tag (chat list +
+>   History) and can be removed/hidden like any dead chat. Hide rule: a pending chat blocks removal
+>   only while its date is still in the FUTURE. Derived in the UI (`isExpiredPending`) — the DB status
+>   stays PENDING so stats/history/other flows are untouched. Verified naostro (read-only): the
+>   future-pending case is correctly held; past-pending uses the same `departure < today` comparison.
+> - **Onboarding glyphs keep the orange accent.** Reverted the flat foreground tint (which killed the
+>   terracotta). Generated cream variants of bike/roof/gear (graphite→cream, terracotta kept) and the
+>   onboarding now picks them by theme — graphite+terracotta on light, cream+terracotta on dark, same
+>   as the logo.
+>
 > **Light onboarding glyphs + trimmed host-sheet link (2026-06-27).**
 > - **Onboarding illustrations** (bike / roof / gear-circle PNGs) are now tinted to the foreground
 >   colour (`tintColor: C.text`) — graphite on light, cream on dark — so they match the onboarding
