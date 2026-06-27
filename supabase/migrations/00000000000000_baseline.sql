@@ -113,7 +113,9 @@ CREATE TABLE IF NOT EXISTS reviews (
   reviewee_id uuid NOT NULL,
   rating smallint NOT NULL,
   body text,
-  created_at timestamp with time zone DEFAULT now()
+  created_at timestamp with time zone DEFAULT now(),
+  reply_body text,
+  reply_created_at timestamp with time zone
 );
 CREATE TABLE IF NOT EXISTS stay_requests (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -160,6 +162,7 @@ ALTER TABLE profiles ADD CONSTRAINT profiles_full_name_length CHECK (((full_name
 ALTER TABLE request_notification_events ADD CONSTRAINT request_notification_events_event_check CHECK ((event = ANY (ARRAY['new_request'::text, 'accepted'::text, 'rejected'::text, 'cancelled_by_host'::text])));
 ALTER TABLE reviews ADD CONSTRAINT reviews_no_self_review CHECK ((reviewer_id <> reviewee_id)) NOT VALID;
 ALTER TABLE reviews ADD CONSTRAINT reviews_body_length CHECK (((body IS NULL) OR (char_length(body) <= 2000)));
+ALTER TABLE reviews ADD CONSTRAINT reviews_reply_length CHECK (((reply_body IS NULL) OR (char_length(reply_body) <= 2000)));
 ALTER TABLE reviews ADD CONSTRAINT reviews_rating_range CHECK (((rating >= 1) AND (rating <= 5))) NOT VALID;
 ALTER TABLE reviews ADD CONSTRAINT reviews_rating_check CHECK (((rating >= 1) AND (rating <= 5)));
 ALTER TABLE stay_requests ADD CONSTRAINT stay_requests_message_length CHECK (((message IS NULL) OR (char_length(message) <= 2000)));
@@ -467,7 +470,45 @@ BEGIN
       '[[:space:]]{2,}', ' ', 'g'));
     IF NEW.body = '' THEN NEW.body := NULL; END IF;
   END IF;
+  -- A host's public reply gets the same coordinate scrub as the review body.
+  IF NEW.reply_body IS NOT NULL THEN
+    NEW.reply_body := btrim(regexp_replace(
+      regexp_replace(NEW.reply_body,
+        '[0-9]{1,3}\.[0-9]{3,}[[:space:],;]+[0-9]{1,3}\.[0-9]{3,}', '', 'g'),
+      '[[:space:]]{2,}', ' ', 'g'));
+    IF NEW.reply_body = '' THEN NEW.reply_body := NULL; END IF;
+  END IF;
   RETURN NEW;
+END;
+$function$
+;
+
+-- A reviewed person (the reviewee) may post ONE public reply per review. Goes through a
+-- SECURITY DEFINER RPC because reviews has no UPDATE policy — the function pins
+-- auth.uid() = reviewee_id, and the strip_review_coords trigger scrubs coords on write.
+CREATE OR REPLACE FUNCTION public.set_review_reply(p_review_id uuid, p_reply text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_reviewee uuid;
+  v_clean text;
+BEGIN
+  SELECT reviewee_id INTO v_reviewee FROM reviews WHERE id = p_review_id;
+  IF v_reviewee IS NULL THEN
+    RAISE EXCEPTION 'Review not found';
+  END IF;
+  IF auth.uid() IS DISTINCT FROM v_reviewee THEN
+    RAISE EXCEPTION 'Only the reviewed person may reply to their review';
+  END IF;
+  v_clean := btrim(coalesce(p_reply, ''));
+  IF v_clean = '' THEN
+    UPDATE reviews SET reply_body = NULL, reply_created_at = NULL WHERE id = p_review_id;
+  ELSE
+    UPDATE reviews SET reply_body = left(v_clean, 2000), reply_created_at = now() WHERE id = p_review_id;
+  END IF;
 END;
 $function$
 ;
