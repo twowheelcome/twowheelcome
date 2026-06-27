@@ -82,6 +82,20 @@ function toggle(arr: string[], value: string): string[] {
   return arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value]
 }
 
+// Light guard on the PUBLIC description: cut obvious contact leaks (GPS coordinate
+// pairs, emails, phone numbers) before saving — the precise meeting point belongs in
+// chat after accepting. Addresses-in-words are not detectable, hence the warning copy.
+function stripContacts(text: string): string {
+  let t = (text || '')
+    // GPS coordinate pairs (e.g. "50.0871, 14.4210")
+    .replace(/[0-9]{1,3}\.[0-9]{3,}[\s,;]+[0-9]{1,3}\.[0-9]{3,}/g, '')
+    // emails
+    .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, '')
+  // phone-like runs (7+ digits, optional +, spaces/dashes/parens)
+  t = t.replace(/\+?\d[\d\s().-]{5,}\d/g, m => (m.replace(/\D/g, '').length >= 7 ? '' : m))
+  return t.replace(/\s{2,}/g, ' ').trim()
+}
+
 
 export default function BecomeHostScreen() {
   const C = useTheme()
@@ -288,7 +302,7 @@ export default function BecomeHostScreen() {
           max_guests: l.maxGuests,
           pricings: l.pricings,
           pricing: l.pricings[0] || 'free',
-          notes: l.notes.trim(),
+          notes: stripContacts(l.notes),
           photos: l.photos.slice(0, MAX_LISTING_PHOTOS),
           // Price only applies to a Paid listing; otherwise stored as null.
           price_amount: l.pricings.includes('fixed') && l.priceAmount.trim() !== '' ? Number(l.priceAmount) : null,
@@ -515,7 +529,7 @@ export default function BecomeHostScreen() {
             numberOfLines={4}
             maxLength={800}
           />
-          <Text style={styles.privateNote}>👀 Public — riders see this on your listing before they knock. Do NOT put your exact address or contact here; the precise meeting point is shared privately in chat only after you accept.</Text>
+          <Text style={styles.privateNote}>👀 Public — riders see this before they knock. Do not include your exact address, gate code, phone, email, social handle or GPS coordinates. Share the meeting point only in chat after you accept.</Text>
         </View>
       ))}
 
