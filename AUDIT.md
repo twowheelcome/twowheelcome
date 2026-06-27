@@ -54,17 +54,22 @@
 > See dated sections below for history.
 >
 > **External-audit launch blockers (2026-06-27).**
-> 1. **Migration coherence.** Supabase applies migrations by FILENAME order, not authoring
->    order, so alphabetically-later but older migrations clobbered newer state on a clean
->    apply (host_locations_public view losing notes/photos/price cols; create_knock/validate/
->    cascade reverting; per-guest overlap constraint returning; request-photos re-opening),
->    and harden_rls_view_and_withdraw REVOKEd the view before it's created (apply crash).
->    Fixed: guarded that REVOKE (IF EXISTS) and added zzzz_canonical_reconcile.sql (sorts last)
->    that re-asserts the production-canonical view/functions/triggers/policies/constraints/
->    storage. Applied to live = no-op (idempotent). **Caveat:** the migrations folder does NOT
->    create the base tables (profiles/stay_requests/reviews/bikes/host_profiles were made in
->    the dashboard), so a true from-zero deploy still needs a full schema baseline —
->    Petr should run `supabase db dump` (needs DB creds) to capture one before launch.
+> 1. **Migration coherence — RESOLVED via squash to a baseline (2026-06-27).** The folder was
+>    an unordered, incomplete patch history (Supabase applies by filename order, not authoring
+>    order, so older alphabetically-later files clobbered newer state; and the base tables
+>    profiles/stay_requests/reviews/bikes/host_profiles were never created in any migration —
+>    they were made in the dashboard, so a from-zero apply would crash immediately). Fixed by
+>    squashing: reconstructed the FULL public schema + storage from the live DB (read-only, via
+>    pg_catalog: 10 tables, 20 FKs, all constraints/indexes, 19 RLS policies, 10 functions,
+>    6 public triggers + the on_auth_user_created auth trigger, the host_locations_public view
+>    with all 20 cols, grants incl. the push_token column revoke, 3 storage buckets + 9 object
+>    policies) into `00000000000000_baseline.sql`, plus `00000000000001_cron_review_reminder.sql`
+>    for the operational cron. All old incremental files moved to `supabase/migrations_archive/`.
+>    **Verified** by applying the baseline to a fresh in-memory Postgres (pglite) with auth/
+>    storage stubs: it applies cleanly in order and reproduces the canonical objects (view=20
+>    cols, 10 tables, 19 policies, 6 triggers, 20 FKs, withdraw policy present). A fresh
+>    `supabase db push` now reproduces production. (btree_gist exclusion constraint + extensions
+>    can't run in pglite but are standard on Supabase.)
 > 2. **delete-account** now also removes the user's public listing-photos (GDPR).
 > 3. **Deep-links** from email/push: RequestsScreen now reads ?openConv= on cold-open and
 >    opens that chat (one-shot, doesn't break return-to-list / internal nav).
@@ -76,7 +81,8 @@
 >    brand casing unified to TWOWHEELCOME (emails/push/subjects).
 >
 > **Petr must still:** fill operator/controller legal identity placeholders in Terms+Privacy;
-> generate a full schema baseline (db dump) for clean from-zero deploys; final legal review.
+> final legal review; for a fresh deploy, re-create the Vault `cron_secret` + the notify-review
+> CRON_SECRET env var (operational, can't live in a migration). (Schema baseline is now done.)
 >
 > **UX (2026-06-26): native date picker + host capacity in knock.** 'Other day' on mobile is
 > now a calendar (@react-native-community/datetimepicker, min today; web keeps its date input;
