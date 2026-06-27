@@ -605,7 +605,7 @@ export default function MapScreen() {
             <Text style={styles.sectionLabel}>MESSAGE TO HOST</Text>
             <TextInput
               style={styles.textarea}
-              placeholder="Hi! I'm riding down from Berlin and hoping for one night with my KTM 790. Is your spot free? 🙏"
+              placeholder="Tip: tell the host where you're riding from, how long you'd like to stay, and a little about your bike. A personal note gets far more yeses than 'Hey, can I stay?'"
               placeholderTextColor={C.placeholder}
               value={message}
               onChangeText={setMessage}
