@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator
 import { useLocalSearchParams, router } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
+import { FONT } from '../../lib/theme'
 import { SafetyBlock } from '../../components/SafetyBlock'
 import { ContributionBadge } from '../../components/ContributionBadge'
 import { ReportButton } from '../../components/ReportButton'
@@ -371,7 +372,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   rating:       { color: C.accent, fontSize: 14, fontWeight: '700' },
   meta:         { color: C.textMuted, fontSize: 13 },
 
-  bio:          { color: C.text, fontSize: 15, lineHeight: 23 },
+  bio:          { color: C.text, fontSize: 15, lineHeight: 23, fontFamily: FONT.body },
   priceHint:    { color: C.textDim, fontSize: 12, lineHeight: 17, marginTop: 4 },
 
   joinBanner:        { backgroundColor: C.accentSoft, borderColor: C.accentBorder, borderWidth: 1, borderRadius: 22, padding: 18, gap: 10 },

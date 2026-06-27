@@ -1,5 +1,13 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Listing notes/description font consistency (2026-06-27).** The public description (`notes`)
+> read as a different font to Petr. Audited every place it renders — HostOffer (`value`), host
+> profile ("About this place"/bio = `bio`), the chat request card (`factValue`/`factNotes`), and
+> the become-host editor (`textarea`): none had italic/serif/custom fontFamily — they relied on the
+> implicit platform default. Pinned the description/notes display styles explicitly to the app body
+> font token (`FONT.body` = System) so they're guaranteed to match the rest of the body text and
+> can't drift. No italic/serif anywhere on notes.
+
 > **Review form didn't show in chat (launch blocker, fixed 2026-06-27).** From History →
 > "leave a review" the right chat opened but the review card never appeared. Cause: the in-chat
 > reviewable-stays list was derived ONLY from messages carrying a `request_id` (the embedded

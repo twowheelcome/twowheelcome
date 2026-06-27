@@ -17,7 +17,7 @@ import { RequestPhoto } from '../../components/RequestPhoto'
 import { SafetyIcon } from '../../components/SafetyIcon'
 import { ReportButton } from '../../components/ReportButton'
 import { bestSafety } from '../../components/SafetyBlock'
-import { SAFETY } from '../../lib/theme'
+import { SAFETY, FONT } from '../../lib/theme'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -472,7 +472,7 @@ function makeRc(C: ThemeColors) { return StyleSheet.create({
   facts: { gap: 11, paddingVertical: 2 },
   fact: { flexDirection: 'row', alignItems: 'flex-start', gap: 11 },
   factIcon: { marginTop: 2, width: 18 },
-  factValue: { flex: 1, color: C.text, fontSize: 14, lineHeight: 20 },
+  factValue: { flex: 1, color: C.text, fontSize: 14, lineHeight: 20, fontFamily: FONT.body },
   factNotes: { color: C.textMuted, fontSize: 13, lineHeight: 19 },
   mapBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start',

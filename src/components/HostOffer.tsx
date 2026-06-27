@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
+import { FONT } from '../lib/theme'
 import { ListingGallery } from './ListingGallery'
 import { ContributionBadge } from './ContributionBadge'
 
@@ -84,7 +85,7 @@ function makeStyles(C: ThemeColors) {
     title: { color: C.textMuted, fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
     row: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
     icon: { fontSize: 15, width: 20, textAlign: 'center' },
-    value: { flex: 1, color: C.text, fontSize: 14, lineHeight: 20 },
+    value: { flex: 1, color: C.text, fontSize: 14, lineHeight: 20, fontFamily: FONT.body },
     priceHint: { color: C.textDim, fontSize: 12, lineHeight: 17, marginTop: -4 },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
     chip: { borderRadius: 100, borderWidth: 1, borderColor: C.border, backgroundColor: C.bg, paddingHorizontal: 9, paddingVertical: 4 },
