@@ -53,6 +53,20 @@
 > reviews per-stay, RLS matrix, rate limits, atomic delete, private-photo signing.
 > See dated sections below for history.
 >
+> **Pre-launch pass (2026-06-26).** (A) Rider/host walkthrough — flows are solid (map has
+> load-error+retry / empty states, knock validates, chat coordinate-send tray, reviews
+> reachable). Fixed: the Paid price now also shows in the knock form (not only the host
+> detail). Proposals (not changed): native 'Other day' date entry is a manual YYYY-MM-DD field
+> (add a native date picker); the 'Min. number of riders' filter is semi-orphaned after the
+> per-request rider count was removed (keep or drop?). (B) Bulletproof re-run — all green
+> live: full cross-user RLS matrix (anon + foreign can't read/write anything private; public
+> map/profiles/reviews/listing-photos read works; request-photos private), push_token hidden,
+> knock/accept/cascade/withdraw, host-bed double-book blocked, currency CHECK, coord strip.
+> Nothing broken, no fixes needed. (C) Legal — strengthened liability disclaimer in Terms +
+> Privacy (intermediary only, no liability, use at own risk, no vetting, indemnity);
+> operator/controller legal identity left as [PLACEHOLDERS] for Petr to fill before launch;
+> final legal review recommended.
+>
 > **Cleanup (2026-06-26): removed personal 'bike model' field.** profiles.bike_model was
 > editable on the own profile and shown only on the public /host/<id> profile (the map even
 > selected it unused). Removed from the own-profile editor, public profile (select + display),
