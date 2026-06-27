@@ -53,6 +53,12 @@
 > reviews per-stay, RLS matrix, rate limits, atomic delete, private-photo signing.
 > See dated sections below for history.
 >
+> **Cleanup (2026-06-26): removed personal 'bike model' field.** profiles.bike_model was
+> editable on the own profile and shown only on the public /host/<id> profile (the map even
+> selected it unused). Removed from the own-profile editor, public profile (select + display),
+> map select, and privacy wording. DB column kept (nullable, untouched), just unused. Distinct
+> from host_locations.vehicle_types (unchanged). tsc clean, no remaining references.
+>
 > **Privacy (2026-06-26): review location protection.** A reminder under the review text field
 > ("don't share the host's exact address/location") plus a backstop that strips obvious GPS
 > coordinate pairs (3+ decimals, e.g. '50.0875, 14.4213') from the review body — client-side on
