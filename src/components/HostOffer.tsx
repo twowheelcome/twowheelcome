@@ -9,12 +9,11 @@ const SLEEP_LABELS: Record<string, string> = { tent: 'Tent space', roof: 'Roof o
 const VEHICLE_LABELS: Record<string, string> = { moto: 'Motorcycle', car: 'Car', bicycle: 'Bicycle', van: 'Van', scooter: 'Scooter' }
 const AMENITY_ICON: Record<string, string> = {
   shower: '🚿', toilet: '🚽', kitchen: '🍳', laundry: '👕', electricity: '⚡', wifi: '📶',
-  pub_nearby: '🍺', breakfast: '☕', dinner: '🍽', local_routes: '🗺', group_ride: '🏍',
+  pub_nearby: '🍺',
 }
 const AMENITY_LABELS: Record<string, string> = {
   shower: 'Shower', toilet: 'Toilet', kitchen: 'Kitchen', laundry: 'Laundry', electricity: 'Power',
-  wifi: 'WiFi', pub_nearby: 'Pub nearby', breakfast: 'Breakfast', dinner: 'Dinner',
-  local_routes: 'Local routes', group_ride: 'Group ride',
+  wifi: 'WiFi', pub_nearby: 'Pub nearby',
 }
 
 type OfferLoc = {
@@ -30,14 +29,16 @@ type OfferLoc = {
 }
 
 function mapLabels(values: string[], labels: Record<string, string>): string {
-  return values.map(v => labels[v] || v).join(' · ')
+  // Drop values we no longer have a label for (retired amenities), no raw fallthrough.
+  return values.filter(v => labels[v]).map(v => labels[v]).join(' · ')
 }
 
 export function HostOffer({ loc }: { loc: OfferLoc }) {
   const C = useTheme()
   const s = makeStyles(C)
   const sleep = loc.sleep_types ?? []
-  const amenities = loc.amenities ?? []
+  // Only amenities we still offer (retired options in old data are dropped, not shown raw).
+  const amenities = (loc.amenities ?? []).filter(a => AMENITY_LABELS[a])
   const pricings = loc.pricings?.length ? loc.pricings : (loc.pricing ? [loc.pricing] : [])
   const vehicles = loc.vehicle_types ?? []
   const notes = loc.notes?.trim()

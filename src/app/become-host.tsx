@@ -36,10 +36,6 @@ const AMENITIES = [
   { value: 'electricity', icon: '⚡', label: 'Electricity' },
   { value: 'wifi', icon: '📶', label: 'WiFi' },
   { value: 'pub_nearby', icon: '🍺', label: 'Pub within 10 min' },
-  { value: 'breakfast', icon: '☕', label: 'Breakfast' },
-  { value: 'dinner', icon: '🍽', label: 'Dinner' },
-  { value: 'local_routes', icon: '🗺', label: 'Local routes' },
-  { value: 'group_ride', icon: '🏍', label: 'Group ride' },
 ]
 
 const PRICING = [

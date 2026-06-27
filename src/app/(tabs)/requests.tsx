@@ -128,10 +128,6 @@ const AMENITY_LABELS: Record<string, string> = {
   electricity: 'Electricity',
   wifi: 'WiFi',
   pub_nearby: 'Pub nearby',
-  breakfast: 'Breakfast',
-  dinner: 'Dinner',
-  local_routes: 'Local routes',
-  group_ride: 'Group ride',
 }
 
 const PRICING_LABELS: Record<string, string> = {
@@ -255,7 +251,8 @@ function parseExactPointMessage(body: string | null): ExactPointSummary | null {
 
 function labelList(values: string[] | null | undefined, labels: Record<string, string>, fallback?: string | null): string {
   const source = values?.length ? values : (fallback ? [fallback] : [])
-  return source.map(v => labels[v] || v).join(' · ')
+  // Only render values we still have a label for — silently drops retired options.
+  return source.filter(v => labels[v]).map(v => labels[v]).join(' · ')
 }
 
 function summarizeLocation(loc: Partial<RequestLocation> | null | undefined): string[] {

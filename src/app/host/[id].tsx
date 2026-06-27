@@ -13,13 +13,11 @@ import { UserChip } from '../../components/UserChip'
 
 const AMENITY_ICONS: Record<string, string> = {
   shower: '🚿', toilet: '🚽', kitchen: '🍳', laundry: '👕',
-  electricity: '⚡', wifi: '📶', pub_nearby: '🍺', breakfast: '☕',
-  dinner: '🍽', local_routes: '🗺', group_ride: '🏍',
+  electricity: '⚡', wifi: '📶', pub_nearby: '🍺',
 }
 const AMENITY_LABELS: Record<string, string> = {
   shower: 'Shower', toilet: 'Toilet', kitchen: 'Kitchen', laundry: 'Laundry',
-  electricity: 'Power', wifi: 'WiFi', pub_nearby: 'Pub nearby', breakfast: 'Breakfast',
-  dinner: 'Dinner', local_routes: 'Local routes', group_ride: 'Group ride',
+  electricity: 'Power', wifi: 'WiFi', pub_nearby: 'Pub nearby',
 }
 const SLEEP_LABELS: Record<string, string> = {
   tent: '⛺ Tent', roof: '🏠 Roof over head', room: '🛏 Private room',
@@ -243,18 +241,18 @@ export default function PublicHostProfile() {
         )}
 
         {/* Amenities */}
-        {location?.amenities?.length > 0 && (
+        {(location?.amenities as string[] | undefined)?.filter(a => AMENITY_LABELS[a]).length ? (
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Amenities</Text>
             <View style={styles.chips}>
-              {(location.amenities as string[]).map((a: string) => (
+              {(location.amenities as string[]).filter(a => AMENITY_LABELS[a]).map((a: string) => (
                 <View key={a} style={styles.chip}>
-                  <Text style={styles.chipText}>{AMENITY_ICONS[a] || '•'} {AMENITY_LABELS[a] || a}</Text>
+                  <Text style={styles.chipText}>{AMENITY_ICONS[a]} {AMENITY_LABELS[a]}</Text>
                 </View>
               ))}
             </View>
           </View>
-        )}
+        ) : null}
 
         {/* What this host wants in return (incl. the amount for a Paid listing) */}
         {location && pricingText(location) ? (

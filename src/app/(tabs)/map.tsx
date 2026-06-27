@@ -752,10 +752,6 @@ export default function MapScreen() {
                   { value: 'electricity', icon: '⚡', label: 'Electricity' },
                   { value: 'wifi', icon: '📶', label: 'WiFi' },
                   { value: 'pub_nearby', icon: '🍺', label: 'Pub nearby' },
-                  { value: 'breakfast', icon: '☕', label: 'Breakfast' },
-                  { value: 'dinner', icon: '🍽', label: 'Dinner' },
-                  { value: 'local_routes', icon: '🗺', label: 'Local routes' },
-                  { value: 'group_ride', icon: '🏍', label: 'Group ride' },
                 ] as const).map(o => {
                   const on = filterAmenities.includes(o.value)
                   return (
@@ -1034,15 +1030,17 @@ export default function MapScreen() {
                       🛏 {(host.sleep_types as string[]).map(s => ({ tent: 'Tent', roof: 'Roof over head', room: 'Private room' }[s] || s)).join(' · ')}
                     </Text>
                   )}
-                  {host.amenities?.length > 0 && (
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-                      {(host.amenities as string[]).map(a => {
-                        const icons: Record<string, string> = { shower: '🚿', toilet: '🚽', kitchen: '🍳', laundry: '👕', electricity: '⚡', wifi: '📶', pub_nearby: '🍺', breakfast: '☕', dinner: '🍽', local_routes: '🗺', group_ride: '🏍' }
-                        const labels: Record<string, string> = { shower: 'Shower', toilet: 'Toilet', kitchen: 'Kitchen', laundry: 'Laundry', electricity: 'Power', wifi: 'WiFi', pub_nearby: 'Pub nearby', breakfast: 'Breakfast', dinner: 'Dinner', local_routes: 'Local routes', group_ride: 'Group ride' }
-                        return <Text key={a} style={styles.amenityTag}>{icons[a] || '•'} {labels[a] || a}</Text>
-                      })}
-                    </View>
-                  )}
+                  {(() => {
+                    const icons: Record<string, string> = { shower: '🚿', toilet: '🚽', kitchen: '🍳', laundry: '👕', electricity: '⚡', wifi: '📶', pub_nearby: '🍺' }
+                    const labels: Record<string, string> = { shower: 'Shower', toilet: 'Toilet', kitchen: 'Kitchen', laundry: 'Laundry', electricity: 'Power', wifi: 'WiFi', pub_nearby: 'Pub nearby' }
+                    const shown = (host.amenities as string[] | undefined)?.filter(a => labels[a]) ?? []
+                    if (!shown.length) return null
+                    return (
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                        {shown.map(a => <Text key={a} style={styles.amenityTag}>{icons[a]} {labels[a]}</Text>)}
+                      </View>
+                    )
+                  })()}
                   {host.last_review && (
                     <View style={styles.lastReview}>
                       <Text style={styles.lastReviewStars}>{'★'.repeat(host.last_review.rating)}{'☆'.repeat(5 - host.last_review.rating)}</Text>
