@@ -877,12 +877,13 @@ export default function MapScreen() {
 
               {selected.location_lat != null && selected.location_lng != null && (
                 <TouchableOpacity
-                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: C.accentSoft, borderWidth: 1, borderColor: C.accentBorder, borderRadius: 100, paddingVertical: 11 }}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 6 }}
                   onPress={() => openApproxNavigation(selected.location_lat, selected.location_lng)}
                   accessibilityRole="button"
+                  hitSlop={8}
                 >
-                  <Text style={{ fontSize: 14 }}>🧭</Text>
-                  <Text style={{ color: C.accent, fontSize: 13, fontWeight: '800' }}>Navigate to approximate area</Text>
+                  <Text style={{ fontSize: 13 }}>🧭</Text>
+                  <Text style={{ color: C.textMuted, fontSize: 13, fontWeight: '600' }}>Navigate to approximate area</Text>
                 </TouchableOpacity>
               )}
 

@@ -1,5 +1,17 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Safety clarity + cluster colour + navigate de-emphasis (2026-06-27).**
+> - **SafetyBlock = one clear level.** Headlines the best parking level (colour + icon + rank);
+>   any other parking shows as muted neutral chips under "Also here:" instead of equal-weight
+>   coloured chips (no more red "Street parking" warning next to a green "Locked garage"). Applies
+>   everywhere SafetyBlock renders (host sheet, request, host profile, My Places).
+> - **Map clusters coloured by best safety.** Each marker carries its safety level; the cluster
+>   bubble colours itself by the best level among its children (green→red), so "green = safe" reads
+>   when zoomed out. Was uniformly terracotta.
+> - **"Navigate to approximate area" de-emphasised.** On the host sheet it's now a quiet secondary
+>   text-link (muted, no border/fill) so "Knock on the door" is the single primary CTA. Behaviour
+>   unchanged.
+>
 > **Chat-remove rules + swipe; single-place Save label (2026-06-27).**
 > - **Chat removal less strict.** A chat is now removable unless it has an UPCOMING/active stay —
 >   i.e. only a PENDING knock or an ACCEPTED stay whose departure is still in the future blocks it.
