@@ -1,5 +1,17 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Post-E2E follow-ups (2026-06-27).**
+> - **delete-account re-verified live** on a fresh pre-confirmed throwaway account: edge function
+>   returned 200, then auth.users/profiles/reports/host_locations all 0 for that id — clean, no
+>   orphans, throwaway removed. (The 9061 review/reply test accounts were left intact as evidence.)
+> - **Report email confirmed sending:** the `report` function now checks the Resend response and
+>   returns `emailed` + logs non-2xx (no more silent email failure). Live test → `{ok:true,
+>   emailed:true}`, i.e. Resend accepted the send to privacy@twowheelcome.com (inbox delivery is
+>   Petr's to confirm). DB insert already verified earlier.
+> - **Delete-account copy** clarified: "This permanently deletes your profile, listings, requests,
+>   your messages and reviews. Shared conversations may remain for the other person without your
+>   profile. This can't be undone."
+
 > **App-loaded body font (Inter), 2026-06-27.** Body text used to fall back to each device's
 > system sans (inconsistent across phones). Added `@expo-google-fonts/inter`, loaded in `_layout`
 > alongside Oswald (splash waits for all; falls back to system if loading fails). `FONT.body` is now

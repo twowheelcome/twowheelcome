@@ -78,9 +78,10 @@ Deno.serve(async req => {
   }
 
   // Notify the admin inbox (DSA point of contact). Non-fatal if the email fails — the
-  // report is already stored.
+  // report is already stored — but surface the Resend status so a silent failure is visible.
+  let emailed = false
   try {
-    await fetch('https://api.resend.com/emails', {
+    const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${RESEND_KEY}` },
       body: JSON.stringify({
@@ -96,9 +97,11 @@ Deno.serve(async req => {
         </div>`,
       }),
     })
+    emailed = res.ok
+    if (!res.ok) console.error('report email non-2xx:', res.status, await res.text())
   } catch (e) {
     console.error('report email error:', e)
   }
 
-  return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } })
+  return new Response(JSON.stringify({ ok: true, emailed }), { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } })
 })

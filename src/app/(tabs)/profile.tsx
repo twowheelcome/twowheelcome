@@ -487,7 +487,7 @@ export default function ProfileScreen() {
         <View style={styles.deleteSheet}>
           <Text style={styles.deleteSheetTitle}>Delete account?</Text>
           <Text style={styles.deleteSheetBody}>
-            This will permanently delete your profile, listings, all sent requests, messages and reviews. This cannot be undone.
+            This permanently deletes your profile, listings, requests, your messages and reviews. Shared conversations may remain for the other person without your profile. This can&apos;t be undone.
           </Text>
           {deleteError ? (
             <Text style={styles.deleteSheetError}>{deleteError}</Text>
