@@ -226,7 +226,7 @@ export default function AuthScreen() {
         <Text style={styles.wordmark}>
           <Text style={styles.wordmarkAccent}>TWO</Text>
           WHEEL
-          <Text style={styles.wordmarkAccent}>COME</Text>
+          <Text style={styles.wordmarkGreen}>COME</Text>
         </Text>
         <Text style={styles.tagline}>Safe night for your bike and you.</Text>
         <Text style={styles.taglineSub}>From riders to riders.</Text>
@@ -353,14 +353,18 @@ function makeStyles(C: ThemeColors) {
     },
     wordmark: {
       color: C.text,
-      fontSize: 31,
-      fontWeight: '900',
-      letterSpacing: 0,
-      lineHeight: 36,
+      fontFamily: FONT.headBold,
+      fontSize: 32,
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+      lineHeight: 38,
       marginBottom: 8,
     },
     wordmarkAccent: {
       color: C.accent,
+    },
+    wordmarkGreen: {
+      color: C.green,
     },
     tagline: {
       color: C.text, fontSize: 18, fontWeight: '700', textAlign: 'center', lineHeight: 25,
