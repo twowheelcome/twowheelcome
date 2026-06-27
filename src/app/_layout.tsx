@@ -5,6 +5,7 @@ import * as Notifications from 'expo-notifications'
 import { useFonts, Oswald_500Medium, Oswald_600SemiBold, Oswald_700Bold } from '@expo-google-fonts/oswald'
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from '@expo-google-fonts/inter'
 import { ThemeProvider, useTheme } from '../lib/ThemeContext'
+import { LanguageProvider } from '../lib/i18n'
 import { supabase } from '../lib/supabase'
 import { registerPushToken } from '../lib/pushNotifications'
 
@@ -83,7 +84,9 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      <AppStack />
+      <LanguageProvider>
+        <AppStack />
+      </LanguageProvider>
     </ThemeProvider>
   )
 }
