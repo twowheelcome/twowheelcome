@@ -101,6 +101,7 @@ export default function AuthScreen() {
   const [onboardingSeen, setOnboardingSeen] = useState<boolean | null>(null)
   const [authError, setAuthError] = useState('')
   const [authSuccess, setAuthSuccess] = useState('')
+  const [canResend, setCanResend] = useState(false)   // show "Resend confirmation email"
   const { signup } = useLocalSearchParams<{ signup?: string }>()
   const [mode, setMode] = useState<'login' | 'register'>(signup ? 'register' : 'login')
 
@@ -116,18 +117,39 @@ export default function AuthScreen() {
   }, [session])
 
   async function handleLogin() {
-    setAuthError(''); setAuthSuccess('')
+    setAuthError(''); setAuthSuccess(''); setCanResend(false)
     if (!isValidEmail(email)) { setAuthError('Please enter a valid email address.'); return }
     if (!password) { setAuthError('Please enter your password.'); return }
     setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
     if (error) {
       if (error.message) console.warn('login error:', error.message)
+      const notConfirmed = /email not confirmed/i.test(error.message)
+      if (notConfirmed) setCanResend(true)
       setAuthError(/invalid login credentials/i.test(error.message)
         ? 'Wrong email or password. Please check and try again.'
-        : /email not confirmed/i.test(error.message)
+        : notConfirmed
         ? 'Please confirm your email first — check your inbox for the link.'
         : 'Could not sign in right now. Please try again.')
+    }
+    setLoading(false)
+  }
+
+  async function handleResendConfirmation() {
+    setAuthError(''); setAuthSuccess('')
+    if (!isValidEmail(email)) { setAuthError('Enter your email above first, then resend.'); return }
+    setLoading(true)
+    const emailRedirectTo = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : undefined
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email.trim(),
+      ...(emailRedirectTo ? { options: { emailRedirectTo } } : {}),
+    })
+    if (error) {
+      if (error.message) console.warn('resend confirmation error:', error.message)
+      setAuthError('Could not resend the confirmation email right now. Please try again in a moment.')
+    } else {
+      setAuthSuccess('Confirmation email sent. Check your inbox (and your spam folder).')
     }
     setLoading(false)
   }
@@ -156,6 +178,7 @@ export default function AuthScreen() {
         await supabase.from('profiles').upsert({ id: data.user.id, full_name: name })
       }
       setAuthSuccess('Done! Check your email to confirm your account.')
+      setCanResend(true)
     }
     setLoading(false)
   }
@@ -278,6 +301,12 @@ export default function AuthScreen() {
           <View style={styles.msgSuccess}>
             <Text style={styles.msgSuccessText}>{authSuccess}</Text>
           </View>
+        ) : null}
+
+        {canResend ? (
+          <TouchableOpacity style={styles.forgotWrap} onPress={handleResendConfirmation} disabled={loading}>
+            <Text style={styles.forgotText}>Didn’t get the email? Resend confirmation</Text>
+          </TouchableOpacity>
         ) : null}
 
         {mode === 'login' && (
