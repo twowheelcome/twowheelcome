@@ -52,6 +52,7 @@ export default function ReviewsScreen() {
     setLoading(false)
   }, [userParam])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load() }, [load])
 
   const heading = isSelf ? 'Your reviews' : `${name || 'Rider'}'s reviews`

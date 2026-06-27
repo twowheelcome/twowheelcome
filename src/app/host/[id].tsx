@@ -45,7 +45,6 @@ export default function PublicHostProfile() {
   const [location, setLocation] = useState<any>(null)
   const [avgRating, setAvgRating] = useState<number | null>(null)
   const [reviewCount, setReviewCount] = useState(0)
-  const [reviews, setReviews] = useState<any[]>([])
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
 
   useEffect(() => {
@@ -85,16 +84,10 @@ export default function PublicHostProfile() {
     setLocation(loc)
 
     if (revs?.length) {
-      const reviewerIds = [...new Set(revs.map((r: any) => r.reviewer_id).filter(Boolean))]
-      const { data: reviewerProfiles } = await supabase
-        .from('profiles').select('id, full_name').in('id', reviewerIds)
-      const reviewerMap: Record<string, string> = {}
-      reviewerProfiles?.forEach((p: any) => { reviewerMap[p.id] = p.full_name })
-
+      // The full list lives on the /reviews screen now; here we only need the summary.
       const sum = revs.reduce((acc: number, r: any) => acc + r.rating, 0)
       setAvgRating(sum / revs.length)
       setReviewCount(revs.length)
-      setReviews(revs.slice(0, 5).map((r: any) => ({ ...r, reviewer_name: reviewerMap[r.reviewer_id] || null })))
     }
 
     setLoading(false)

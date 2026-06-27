@@ -1385,7 +1385,7 @@ export default function RequestsScreen() {
 	                        multiline
 	                        maxLength={500}
 	                      />
-	                      <Text style={styles.reviewPrivacyHint}>🔒 Please don't share the host's exact address or location — keep it private.</Text>
+	                      <Text style={styles.reviewPrivacyHint}>🔒 Keep exact addresses and coordinates out of reviews.</Text>
 	                      <TouchableOpacity
 	                        style={[styles.reviewSubmit, (!stars || submittingStayId === stay.id) && styles.reviewSubmitDisabled]}
 	                        onPress={() => submitReview(stay.id)}

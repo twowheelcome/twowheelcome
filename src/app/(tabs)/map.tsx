@@ -261,7 +261,6 @@ export default function MapScreen() {
       beginRequest(host.id)
     })
     // beginRequest is intentionally excluded; this runs only on a new knock target.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hosts, knockHost, knockLocation])
 
   function beginRequest(_targetLocationId?: string) {

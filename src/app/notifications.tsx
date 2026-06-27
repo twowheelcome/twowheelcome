@@ -99,7 +99,7 @@ export default function NotificationsScreen() {
 
         <Text style={styles.note}>
           Account emails — confirming your email, resetting your password and email changes —
-          are always sent for your account security and aren't affected by these switches.
+          are always sent for your account security and are not affected by these switches.
         </Text>
       </ScrollView>
     </View>

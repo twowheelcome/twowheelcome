@@ -40,9 +40,11 @@ export function RequestPhoto({ path, style }: { path: string; style: StyleProp<I
 
   useEffect(() => {
     let active = true
+    // Reset when the photo path changes, then resolve a fresh signed URL.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUri(null)
     setFailed(false)
-    sign(path).then(u => { if (!active) return; u ? setUri(u) : setFailed(true) })
+    sign(path).then(u => { if (!active) return; if (u) setUri(u); else setFailed(true) })
     return () => { active = false }
   }, [path])
 
@@ -51,7 +53,7 @@ export function RequestPhoto({ path, style }: { path: string; style: StyleProp<I
     setFullUri(null)
     setFullFailed(false)
     // Fresh signed URL for the fullscreen view (the preview's may be near expiry).
-    sign(path).then(u => { u ? setFullUri(u) : setFullFailed(true) })
+    sign(path).then(u => { if (u) setFullUri(u); else setFullFailed(true) })
   }
 
   if (failed) {
