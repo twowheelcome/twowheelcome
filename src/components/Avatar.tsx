@@ -75,7 +75,7 @@ function makeStyles(C: ThemeColors) {
     img: { backgroundColor: C.elevated },
     backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center' },
     scroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
-    close: { position: 'absolute', top: 44, right: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+    close: { position: 'absolute', top: 44, left: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
     closeText: { color: '#fff', fontSize: 20, fontWeight: '900' },
   })
 }

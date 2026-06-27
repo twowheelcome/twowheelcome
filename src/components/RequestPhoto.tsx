@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center', gap: 8 },
   fullMsg: { color: '#ddd', fontSize: 15 },
   closeBtn: {
-    position: 'absolute', top: 44, right: 20,
+    position: 'absolute', top: 44, left: 20,
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center',
   },

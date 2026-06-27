@@ -627,7 +627,7 @@ export default function MapScreen() {
             <Text style={styles.sectionLabel}>MESSAGE TO HOST</Text>
             <TextInput
               style={styles.textarea}
-              placeholder="Tip: tell the host where you're riding from, how long you'd like to stay, and a little about your bike. A personal note gets far more yeses than 'Hey, can I stay?'"
+              placeholder="Hi! Where are you riding from, how long, and what's your bike?"
               placeholderTextColor={C.placeholder}
               value={message}
               onChangeText={setMessage}
@@ -832,20 +832,23 @@ export default function MapScreen() {
           const parkings: string[] = selected.parkings?.length ? selected.parkings : (selected.parking ? [selected.parking] : [])
           return (
             <View style={{ backgroundColor: C.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 20, maxHeight: '88%', borderTopWidth: 1, borderTopColor: C.border }}>
-              {/* Drag handle */}
-              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: 'center', marginBottom: 8 }} />
-
-              {/* Close — return to the map (the backdrop tap can be hard to reach when the
-                  sheet is tall on a phone). */}
-              <TouchableOpacity
-                onPress={() => setShowHostProfile(false)}
-                style={{ position: 'absolute', top: 14, right: 14, width: 32, height: 32, borderRadius: 16, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center', zIndex: 2 }}
-                accessibilityRole="button"
-                accessibilityLabel="Close"
-                hitSlop={8}
-              >
-                <Text style={{ color: C.text, fontSize: 15, fontWeight: '800' }}>✕</Text>
-              </TouchableOpacity>
+              {/* Header row: back-style close on the LEFT (consistent with every other
+                  screen), drag handle centred. */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, marginBottom: 6 }}>
+                <TouchableOpacity
+                  onPress={() => setShowHostProfile(false)}
+                  style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close"
+                  hitSlop={8}
+                >
+                  <Text style={{ color: C.accent, fontSize: 24, fontWeight: '800', lineHeight: 26 }}>←</Text>
+                </TouchableOpacity>
+                <View style={{ flex: 1, alignItems: 'center' }}>
+                  <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border }} />
+                </View>
+                <View style={{ width: 38 }} />
+              </View>
 
               <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 16, gap: 14 }} showsVerticalScrollIndicator>
               {/* Avatar + info */}

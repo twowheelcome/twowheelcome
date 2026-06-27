@@ -1,5 +1,16 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Shorter knock placeholder + dismiss-on-left consistency (2026-06-27).**
+> - **Knock placeholder** trimmed from a long multi-sentence tip to one short line
+>   ("Hi! Where are you riding from, how long, and what's your bike?") so it no longer overflows.
+> - **Dismiss moved to the LEFT** for consistency with every screen's back button:
+>   - **Host detail sheet** (map) — the top-right ✕ became a left, back-style (←) control in a
+>     header row with the drag handle centred.
+>   - **Fullscreen viewers** — ListingGallery, Avatar and RequestPhoto close buttons moved from
+>     top-right to top-left.
+>   - Left as-is (not back/close of a view): "✕ Reset" filter action, "✕ Decline" action, inline
+>     error-banner dismiss, search-clear ✕, and the filters modal's "Done" confirm.
+>
 > **Safety clarity + cluster colour + navigate de-emphasis (2026-06-27).**
 > - **SafetyBlock = one clear level.** Headlines the best parking level (colour + icon + rank);
 >   any other parking shows as muted neutral chips under "Also here:" instead of equal-weight
