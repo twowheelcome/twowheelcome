@@ -16,6 +16,7 @@ import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { RequestPhoto } from '../../components/RequestPhoto'
 import { SafetyIcon } from '../../components/SafetyIcon'
 import { ReportButton } from '../../components/ReportButton'
+import { Avatar } from '../../components/Avatar'
 import { bestSafety } from '../../components/SafetyBlock'
 import { SAFETY, FONT } from '../../lib/theme'
 
@@ -136,6 +137,15 @@ const PRICING_LABELS: Record<string, string> = {
   tip: 'Tip welcome',
   fixed: 'Agreed contribution',
 }
+
+// Review hero bits
+const STAR_LABELS: Record<number, string> = { 1: 'Rough night', 2: 'Okay', 3: 'Good', 4: 'Great', 5: 'Family now' }
+const SAFE_OPTS = [
+  { value: 'secure', icon: '🔒', label: 'Yes, secure' },
+  { value: 'soso',   icon: '😐', label: 'So-so' },
+  { value: 'not',    icon: '⚠️', label: 'Not really' },
+] as const
+const REVIEW_TAGS = ['Secure parking', 'Warm welcome', 'Clean spot', 'Great tips', 'Quiet night', 'Good tools'] as const
 
 // Same Feather icon set the request card uses, keyed by the meeting-point line label.
 const MEETING_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
@@ -521,6 +531,9 @@ export default function RequestsScreen() {
   const [myReviewsByStay, setMyReviewsByStay] = useState<Record<string, { rating: number; body: string; created_at: string }>>({})
   const [reviewDraftStars, setReviewDraftStars] = useState<Record<string, number>>({})
   const [reviewDraftBody, setReviewDraftBody] = useState<Record<string, string>>({})
+  const [reviewDraftSafe, setReviewDraftSafe] = useState<Record<string, string>>({})   // 'secure'|'soso'|'not'
+  const [reviewDraftTags, setReviewDraftTags] = useState<Record<string, string[]>>({})
+  const [reviewDraftThanks, setReviewDraftThanks] = useState<Record<string, boolean>>({})   // optional beer gesture (no charge yet)
   const [submittingStayId, setSubmittingStayId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)   // accept/decline failure banner
   const [respondingFor, setRespondingFor] = useState<string | null>(null)
@@ -1012,7 +1025,7 @@ export default function RequestsScreen() {
       ).values()
     ).sort((a, b) => a.departure_date < b.departure_date ? -1 : a.departure_date > b.departure_date ? 1 : 0)
     setEndedStays(ended)
-    setReviewDraftStars({}); setReviewDraftBody({}); setMyReviewsByStay({})
+    setReviewDraftStars({}); setReviewDraftBody({}); setReviewDraftSafe({}); setReviewDraftTags({}); setReviewDraftThanks({}); setMyReviewsByStay({})
     if (ended.length && currentUser) {
       const { data: revs } = await supabase
         .from('reviews')
@@ -1046,12 +1059,16 @@ export default function RequestsScreen() {
     const body = stripCoords((reviewDraftBody[stayId] || '').trim())
     submittingReviewRef.current = true
     setSubmittingStayId(stayId)
+    const bikeSafe = reviewDraftSafe[stayId] || null
+    const tags = (reviewDraftTags[stayId] || [])
     const { error } = await supabase.from('reviews').insert({
       stay_request_id: stayId,
       reviewer_id: userId,
       reviewee_id: revieweeId,
       rating: stars,
       body: body || null,
+      bike_safe: bikeSafe,
+      tags: tags.length ? tags : null,
     })
     submittingReviewRef.current = false
     setSubmittingStayId(null)
@@ -1542,21 +1559,72 @@ export default function RequestsScreen() {
 	                  const isReviewingGuest = currentUser?.id === stay.host_id
 	                  const dates = `${fmtDateStr(stay.arrival_date)}–${fmtDateStr(stay.departure_date)}`
 	                  const stars = reviewDraftStars[stay.id] || 0
+	                  const safe = reviewDraftSafe[stay.id] || ''
+	                  const tags = reviewDraftTags[stay.id] || []
+	                  const firstName = (selected.other.full_name || 'them').split(' ')[0]
 	                  return (
 	                    <View key={stay.id} style={styles.reviewCard}>
-	                      <Text style={styles.reviewTitle}>
-	                        {isReviewingGuest ? '⭐ RATE THIS RIDER' : '⭐ RATE THIS STAY'} · {dates}
-	                      </Text>
-	                      <View style={styles.reviewStars}>
-	                        {[1,2,3,4,5].map(n => (
-	                          <TouchableOpacity key={n} onPress={() => setReviewDraftStars(p => ({ ...p, [stay.id]: n }))} hitSlop={8}>
-	                            <Text style={[styles.reviewStar, n <= stars && styles.reviewStarActive]}>★</Text>
-	                          </TouchableOpacity>
-	                        ))}
+	                      {/* Hero — who you're reviewing */}
+	                      <View style={styles.reviewHero}>
+	                        <Avatar url={selected.other.avatar_url} name={selected.other.full_name} size={64} />
+	                        <Text style={styles.reviewHeroName}>{isReviewingGuest ? 'How was your guest?' : 'How was your stay?'}</Text>
+	                        <Text style={styles.reviewHeroMeta}>{selected.other.full_name || 'Rider'} · {dates}</Text>
 	                      </View>
+
+	                      {/* Stars + label */}
+	                      <View style={styles.reviewStarsWrap}>
+	                        <View style={styles.reviewStars}>
+	                          {[1,2,3,4,5].map(n => (
+	                            <TouchableOpacity key={n} onPress={() => setReviewDraftStars(p => ({ ...p, [stay.id]: n }))} hitSlop={8}>
+	                              <Text style={[styles.reviewStar, n <= stars && styles.reviewStarActive]}>★</Text>
+	                            </TouchableOpacity>
+	                          ))}
+	                        </View>
+	                        <Text style={styles.reviewStarLabel}>{stars ? STAR_LABELS[stars] : 'Tap to rate'}</Text>
+	                      </View>
+
+	                      {/* Did your bike feel safe? — stay reviews only */}
+	                      {!isReviewingGuest && (
+	                        <View style={styles.reviewBlock}>
+	                          <Text style={styles.reviewSection}>Did your bike feel safe?</Text>
+	                          <View style={styles.safeRow}>
+	                            {SAFE_OPTS.map(o => {
+	                              const on = safe === o.value
+	                              return (
+	                                <TouchableOpacity key={o.value} style={[styles.safeOpt, on && styles.safeOptOn]}
+	                                  onPress={() => setReviewDraftSafe(p => ({ ...p, [stay.id]: on ? '' : o.value }))}>
+	                                  <Text style={styles.safeOptIcon}>{o.icon}</Text>
+	                                  <Text style={[styles.safeOptText, on && styles.safeOptTextOn]}>{o.label}</Text>
+	                                </TouchableOpacity>
+	                              )
+	                            })}
+	                          </View>
+	                        </View>
+	                      )}
+
+	                      {/* What stood out? — tags */}
+	                      <View style={styles.reviewBlock}>
+	                        <Text style={styles.reviewSection}>What stood out?</Text>
+	                        <View style={styles.reviewTagWrap}>
+	                          {REVIEW_TAGS.map(t => {
+	                            const sel = tags.includes(t)
+	                            return (
+	                              <TouchableOpacity key={t} style={[styles.reviewTag, sel && styles.reviewTagOn]}
+	                                onPress={() => setReviewDraftTags(p => {
+	                                  const cur = p[stay.id] || []
+	                                  return { ...p, [stay.id]: cur.includes(t) ? cur.filter(x => x !== t) : [...cur, t] }
+	                                })}>
+	                                <Text style={[styles.reviewTagText, sel && styles.reviewTagTextOn]}>{t}</Text>
+	                              </TouchableOpacity>
+	                            )
+	                          })}
+	                        </View>
+	                      </View>
+
+	                      {/* Optional words */}
 	                      <TextInput
 	                        style={styles.reviewInput}
-	                        placeholder={isReviewingGuest ? 'How was this rider? (optional)' : 'How was this stay? (optional)'}
+	                        placeholder="Anything to add? (optional)"
 	                        placeholderTextColor={C.placeholder}
 	                        value={reviewDraftBody[stay.id] || ''}
 	                        onChangeText={t => setReviewDraftBody(p => ({ ...p, [stay.id]: t }))}
@@ -1564,12 +1632,27 @@ export default function RequestsScreen() {
 	                        maxLength={500}
 	                      />
 	                      <Text style={styles.reviewPrivacyHint}>🔒 Keep exact addresses and coordinates out of reviews.</Text>
+
+	                      {/* Say thanks — optional, never required (no charge yet) */}
+	                      {!isReviewingGuest && (
+	                        <View style={styles.thanksCard}>
+	                          <Text style={styles.thanksTitle}>Say thanks to {firstName}</Text>
+	                          <Text style={styles.thanksSub}>Optional — buy them a beer, never required.</Text>
+	                          <TouchableOpacity
+	                            style={[styles.thanksChip, reviewDraftThanks[stay.id] && styles.thanksChipOn]}
+	                            onPress={() => setReviewDraftThanks(p => ({ ...p, [stay.id]: !p[stay.id] }))}
+	                          >
+	                            <Text style={[styles.thanksChipText, reviewDraftThanks[stay.id] && styles.thanksChipTextOn]}>🍺 Beer · €3</Text>
+	                          </TouchableOpacity>
+	                        </View>
+	                      )}
+
 	                      <TouchableOpacity
 	                        style={[styles.reviewSubmit, (!stars || submittingStayId === stay.id) && styles.reviewSubmitDisabled]}
 	                        onPress={() => submitReview(stay.id)}
 	                        disabled={!stars || submittingStayId === stay.id}
 	                      >
-	                        <Text style={styles.reviewSubmitText}>{submittingStayId === stay.id ? 'Submitting...' : 'SUBMIT REVIEW'}</Text>
+	                        <Text style={styles.reviewSubmitText}>{submittingStayId === stay.id ? 'Posting…' : 'POST REVIEW'}</Text>
 	                      </TouchableOpacity>
 	                    </View>
 	                  )
@@ -2229,15 +2312,40 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     padding: 16, gap: 12, marginTop: 16,
   },
   reviewTitle: { color: C.accent, fontSize: 10, fontWeight: '800', letterSpacing: 2 },
+  reviewHero: { alignItems: 'center', gap: 6, paddingBottom: 4 },
+  reviewHeroName: { color: C.text, fontSize: 19, fontFamily: FONT.headBold, letterSpacing: 0.3, marginTop: 6, textAlign: 'center' },
+  reviewHeroMeta: { color: C.textMuted, fontSize: 13, fontFamily: FONT.body, textAlign: 'center' },
+  reviewStarsWrap: { alignItems: 'center', gap: 6 },
   reviewStars: { flexDirection: 'row', gap: 8 },
-  reviewStar: { fontSize: 32, color: C.border },
+  reviewStar: { fontSize: 34, color: C.border },
   reviewStarActive: { color: C.accent },
+  reviewStarLabel: { color: C.accent, fontSize: 13, fontFamily: FONT.head, letterSpacing: 1, textTransform: 'uppercase' },
+  reviewBlock: { gap: 8 },
+  reviewSection: { color: C.textMuted, fontSize: 11, fontFamily: FONT.head, letterSpacing: 1.2, textTransform: 'uppercase' },
+  safeRow: { flexDirection: 'row', gap: 8 },
+  safeOpt: { flex: 1, alignItems: 'center', gap: 4, paddingVertical: 12, borderRadius: 16, borderWidth: 1, borderColor: C.border, backgroundColor: C.bg },
+  safeOptOn: { borderColor: C.accent, backgroundColor: C.accentSoft },
+  safeOptIcon: { fontSize: 20 },
+  safeOptText: { color: C.textMuted, fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  safeOptTextOn: { color: C.accent },
+  reviewTagWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  reviewTag: { borderRadius: 100, borderWidth: 1, borderColor: C.border, backgroundColor: C.bg, paddingHorizontal: 14, paddingVertical: 8 },
+  reviewTagOn: { borderColor: C.accent, backgroundColor: C.accentSoft },
+  reviewTagText: { color: C.textMuted, fontSize: 13, fontFamily: FONT.body },
+  reviewTagTextOn: { color: C.accent, fontWeight: '700' },
+  thanksCard: { backgroundColor: C.bg, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 14, gap: 6, alignItems: 'center' },
+  thanksTitle: { color: C.text, fontSize: 14, fontWeight: '800' },
+  thanksSub: { color: C.textDim, fontSize: 12, fontFamily: FONT.body, textAlign: 'center' },
+  thanksChip: { borderRadius: 100, borderWidth: 1.5, borderColor: C.border, paddingHorizontal: 18, paddingVertical: 9, marginTop: 2 },
+  thanksChipOn: { borderColor: C.accent, backgroundColor: C.accentSoft },
+  thanksChipText: { color: C.textMuted, fontSize: 14, fontWeight: '700' },
+  thanksChipTextOn: { color: C.accent },
   reviewInput: {
     backgroundColor: C.elevated, borderRadius: 14, padding: 12,
-    color: C.text, fontSize: 16, minHeight: 60,
+    color: C.text, fontSize: 16, minHeight: 60, fontFamily: FONT.body,
     borderWidth: 1, borderColor: C.border,
   },
-  reviewPrivacyHint: { color: C.textDim, fontSize: 12, lineHeight: 17 },
+  reviewPrivacyHint: { color: C.textDim, fontSize: 12, lineHeight: 17, fontFamily: FONT.body },
   reviewSubmit: {
     backgroundColor: C.accent, borderRadius: 100, padding: 13, alignItems: 'center',
   },

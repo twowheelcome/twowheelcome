@@ -115,7 +115,9 @@ CREATE TABLE IF NOT EXISTS reviews (
   body text,
   created_at timestamp with time zone DEFAULT now(),
   reply_body text,
-  reply_created_at timestamp with time zone
+  reply_created_at timestamp with time zone,
+  bike_safe text,
+  tags text[]
 );
 CREATE TABLE IF NOT EXISTS stay_requests (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -163,6 +165,7 @@ ALTER TABLE request_notification_events ADD CONSTRAINT request_notification_even
 ALTER TABLE reviews ADD CONSTRAINT reviews_no_self_review CHECK ((reviewer_id <> reviewee_id)) NOT VALID;
 ALTER TABLE reviews ADD CONSTRAINT reviews_body_length CHECK (((body IS NULL) OR (char_length(body) <= 2000)));
 ALTER TABLE reviews ADD CONSTRAINT reviews_reply_length CHECK (((reply_body IS NULL) OR (char_length(reply_body) <= 2000)));
+ALTER TABLE reviews ADD CONSTRAINT reviews_bike_safe_check CHECK (((bike_safe IS NULL) OR (bike_safe = ANY (ARRAY['secure'::text, 'soso'::text, 'not'::text]))));
 ALTER TABLE reviews ADD CONSTRAINT reviews_rating_range CHECK (((rating >= 1) AND (rating <= 5))) NOT VALID;
 ALTER TABLE reviews ADD CONSTRAINT reviews_rating_check CHECK (((rating >= 1) AND (rating <= 5)));
 ALTER TABLE stay_requests ADD CONSTRAINT stay_requests_message_length CHECK (((message IS NULL) OR (char_length(message) <= 2000)));
