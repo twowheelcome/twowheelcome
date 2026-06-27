@@ -367,9 +367,18 @@ BEGIN
     RAISE EXCEPTION 'Not allowed to delete another account';
   END IF;
 
+  -- Mark this as an internal cascade so the conversation immutability trigger permits
+  -- the anonymization UPDATEs below (service_role detection via JWT GUC isn't reliable).
+  PERFORM set_config('app.cascade', '1', true);
+
   -- Conversations this user is part of (to prune empties at the end).
   SELECT array_agg(id) INTO v_conv_ids
   FROM conversations WHERE user_a = p_uid OR user_b = p_uid;
+
+  -- Blocks in either direction, and this user's read receipts (added after this
+  -- function was first written).
+  DELETE FROM blocks WHERE blocker_id = p_uid OR blocked_id = p_uid;
+  DELETE FROM conversation_reads WHERE user_id = p_uid;
 
   -- Remove only this user's messages; keep the other rider's. Detach surviving
   -- messages from the user's stay_requests before those requests disappear.
@@ -527,7 +536,11 @@ DECLARE
   location_owner uuid;
 BEGIN
   IF TG_OP = 'UPDATE' THEN
-    IF coalesce(current_setting('request.jwt.claim.role', true), '') = 'service_role' THEN
+    -- service_role OR the internal cascade flag (set by delete_account_data) may rewrite
+    -- participants; the GUC for service_role isn't reliable in current PostgREST, so the
+    -- account-deletion path relies on app.cascade.
+    IF coalesce(current_setting('request.jwt.claim.role', true), '') = 'service_role'
+       OR coalesce(current_setting('app.cascade', true), '') = '1' THEN
       RETURN NEW;
     END IF;
     IF NEW.user_a IS DISTINCT FROM OLD.user_a

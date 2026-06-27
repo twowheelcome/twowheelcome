@@ -1,5 +1,21 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **🔴 Account deletion was broken (GDPR launch blocker, fixed 2026-06-27).** Codex's E2E hit
+> "Could not delete your account" (delete-account returned 500). Root cause found naostro: the RPC
+> `delete_account_data` failed at `UPDATE conversations SET user_b = NULL` — the
+> `validate_conversation_write` trigger raised "participants … are immutable" because it only
+> bypassed for `service_role` via `request.jwt.claim.role`, a GUC that isn't reliably set in current
+> PostgREST (so even the service-role edge call was blocked). Fix: `delete_account_data` now sets the
+> internal `app.cascade='1'` flag (the same bypass the other write validators honour) before the
+> anonymization, and `validate_conversation_write` honours it; the RPC also now deletes `blocks`
+> (either direction) and `conversation_reads` (added after it was first written). Applied to live +
+> baseline. The edge function already removed avatars/request-photos/listing-photos storage and its
+> CORS allowlist already covers prod + dev origins. **Verified by actually deleting the two leftover
+> E2E accounts via the edge function** (HTTP 200, ok:true) — then confirmed zero orphans across
+> auth.users, profiles, host_locations, blocks, conversation_reads, reviews, messages, stay_requests
+> and conversations.
+
+
 > **"Road & Trail" visual system (2026-06-27, Petr's design). Shipped in steps, commit each.**
 > 1. **Colours (light).** theme.ts LIGHT moved to the Road & Trail palette — warm cream
 >    backgrounds, hairline borders (#DCCFB8), terracotta accent #D9621F (primary/"road"), new
