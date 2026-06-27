@@ -54,6 +54,26 @@ function injectLeafletCSS() {
   injectCss('leaflet-markercluster-css', 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css')
 }
 
+// Same OpenStreetMap (Nominatim) geocoder the listing location picker uses, so search
+// here behaves identically. boundingbox lets us frame a whole city or a single street.
+interface PlaceResult {
+  display_name: string
+  lat: string
+  lon: string
+  boundingbox?: [string, string, string, string]   // [south, north, west, east]
+}
+
+async function searchPlace(query: string): Promise<PlaceResult[]> {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1`
+    )
+    return await res.json()
+  } catch {
+    return []
+  }
+}
+
 export default function HostMap({
   hosts,
   onHostSelect,
@@ -75,13 +95,66 @@ export default function HostMap({
   const markersRef = useRef<any[]>([])
   const circlesRef = useRef<any[]>([])
   const clusterRef = useRef<any>(null)
-  const hostsRef = useRef(hosts); hostsRef.current = hosts
+  const hostsRef = useRef(hosts)
   const satelliteRef = useRef(satellite)
   const tileLayerRef = useRef<any>(null)
   const overlayLayersRef = useRef<any[]>([])
+  // The Leaflet map lives outside React; mirror the latest props into refs so its
+  // imperative event handlers always read current values.
+  // eslint-disable-next-line react-hooks/refs
+  hostsRef.current = hosts
+  // eslint-disable-next-line react-hooks/refs
   satelliteRef.current = satellite
   const [locating, setLocating] = useState(false)
   const [locateError, setLocateError] = useState('')
+  // Place search (city / region / address) — centres the camera on the chosen result.
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<PlaceResult[]>([])
+  const [searching, setSearching] = useState(false)
+  const [noResults, setNoResults] = useState(false)
+  const searchTimeout = useRef<any>(null)
+
+  function handleSearchInput(value: string) {
+    setQuery(value)
+    setNoResults(false)
+    clearTimeout(searchTimeout.current)
+    if (!value.trim()) { setResults([]); setSearching(false); return }
+    setSearching(true)
+    searchTimeout.current = setTimeout(async () => {
+      const found = await searchPlace(value)
+      setResults(found)
+      setNoResults(found.length === 0)
+      setSearching(false)
+    }, 400)
+  }
+
+  function clearSearch() {
+    clearTimeout(searchTimeout.current)
+    setQuery(''); setResults([]); setSearching(false); setNoResults(false)
+  }
+
+  function flyToResult(r: PlaceResult) {
+    const map = mapInstanceRef.current
+    if (!map) return
+    const lat = parseFloat(r.lat)
+    const lng = parseFloat(r.lon)
+    const bb = r.boundingbox
+    if (bb && bb.length === 4) {
+      const south = parseFloat(bb[0]), north = parseFloat(bb[1])
+      const west = parseFloat(bb[2]), east = parseFloat(bb[3])
+      if ([south, north, west, east].every(Number.isFinite)) {
+        // Frame the whole place (city -> wide, address -> tight) with a smooth glide.
+        map.flyToBounds([[south, west], [north, east]], { padding: [48, 48], maxZoom: 15, duration: 0.85 })
+      } else {
+        map.flyTo([lat, lng], 13, { duration: 0.85 })
+      }
+    } else if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      map.flyTo([lat, lng], 13, { duration: 0.85 })
+    }
+    setQuery(r.display_name.split(',').slice(0, 2).join(','))
+    setResults([])
+    setNoResults(false)
+  }
 
   function addMarkers(currentHosts: Host[]) {
     const map = mapInstanceRef.current
@@ -155,7 +228,8 @@ export default function HostMap({
       const initialZoom = savedMapView?.zoom ?? 7
       const map = L.map(mapRef.current, { zoomControl: false }).setView(initialCenter as any, initialZoom)
 
-      // Tile layers
+      // Tile layers (setupTileLayers is a stable function declared below)
+      // eslint-disable-next-line react-hooks/immutability
       setupTileLayers(map, satelliteRef.current)
 
       mapInstanceRef.current = map
@@ -271,12 +345,87 @@ export default function HostMap({
     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
       <div ref={mapRef as any} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
 
-      {/* Satellite toggle — top-right */}
+      {/* Place search — top, full width, big thumb-friendly target */}
+      <div style={{ position: 'absolute', top: 12, left: 12, right: 12, zIndex: 1100, maxWidth: 520 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center',
+          background: C.surface, borderRadius: 100,
+          border: `1.5px solid ${C.border}`,
+          boxShadow: '0 2px 16px rgba(0,0,0,0.22)',
+          height: 50, paddingLeft: 16, paddingRight: 6,
+        }}>
+          <span style={{ fontSize: 16, color: C.textFaint, marginRight: 8 }}>🔍</span>
+          <input
+            type="text"
+            value={query}
+            onChange={e => handleSearchInput(e.target.value)}
+            placeholder="Search city, region or address"
+            aria-label="Search the map by city, region or address"
+            style={{
+              flex: 1, background: 'transparent', border: 'none', outline: 'none',
+              color: C.text, fontSize: 16, fontFamily: 'sans-serif', minWidth: 0,
+            }}
+          />
+          {searching && <span style={{ color: C.textFaint, fontSize: 12, padding: '0 8px' }}>…</span>}
+          {query && !searching && (
+            <button
+              onClick={clearSearch}
+              aria-label="Clear search"
+              style={{
+                flexShrink: 0, width: 38, height: 38, borderRadius: 19, border: 'none',
+                background: C.elevated, color: C.textMuted, cursor: 'pointer', fontSize: 15,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >✕</button>
+          )}
+        </div>
+
+        {/* Results dropdown */}
+        {results.length > 0 && (
+          <div style={{
+            marginTop: 8, background: C.surface, borderRadius: 16,
+            border: `1px solid ${C.border}`, boxShadow: '0 6px 24px rgba(0,0,0,0.28)',
+            overflow: 'hidden', maxHeight: 280, overflowY: 'auto',
+          }}>
+            {results.map((r, i) => (
+              <button
+                key={i}
+                onClick={() => flyToResult(r)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
+                  background: 'none', border: 'none',
+                  borderBottom: i < results.length - 1 ? `1px solid ${C.border}` : 'none',
+                  color: C.text, padding: '13px 16px', cursor: 'pointer',
+                  fontSize: 14, fontFamily: 'sans-serif', lineHeight: 1.4,
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = C.elevated)}
+                onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+              >
+                <span style={{ fontSize: 15, flexShrink: 0 }}>📍</span>
+                <span>{r.display_name}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* No results */}
+        {noResults && query.trim() && !searching && (
+          <div style={{
+            marginTop: 8, background: C.surface, borderRadius: 16, border: `1px solid ${C.border}`,
+            boxShadow: '0 6px 24px rgba(0,0,0,0.28)', padding: '14px 16px',
+            color: C.textMuted, fontSize: 14, fontFamily: 'sans-serif',
+          }}>
+            No place found for “{query.trim()}”. Try a city or region name.
+          </div>
+        )}
+      </div>
+
+      {/* Satellite toggle — top-right, below the search bar */}
       {onSatelliteToggle && (
         <button
           onClick={onSatelliteToggle}
           style={{
-            position: 'absolute', top: 16, right: 16, zIndex: 1000,
+            position: 'absolute', top: 74, right: 16, zIndex: 1000,
             background: satellite ? C.accent : C.surface,
             border: `2px solid ${satellite ? C.accent : C.border}`,
             borderRadius: 100, padding: '9px 16px',
