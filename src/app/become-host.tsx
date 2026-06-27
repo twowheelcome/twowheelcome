@@ -588,7 +588,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   content: { padding: 20, paddingBottom: 60, gap: 16 },
 
-  locationCard: { backgroundColor: C.surface, borderRadius: 20, borderWidth: 1, borderColor: C.border, padding: 18, gap: 16 },
+  locationCard: { backgroundColor: C.surface, borderRadius: 22, borderWidth: 1, borderColor: C.border, padding: 18, gap: 16 },
   locationHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
   locationHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1, minWidth: 0 },
   locationNameTag: { color: C.text, fontSize: 14, fontWeight: '700', flexShrink: 1 },

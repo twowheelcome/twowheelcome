@@ -445,7 +445,7 @@ function RequestCard({
 
 function makeRc(C: ThemeColors) { return StyleSheet.create({
   card: {
-    backgroundColor: C.surface, borderRadius: 20,
+    backgroundColor: C.surface, borderRadius: 22,
     borderWidth: 1, borderColor: C.border,
     padding: 14, gap: 10, maxWidth: '90%',
   },
