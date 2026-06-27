@@ -7,8 +7,16 @@
 -- on it, which let an anonymous user UPDATE any host's listing (notes, city, parking,
 -- max_guests, user_id, …) through the view. Proven live: anon UPDATE changed a row.
 -- The view only ever needs to be READ (the public map). Lock it to SELECT.
-REVOKE ALL ON public.host_locations_public FROM anon, authenticated;
-GRANT SELECT ON public.host_locations_public TO anon, authenticated;
+-- Guarded: on a clean from-zero apply the view may not exist yet at this point (migrations
+-- are applied in filename order); the canonical view + grants are re-asserted in the final
+-- zzzz_canonical_reconcile migration, so skipping here is safe.
+DO $$
+BEGIN
+  IF to_regclass('public.host_locations_public') IS NOT NULL THEN
+    REVOKE ALL ON public.host_locations_public FROM anon, authenticated;
+    GRANT SELECT ON public.host_locations_public TO anon, authenticated;
+  END IF;
+END $$;
 
 -- (2) The rider's "Withdraw request" silently failed: sr_update only allowed the HOST
 -- (auth.uid() = host_id). Allow the guest to withdraw their own still-pending request
