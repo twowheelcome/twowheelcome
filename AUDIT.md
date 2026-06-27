@@ -1,5 +1,11 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **Active-tab re-tap returns to section root (2026-06-27).**
+> - Chat detail and the map's sheet/form/filters are internal state, not pushed routes, so re-tapping
+>   the already-active tab did nothing. Added a `tabPress` listener per tab: **Messages** pops an open
+>   chat back to the conversation list; **Map** closes any open request form / host sheet / filters to
+>   return to the bare map. Profile is a flat scroll (nothing to reset). Verified by tsc/eslint + flow.
+>
 > **Profile layout + reviews-first + expired threshold (2026-06-27).**
 > - **Reviews above places** on the full public profile (`host/[id]`): the "Reviews from riders" link
 >   now sits directly under the bio, above the place card(s) — track record before the place.

@@ -4,7 +4,7 @@ import {
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { Feather } from '@expo/vector-icons'
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router'
 import { supabase } from '../../lib/supabase'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { unreadStore } from '../../lib/unreadStore'
@@ -700,6 +700,19 @@ export default function RequestsScreen() {
     // Auth bootstrap owns the channel lifecycle; inner callbacks read latest ids from refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Re-tapping the active "Messages" tab while a chat is open pops back to the list
+  // (chat detail is internal state, not a pushed route, so default tab reset can't).
+  const navigation = useNavigation()
+  useEffect(() => {
+    const unsub = navigation.addListener('tabPress' as any, () => {
+      if (selectedConvIdRef.current) {
+        setSelected(null)
+        selectedConvIdRef.current = null
+      }
+    })
+    return unsub
+  }, [navigation])
 
   // Refresh convs every time the tab gets focus, and honour a pending "open this
   // exact chat" request from the map/history. useFocusEffect fires on EVERY focus

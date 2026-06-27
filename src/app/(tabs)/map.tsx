@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Platform, Modal, Linking } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { supabase } from '../../lib/supabase'
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { FONT } from '../../lib/theme'
 import { pendingChatStore } from '../../lib/pendingChatStore'
@@ -272,6 +272,18 @@ export default function MapScreen() {
 
   // Keep the ref in sync after optimistic in-place updates (send success / dup error).
   useEffect(() => { myActiveByLocationRef.current = myActiveByLocation }, [myActiveByLocation])
+
+  // Re-tapping the active "Map" tab returns to the bare map: close any open request
+  // form, host sheet or filters (sub-views are internal state, not pushed routes).
+  const navigation = useNavigation()
+  useEffect(() => {
+    const unsub = navigation.addListener('tabPress' as any, () => {
+      setRequesting(false)
+      setShowHostProfile(false)
+      setShowFilters(false)
+    })
+    return unsub
+  }, [navigation])
 
   // Whenever a host is opened (map marker, list, or deep-link, on web or native),
   // refresh my request statuses so the card shows the right state, not a stale one.
