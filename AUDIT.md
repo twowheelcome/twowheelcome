@@ -178,8 +178,27 @@
 >    it now confirms first: "Send exact meeting point to this rider? Only do this once you're
 >    comfortable hosting them."
 > 8. **History copy:** "Confirmed" → "Accepted" (consistent with the rest of the de-booking wording).
-> Deliberately NOT changed (Petr removed these on purpose): per-request rider count and arrival time
-> — stays p_guests:1 / arrival null; the details are agreed in chat.
+>
+> **Pre-launch audit round 3 (2026-06-27).**
+> 1. **Rider count + arrival time back in the knock** (Petr reversed his earlier removal). The
+>    Request-a-stay form now has a rider stepper (1…host's max_guests, capped) and an optional
+>    orientational arrival-time chip set (Morning / Afternoon / Evening / Late / Flexible). Both are
+>    sent to `create_knock` (`p_guests`, `p_arrival_time`) — the RPC already stored them
+>    (guests_count = GREATEST(p_guests,1); arrival_time = nullif(trim(...))), only the client had
+>    been hard-coding 1 / null. The request cards (host + rider) show "N riders" and "Arrival ~ …".
+>    Date chips + message unchanged; both new fields are carried through the logged-out→sign-up
+>    pendingKnockStore so context survives.
+> 2. **Public reply to a review** (host-response model, instead of report/delete). The reviewed
+>    person can post one public reply per review. DB: added `reply_body` / `reply_created_at` to
+>    `reviews` (+ length CHECK), extended `strip_review_coords` to scrub coordinates from the reply
+>    too, and added a SECURITY DEFINER RPC `set_review_reply(p_review_id, p_reply)` that pins
+>    auth.uid() = reviewee_id (reviews has no UPDATE policy, so only the RPC can write a reply; reads
+>    stay world-readable via rev_select). Applied to live (management API) and mirrored into baseline.
+>    **Verified naostro** (live, BEGIN/ROLLBACK): the reviewee's reply is stored with coordinates
+>    stripped (`50.0871, 14.4210` removed); a non-reviewee caller is rejected (P0001 "Only the
+>    reviewed person may reply"); nothing persisted. UI: the /reviews screen (where the public
+>    profile + map host-sheet both link) shows "Reply from {name}" under each review and gives the
+>    reviewed person an inline Reply editor. tsc + full eslint green.
 >
 > **UX (2026-06-26): native date picker + host capacity in knock.** 'Other day' on mobile is
 > now a calendar (@react-native-community/datetimepicker, min today; web keeps its date input;
