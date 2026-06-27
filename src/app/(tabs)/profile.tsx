@@ -20,9 +20,6 @@ export default function ProfileScreen() {
   const [nameInput, setNameInput] = useState('')
   const [savingName, setSavingName] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const [bikeModel, setBikeModel] = useState('')
-  const [editingBike, setEditingBike] = useState(false)
-  const [savingBike, setSavingBike] = useState(false)
   const [avatarError, setAvatarError] = useState<string | null>(null)
   const [reviews, setReviews] = useState<{ rating: number; body: string | null; reviewer_name: string | null; created_at: string }[]>([])
   const [pendingReviews, setPendingReviews] = useState(0)
@@ -53,9 +50,6 @@ export default function ProfileScreen() {
     setNameInput('')
     setSavingName(false)
     setUploadingAvatar(false)
-    setBikeModel('')
-    setEditingBike(false)
-    setSavingBike(false)
     setAvatarError(null)
     setReviews([])
     setPendingReviews(0)
@@ -72,7 +66,7 @@ export default function ProfileScreen() {
     userIdRef.current = resolvedUser.id
     setUser(resolvedUser)
     const [p, h, r] = await Promise.all([
-      supabase.from('profiles').select('id, full_name, bio, bike_model, avatar_url').eq('id', resolvedUser.id).maybeSingle(),
+      supabase.from('profiles').select('id, full_name, bio, avatar_url').eq('id', resolvedUser.id).maybeSingle(),
       supabase.from('host_locations').select('*').eq('user_id', resolvedUser.id).order('created_at', { ascending: true }),
       // Reviews received by this user. reviewer_id has no FK to profiles, so a PostgREST
       // embed fails — fetch the reviewers' names in a separate query (like the public profile).
@@ -82,7 +76,6 @@ export default function ProfileScreen() {
     setProfile(p.data)
     setHostLocations(h.data || [])
     setNameInput(p.data?.full_name || '')
-    setBikeModel(p.data?.bike_model || '')
     const revRows = (r.data || []) as any[]
     const reviewerIds = [...new Set(revRows.map(rev => rev.reviewer_id).filter(Boolean))]
     const reviewerMap: Record<string, string> = {}
@@ -167,17 +160,6 @@ export default function ProfileScreen() {
     } finally {
       setUploadingAvatar(false)
     }
-  }
-
-  async function saveBike() {
-    if (!user) return
-    setSavingBike(true)
-    setAvatarError(null)
-    const { error } = await supabase.from('profiles').upsert({ id: user.id, bike_model: bikeModel.trim() })
-    setSavingBike(false)
-    if (error) { console.warn('save bike error:', error.message); setAvatarError('Could not save your bike. Please try again.'); return }
-    setProfile((p: any) => ({ ...p, bike_model: bikeModel.trim() }))
-    setEditingBike(false)
   }
 
   async function signOut() {
@@ -330,33 +312,6 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         )}
         <Text style={styles.email}>{user?.email}</Text>
-
-        {/* Bike model */}
-        {editingBike ? (
-          <View style={styles.nameEdit}>
-            <TextInput
-              style={styles.nameInput}
-              value={bikeModel}
-              onChangeText={setBikeModel}
-              placeholder="e.g. Honda Africa Twin"
-              placeholderTextColor={C.textFaint}
-              autoFocus
-            />
-            <View style={styles.nameActions}>
-              <TouchableOpacity style={styles.saveNameBtn} onPress={saveBike} disabled={savingBike}>
-                <Text style={styles.saveNameBtnText}>{savingBike ? '...' : 'Save'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setEditingBike(false)}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : (
-          <TouchableOpacity onPress={() => setEditingBike(true)} style={styles.nameRow}>
-            <Text style={styles.bikeModel}>{bikeModel ? `🏍 ${bikeModel}` : '🏍 Add your bike model'}</Text>
-            <Feather name="edit-2" size={12} color={C.textDim} style={{ marginLeft: 6, marginTop: 1 }} />
-          </TouchableOpacity>
-        )}
 
         {/* Stats */}
         <View style={styles.statsCard}>
@@ -580,7 +535,6 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   nameRow: { flexDirection: 'row', alignItems: 'center' },
   name: { color: C.text, fontSize: 24, fontWeight: '800', letterSpacing: 0.3 },
   email: { color: C.textDim, fontSize: 13, marginTop: -12 },
-  bikeModel: { color: C.textMuted, fontSize: 14, marginTop: -8 },
   placeCard: { backgroundColor: C.surface, borderRadius: 22, padding: 16, borderWidth: 1, borderColor: C.border },
   placeCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   placeCardTitle: { color: C.textDim, fontSize: 10, fontWeight: '800', letterSpacing: 2 },

@@ -67,7 +67,7 @@ export default function PublicHostProfile() {
         : base.order('created_at', { ascending: true }).limit(1).maybeSingle()
     }
     const [{ data: prof }, locRes, { data: revs }] = await Promise.all([
-      supabase.from('profiles').select('id, full_name, bio, bike_model, avatar_url').eq('id', userId).maybeSingle(),
+      supabase.from('profiles').select('id, full_name, bio, avatar_url').eq('id', userId).maybeSingle(),
       locFrom('host_locations_public'),
       supabase.from('reviews')
         .select('rating, body, reviewer_id')
@@ -152,7 +152,6 @@ export default function PublicHostProfile() {
                 {`${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} ${avgRating.toFixed(1)} · ${reviewCount} ${reviewCount === 1 ? 'review' : 'reviews'}`}
               </Text>
             )}
-            {profile.bike_model && <Text style={styles.meta}>🏍 {profile.bike_model}</Text>}
             {location?.location_city && (
               <Text style={styles.meta}>📍 {location.location_city}, {location.location_country}</Text>
             )}

@@ -30,7 +30,7 @@ export default function PrivacyScreen() {
 
         <Section title="Data we collect">
           <Bullet>Email address and authentication data, used to create and protect your account.</Bullet>
-          <Bullet>Profile details you add, such as name, bike model, avatar and public host profile information.</Bullet>
+          <Bullet>Profile details you add, such as name, avatar and public host profile information.</Bullet>
           <Bullet>Host listing details, including approximate public location, parking type, sleep options and amenities. Private location notes are not published.</Bullet>
           <Bullet>Stay requests, messages, reviews, push tokens and account activity needed to run the service.</Bullet>
         </Section>

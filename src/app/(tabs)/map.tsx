@@ -108,7 +108,7 @@ export default function MapScreen() {
 
     const userIds = [...new Set(data.map((h: any) => h.user_id))]
     const [{ data: profilesData }, { data: reviewsData }, { data: lastReviewsData }] = await Promise.all([
-      supabase.from('profiles').select('id, full_name, avatar_url, bio, bike_model').in('id', userIds),
+      supabase.from('profiles').select('id, full_name, avatar_url, bio').in('id', userIds),
       supabase.from('reviews').select('reviewee_id, rating').in('reviewee_id', userIds),
       supabase.from('reviews')
         .select('reviewee_id, rating, body, reviewer_id')
