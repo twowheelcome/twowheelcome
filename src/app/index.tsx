@@ -12,7 +12,7 @@ import { AppWordmark } from '../components/AppHeader'
 
 const ONBOARDING_KEY = '@twowheelcome/onboarding-seen'
 // Bump when the Terms/Privacy text materially changes (stored with each consent).
-const TERMS_VERSION = '2026-06-28'
+const TERMS_VERSION = '2026-06-28-draft'
 
 function isValidEmail(e: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim())
