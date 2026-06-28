@@ -364,6 +364,34 @@ async function openNavigation(lat: number, lng: number) {
   await Linking.openURL(url)
 }
 
+// Copy the precise meeting point to the clipboard (web). Native has no built-in
+// clipboard without an extra dependency, so it falls back to showing the value.
+function copyCoords(lat: number, lng: number) {
+  const text = `${lat}, ${lng}`
+  if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => showToast('Copied')).catch(() => showToast("Couldn't copy"))
+  } else {
+    showToast(text)
+  }
+}
+
+// Let the rider pick their map app instead of forcing one. Each builds a destination
+// deep link from the exact coordinates.
+const MAP_APPS: { key: string; label: string; icon: keyof typeof Feather.glyphMap; url: (lat: number, lng: number) => string }[] = [
+  { key: 'google', label: 'Google Maps', icon: 'map-pin', url: (lat, lng) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}` },
+  { key: 'apple', label: 'Apple Maps', icon: 'map-pin', url: (lat, lng) => `https://maps.apple.com/?daddr=${lat},${lng}` },
+  { key: 'waze', label: 'Waze', icon: 'navigation', url: (lat, lng) => `https://waze.com/ul?ll=${lat},${lng}&navigate=yes` },
+  { key: 'osm', label: 'OpenStreetMap', icon: 'map', url: (lat, lng) => `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}` },
+]
+
+function openMapApp(url: string) {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.open(url, '_blank', 'noopener,noreferrer')
+  } else {
+    void Linking.openURL(url)
+  }
+}
+
 // ── RequestCard ───────────────────────────────────────────────────────────
 
 function RequestCard({
@@ -615,6 +643,7 @@ export default function RequestsScreen() {
   const [cancelStayTarget, setCancelStayTarget] = useState<string | null>(null)   // host cancel confirm modal
   const [acceptTarget, setAcceptTarget] = useState<string | null>(null)           // host accept confirm modal
   const [coordsTarget, setCoordsTarget] = useState<RequestData | null>(null)       // send-coordinates confirm modal
+  const [navTarget, setNavTarget] = useState<{ lat: number; lng: number } | null>(null)  // map-app picker for the meeting point
   const [removeTarget, setRemoveTarget] = useState<ConvRow | null>(null)           // delete-conversation confirm modal
   const [removing, setRemoving] = useState(false)
   const [menuConv, setMenuConv] = useState<{ conv: ConvRow; context: 'list' | 'chat' } | null>(null)  // "⋯" action sheet
@@ -1759,6 +1788,31 @@ export default function RequestsScreen() {
           </View>
         </Modal>
 
+        {/* Map-app picker for the unlocked meeting point */}
+        <Modal visible={!!navTarget} transparent animationType="fade" onRequestClose={() => setNavTarget(null)}>
+          <View style={styles.confirmOverlay}>
+            <View style={[styles.confirmSheet, { borderColor: C.border }]}>
+              <Text style={styles.confirmTitle}>Open in maps</Text>
+              <Text style={styles.confirmBody}>Pick an app to navigate to the meeting point.</Text>
+              {MAP_APPS.map(app => (
+                <TouchableOpacity
+                  key={app.key}
+                  style={styles.navOption}
+                  onPress={() => { const t = navTarget; setNavTarget(null); if (t) openMapApp(app.url(t.lat, t.lng)) }}
+                  accessibilityRole="button"
+                >
+                  <Feather name={app.icon} size={16} color={C.accent} />
+                  <Text style={styles.navOptionText}>{app.label}</Text>
+                  <Feather name="external-link" size={15} color={C.textDim} />
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity style={styles.confirmCancel} onPress={() => setNavTarget(null)}>
+                <Text style={styles.confirmCancelText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
         <FlatList
           ref={flatRef}
           data={chatItems}
@@ -1930,10 +1984,22 @@ export default function RequestsScreen() {
                       </View>
                       <View style={styles.meetingHeaderText}>
                         <Text style={styles.meetingTitle}>🔓 Address unlocked</Text>
-                        <Text style={styles.meetingCoords}>
-                          {exactPoint.coords.lat.toFixed(6)}, {exactPoint.coords.lng.toFixed(6)}
-                        </Text>
                       </View>
+                    </View>
+                    <View style={styles.coordsBlock}>
+                      <Text style={styles.coordsLabel}>COORDINATES</Text>
+                      <Text style={styles.coordsValue} selectable>
+                        {exactPoint.coords.lat.toFixed(6)}, {exactPoint.coords.lng.toFixed(6)}
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.coordsCopyBtn}
+                        onPress={() => copyCoords(exactPoint.coords.lat, exactPoint.coords.lng)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Copy coordinates"
+                      >
+                        <Feather name="copy" size={14} color={C.success} />
+                        <Text style={styles.coordsCopyText}>Copy coordinates</Text>
+                      </TouchableOpacity>
                     </View>
                     {exactPoint.lines.length ? (
                       <View style={styles.meetingFacts}>
@@ -1947,7 +2013,7 @@ export default function RequestsScreen() {
                     ) : null}
                     <TouchableOpacity
                       style={styles.meetingNavButton}
-                      onPress={() => openNavigation(exactPoint.coords.lat, exactPoint.coords.lng)}
+                      onPress={() => setNavTarget(exactPoint.coords)}
                     >
                       <Feather name="navigation" size={15} color={C.white} />
                       <Text style={styles.meetingNavText}>Navigate</Text>
@@ -2330,11 +2396,54 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     fontFamily: FONT.headBold,
     letterSpacing: 0.3,
   },
-  meetingCoords: {
+  coordsBlock: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: C.successBorder,
+    backgroundColor: C.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 6,
+  },
+  coordsLabel: {
     color: C.textDim,
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 1,
+    fontSize: 11,
+    fontFamily: FONT.headBold,
+    letterSpacing: 0.6,
+  },
+  coordsValue: {
+    color: C.text,
+    fontSize: 15,
+    fontFamily: FONT.body,
+  },
+  coordsCopyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    marginTop: 2,
+  },
+  coordsCopyText: {
+    color: C.success,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  navOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: C.border,
+    backgroundColor: C.surface,
+  },
+  navOptionText: {
+    flex: 1,
+    color: C.text,
+    fontSize: 15,
+    fontWeight: '700',
   },
   meetingFacts: { gap: 11, paddingVertical: 2 },
   meetingFact: { flexDirection: 'row', alignItems: 'flex-start', gap: 11 },
