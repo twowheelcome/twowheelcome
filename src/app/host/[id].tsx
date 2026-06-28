@@ -183,7 +183,7 @@ export default function PublicHostProfile() {
                 {`${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} ${avgRating.toFixed(1)} · ${reviewCount} ${reviewCount === 1 ? 'review' : 'reviews'}`}
               </Text>
             )}
-            {bikeSafeTotal > 0 && (
+            {bikeSafeYes > 0 && (
               <Text style={styles.bikeSafe}>
                 {`🔒 Bike felt safe — ${bikeSafeYes} of ${bikeSafeTotal} ${bikeSafeTotal === 1 ? 'rider' : 'riders'}`}
               </Text>
