@@ -1,4 +1,4 @@
-import { useMemo, useState, type ComponentProps } from 'react'
+import { useEffect, useMemo, useState, type ComponentProps } from 'react'
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import { router } from 'expo-router'
@@ -24,6 +24,13 @@ export default function SettingsScreen() {
   const [showLangModal, setShowLangModal] = useState(false)
   const [tempLang, setTempLang] = useState<LangCode>(lang)
   const currentLangLabel = LANGUAGES.find(l => l.code === lang)?.label ?? 'English'
+  // Read-only email of the signed-in account (shown in Account; not editable here).
+  const [email, setEmail] = useState<string | null>(null)
+  useEffect(() => {
+    let active = true
+    supabase.auth.getUser().then(({ data }) => { if (active) setEmail(data.user?.email ?? null) })
+    return () => { active = false }
+  }, [])
 
   async function deleteAccount() {
     setDeleting(true)
@@ -91,8 +98,18 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('settings.account')}</Text>
           <View style={styles.card}>
+            {/* Signed-in email — read-only, no chevron (not editable from the app) */}
+            {email ? (
+              <View style={styles.menuRow}>
+                <View style={styles.menuRowIcon}><Feather name="mail" size={17} color={C.accent} /></View>
+                <View style={styles.menuRowText}>
+                  <Text style={styles.menuRowTitle}>{t('settings.email')}</Text>
+                  <Text style={styles.menuRowSub} numberOfLines={1}>{email}</Text>
+                </View>
+              </View>
+            ) : null}
             {accountRows.map((it, i) => (
-              <TouchableOpacity key={it.label} style={[styles.menuRow, i > 0 && styles.rowBorder]} onPress={it.onPress} activeOpacity={0.6}>
+              <TouchableOpacity key={it.label} style={[styles.menuRow, (email || i > 0) && styles.rowBorder]} onPress={it.onPress} activeOpacity={0.6}>
                 <View style={styles.menuRowIcon}><Feather name={it.icon} size={17} color={C.accent} /></View>
                 <View style={styles.menuRowText}>
                   <Text style={styles.menuRowTitle}>{it.label}</Text>

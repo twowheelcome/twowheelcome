@@ -292,7 +292,7 @@ export default function ProfileScreen() {
             </View>
           </TouchableOpacity>
         )}
-          {/* Name + rating · nationality + email, beside the avatar */}
+          {/* Name + rating · nationality, beside the avatar */}
           <View style={styles.heroInfo}>
             {editingName ? (
               <View style={styles.nameEdit}>
@@ -357,8 +357,6 @@ export default function ProfileScreen() {
                 )}
               </View>
             )}
-
-            <Text style={styles.email} numberOfLines={1}>{user?.email}</Text>
           </View>
         </View>
 
@@ -598,7 +596,6 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   },
   nameRow: { flexDirection: 'row', alignItems: 'center' },
   name: { color: C.text, fontSize: 22, fontWeight: '800', letterSpacing: 0.3, flexShrink: 1 },
-  email: { color: C.textDim, fontSize: 13, marginTop: 2, fontFamily: FONT.body },
   profileMeta: { color: C.accent, fontSize: 13, fontWeight: '700', marginTop: 2 },
   metaRow: { flexDirection: 'row', alignItems: 'center' },
   natAddBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', marginTop: 2, backgroundColor: C.accentSoft, borderRadius: 100, borderWidth: 1, borderColor: C.accentBorder, paddingHorizontal: 12, paddingVertical: 6 },

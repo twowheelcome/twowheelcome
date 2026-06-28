@@ -23,6 +23,7 @@ const EN: Record<string, string> = {
   'settings.language': 'Language',
   'settings.languageHint': 'Choose your language. English is ready — more translations are on the way.',
   'settings.account': 'Account',
+  'settings.email': 'Email',
   'settings.notifications': 'Notifications',
   'settings.notificationsSub': 'Email and push alerts',
   'settings.feedback': 'Send feedback',
