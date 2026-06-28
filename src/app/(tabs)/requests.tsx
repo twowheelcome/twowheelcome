@@ -1894,8 +1894,8 @@ export default function RequestsScreen() {
 	                    withdrawing={withdrawingFor === m.request.id}
 	                    onCancelStay={setCancelStayTarget}
 	                    cancelling={cancellingFor === m.request.id}
-	                    onShowMap={Platform.OS === 'web' && m.request.location_id ? showLocationOnMap : undefined}
-	                    onNavigateApprox={m.request.location_id ? navigateApproxArea : undefined}
+	                    onShowMap={!isHost && Platform.OS === 'web' && m.request.location_id ? showLocationOnMap : undefined}
+	                    onNavigateApprox={!isHost && m.request.location_id ? navigateApproxArea : undefined}
 	                  />
                 </View>
               )
