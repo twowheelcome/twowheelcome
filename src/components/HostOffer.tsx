@@ -9,7 +9,6 @@ import { sortSleep } from '../lib/sleepOrder'
 // The host's full public offer (everything except parking, which SafetyBlock shows on its
 // own). Fed from host_locations_public — public fields only, never the exact address/GPS.
 const SLEEP_LABELS: Record<string, string> = { tent: 'Tent space', roof: 'Roof over head', room: 'Private room' }
-const VEHICLE_LABELS: Record<string, string> = { moto: 'Motorcycle', car: 'Car', bicycle: 'Bicycle', van: 'Van', scooter: 'Scooter' }
 const AMENITY_ICON: Record<string, string> = {
   shower: '🚿', toilet: '🚽', kitchen: '🍳', laundry: '👕', electricity: '⚡', wifi: '📶',
   pub_nearby: '🍺', tools: '🔧',
@@ -24,7 +23,6 @@ type OfferLoc = {
   amenities?: string[] | null
   pricings?: string[] | null
   pricing?: string | null
-  vehicle_types?: string[] | null
   notes?: string | null
   photos?: string[] | null
   price_amount?: number | null
@@ -43,11 +41,10 @@ export function HostOffer({ loc }: { loc: OfferLoc }) {
   // Only amenities we still offer (retired options in old data are dropped, not shown raw).
   const amenities = (loc.amenities ?? []).filter(a => AMENITY_LABELS[a])
   const pricings = loc.pricings?.length ? loc.pricings : (loc.pricing ? [loc.pricing] : [])
-  const vehicles = loc.vehicle_types ?? []
   const notes = loc.notes?.trim()
   const photos = loc.photos ?? []
 
-  if (!sleep.length && !amenities.length && !pricings.length && !vehicles.length && !notes && !photos.length) return null
+  if (!sleep.length && !amenities.length && !pricings.length && !notes && !photos.length) return null
 
   return (
     <View style={s.wrap}>
@@ -61,9 +58,6 @@ export function HostOffer({ loc }: { loc: OfferLoc }) {
       )}
       {pricings.includes('fixed') && loc.price_amount != null && (
         <Text style={s.priceHint}>Indicative — the exact amount and currency are up to you two in chat (local cash is fine).</Text>
-      )}
-      {vehicles.length > 0 && (
-        <View style={s.row}><Text style={s.icon}>🏍</Text><Text style={s.value}>{mapLabels(vehicles, VEHICLE_LABELS)}</Text></View>
       )}
       {amenities.length > 0 && (
         <View style={s.chips}>

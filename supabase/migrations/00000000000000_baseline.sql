@@ -9,16 +9,6 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
 -- ── Tables ──
-CREATE TABLE IF NOT EXISTS bikes (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid,
-  make text,
-  model text,
-  year integer,
-  type text,
-  photo_url text,
-  is_primary boolean DEFAULT false
-);
 CREATE TABLE IF NOT EXISTS conversation_reads (
   user_id uuid NOT NULL,
   conversation_id uuid NOT NULL,
@@ -47,31 +37,11 @@ CREATE TABLE IF NOT EXISTS host_locations (
   sleep_types text[] DEFAULT '{}'::text[],
   amenities text[] DEFAULT '{}'::text[],
   pricings text[] DEFAULT '{}'::text[],
-  vehicle_types text[] DEFAULT '{}'::text[],
   parkings text[] DEFAULT '{}'::text[],
   photos text[] NOT NULL DEFAULT '{}'::text[],
   price_amount numeric,
   price_currency text,
   paused boolean NOT NULL DEFAULT false
-);
-CREATE TABLE IF NOT EXISTS host_profiles (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid,
-  is_active boolean DEFAULT true,
-  max_guests integer DEFAULT 1,
-  parking text,
-  sleeping text[],
-  facilities text[],
-  bonuses text[],
-  bike_types text[],
-  location_lat numeric,
-  location_lng numeric,
-  location_city text,
-  location_country text,
-  pricing text DEFAULT 'free'::text,
-  price_per_night numeric DEFAULT 0,
-  notes text,
-  created_at timestamp without time zone DEFAULT now()
 );
 CREATE TABLE IF NOT EXISTS messages (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -88,9 +58,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   avatar_url text,
   bio text,
   created_at timestamp without time zone DEFAULT now(),
-  vehicle_types text[] DEFAULT '{}'::text[],
   push_token text,
-  bike_model text,
   notify_email boolean NOT NULL DEFAULT true,
   notify_push boolean NOT NULL DEFAULT true,
   nationality text,
@@ -138,17 +106,14 @@ CREATE TABLE IF NOT EXISTS stay_requests (
 );
 
 -- ── Constraints (PK / unique / check / exclude) ──
-ALTER TABLE bikes ADD CONSTRAINT bikes_pkey PRIMARY KEY (id);
 ALTER TABLE conversation_reads ADD CONSTRAINT conversation_reads_pkey PRIMARY KEY (user_id, conversation_id);
 ALTER TABLE conversations ADD CONSTRAINT conversations_pkey PRIMARY KEY (id);
 ALTER TABLE host_locations ADD CONSTRAINT host_locations_pkey PRIMARY KEY (id);
-ALTER TABLE host_profiles ADD CONSTRAINT host_profiles_pkey PRIMARY KEY (id);
 ALTER TABLE messages ADD CONSTRAINT messages_pkey PRIMARY KEY (id);
 ALTER TABLE profiles ADD CONSTRAINT profiles_pkey PRIMARY KEY (id);
 ALTER TABLE request_notification_events ADD CONSTRAINT request_notification_events_pkey PRIMARY KEY (request_id, event);
 ALTER TABLE reviews ADD CONSTRAINT reviews_pkey PRIMARY KEY (id);
 ALTER TABLE stay_requests ADD CONSTRAINT stay_requests_pkey PRIMARY KEY (id);
-ALTER TABLE host_profiles ADD CONSTRAINT host_profiles_user_id_key UNIQUE (user_id);
 ALTER TABLE reviews ADD CONSTRAINT reviews_stay_request_id_reviewer_id_key UNIQUE (stay_request_id, reviewer_id);
 ALTER TABLE conversations ADD CONSTRAINT conversations_ordered_distinct_users CHECK (((user_a)::text < (user_b)::text));
 ALTER TABLE host_locations ADD CONSTRAINT host_locations_country_length CHECK (((location_country IS NULL) OR (char_length(location_country) <= 120)));
@@ -170,14 +135,12 @@ ALTER TABLE stay_requests ADD CONSTRAINT stay_requests_message_length CHECK (((m
 ALTER TABLE stay_requests ADD CONSTRAINT no_double_booked_accepted EXCLUDE USING gist (location_id WITH =, daterange(arrival_date, departure_date, '[)'::text) WITH &&) WHERE ((status = 'ACCEPTED'::text));
 
 -- ── Foreign keys (after all tables) ──
-ALTER TABLE bikes ADD CONSTRAINT bikes_user_id_fkey FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE;
 ALTER TABLE conversation_reads ADD CONSTRAINT conversation_reads_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE conversation_reads ADD CONSTRAINT conversation_reads_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE;
 ALTER TABLE conversations ADD CONSTRAINT conversations_user_b_fkey FOREIGN KEY (user_b) REFERENCES auth.users(id) ON DELETE SET NULL;
 ALTER TABLE conversations ADD CONSTRAINT conversations_location_id_fkey FOREIGN KEY (location_id) REFERENCES host_locations(id) ON DELETE SET NULL;
 ALTER TABLE conversations ADD CONSTRAINT conversations_user_a_fkey FOREIGN KEY (user_a) REFERENCES auth.users(id) ON DELETE SET NULL;
 ALTER TABLE host_locations ADD CONSTRAINT host_locations_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
-ALTER TABLE host_profiles ADD CONSTRAINT host_profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE;
 ALTER TABLE messages ADD CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 ALTER TABLE messages ADD CONSTRAINT messages_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE;
 ALTER TABLE messages ADD CONSTRAINT messages_request_id_fkey FOREIGN KEY (request_id) REFERENCES stay_requests(id) ON DELETE SET NULL;
@@ -209,11 +172,9 @@ CREATE INDEX IF NOT EXISTS conversations_user_b_idx ON public.conversations USIN
 CREATE INDEX IF NOT EXISTS host_locations_user_id_idx ON public.host_locations USING btree (user_id);
 
 -- ── Row level security ──
-ALTER TABLE bikes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE conversation_reads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE host_locations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE host_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE request_notification_events ENABLE ROW LEVEL SECURITY;
@@ -221,15 +182,11 @@ ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stay_requests ENABLE ROW LEVEL SECURITY;
 
 -- ── Policies ──
-CREATE POLICY "Kola vidí všichni" ON bikes FOR SELECT TO public USING (true);
-CREATE POLICY "Vlastní kola spravuje majitel" ON bikes FOR ALL TO public USING ((auth.uid() = user_id));
 CREATE POLICY "cr_all" ON conversation_reads FOR ALL TO public USING ((auth.uid() = user_id)) WITH CHECK ((auth.uid() = user_id));
 CREATE POLICY "conv_insert" ON conversations FOR INSERT TO public WITH CHECK (((auth.uid() = user_a) OR (auth.uid() = user_b)));
 CREATE POLICY "conv_select" ON conversations FOR SELECT TO public USING (((auth.uid() = user_a) OR (auth.uid() = user_b)));
 CREATE POLICY "conv_update" ON conversations FOR UPDATE TO public USING (((auth.uid() = user_a) OR (auth.uid() = user_b))) WITH CHECK (((auth.uid() = user_a) OR (auth.uid() = user_b)));
 CREATE POLICY "host_locations_owner_all" ON host_locations FOR ALL TO public USING ((auth.uid() = user_id)) WITH CHECK ((auth.uid() = user_id));
-CREATE POLICY "Hostitelé viditelní všem" ON host_profiles FOR SELECT TO public USING (true);
-CREATE POLICY "Vlastní hostitelský profil spravuje majitel" ON host_profiles FOR ALL TO public USING ((auth.uid() = user_id));
 CREATE POLICY "msg_insert" ON messages FOR INSERT TO public WITH CHECK (((auth.uid() = sender_id) AND (EXISTS ( SELECT 1
    FROM conversations c
   WHERE ((c.id = messages.conversation_id) AND ((auth.uid() = c.user_a) OR (auth.uid() = c.user_b)))))));
@@ -434,7 +391,7 @@ BEGIN
   -- The user's host locations (no FK from host_locations to profiles).
   DELETE FROM host_locations WHERE user_id = p_uid;
 
-  -- Finally the profile — cascades bikes, host_profiles and any leftover stay_requests.
+  -- Finally the profile — cascades any leftover stay_requests.
   DELETE FROM profiles WHERE id = p_uid;
 END;
 $function$
@@ -733,7 +690,6 @@ CREATE OR REPLACE VIEW host_locations_public WITH (security_invoker=false) AS
     amenities,
     pricing,
     pricings,
-    vehicle_types,
     max_guests,
     notes,
     created_at,
@@ -744,7 +700,6 @@ CREATE OR REPLACE VIEW host_locations_public WITH (security_invoker=false) AS
   WHERE (NOT COALESCE(paused, false));
 
 -- ── Grants ──
-GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON bikes TO service_role;
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON conversation_reads TO anon;
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON conversation_reads TO authenticated;
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON conversation_reads TO service_role;
@@ -757,7 +712,6 @@ GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON host_loca
 GRANT SELECT ON host_locations_public TO anon;
 GRANT SELECT ON host_locations_public TO authenticated;
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON host_locations_public TO service_role;
-GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON host_profiles TO service_role;
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON messages TO anon;
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON messages TO authenticated;
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON messages TO service_role;
