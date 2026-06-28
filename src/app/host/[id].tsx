@@ -244,7 +244,7 @@ export default function PublicHostProfile() {
           return (
             <View key={loc.id} style={styles.placeCard}>
               {locations.length > 1 ? (
-                <Text style={styles.placeHeader}>{loc.location_city || `Place ${idx + 1}`}{loc.location_country ? `, ${loc.location_country}` : ''}</Text>
+                <Text style={styles.placeHeader}>{`Place ${idx + 1}`}{loc.location_country ? `, ${loc.location_country}` : ''}</Text>
               ) : null}
 
               {parkings.length > 0 && <SafetyBlock parkings={parkings} />}

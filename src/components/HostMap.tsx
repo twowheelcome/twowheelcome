@@ -205,8 +205,9 @@ export default function HostMap({
       circlesRef.current.push(circle)
 
       // Screen-reader label leads with the safety level (the point of the map), then place.
+      // Country only — the public map keeps the area approximate, no city name.
       const ariaName = escapeHtml(host.profiles?.full_name || 'A rider')
-      const ariaPlace = escapeHtml([host.location_city, host.location_country].filter(Boolean).join(', '))
+      const ariaPlace = escapeHtml(host.location_country || '')
       const ariaLabel = `${ariaName}${ariaPlace ? `, ${ariaPlace}` : ''} — bike safety: ${safety.label} (${safety.rank})`
 
       // Teardrop pin coloured by safety level, with the safety icon inside (not an avatar).

@@ -23,8 +23,10 @@ import { NotificationBell } from '../../components/NotificationBell'
 import { refreshNotificationCount } from '../../lib/notificationStore'
 
 
-function placeLabel(city?: string | null, country?: string | null): string {
-  return [city, country].filter(Boolean).join(', ') || 'Location on the map'
+// Country only — the public surface deliberately keeps the area approximate, so the
+// city name (too precise) is not shown to other riders. Exact area is the ~1 km pin.
+function placeLabel(country?: string | null): string {
+  return country || 'Location on the map'
 }
 
 // Open external maps on the host's APPROXIMATE (already fuzzed) coords — a rough pin so a
@@ -479,7 +481,7 @@ export default function MapScreen() {
               <Avatar url={selected.profiles?.avatar_url} name={selected.profiles?.full_name} size={46} />
               <View style={styles.cardInfo}>
                 <Text style={styles.cardName}>{selected.profiles?.full_name || 'Anonymous Rider'}</Text>
-                <Text style={styles.cardLocation}>📍 {placeLabel(selected.location_city, selected.location_country)}</Text>
+                <Text style={styles.cardLocation}>📍 {placeLabel(selected.location_country)}</Text>
               </View>
             </View>
             {selected.max_guests != null && (
@@ -873,7 +875,7 @@ export default function MapScreen() {
                 <Avatar url={selected.profiles?.avatar_url} name={selected.profiles?.full_name} size={56} />
                 <View style={{ flex: 1, gap: 3 }}>
                   <Text style={{ color: C.text, fontSize: 18, fontWeight: '900' }}>{selected.profiles?.full_name || 'Anonymous Rider'}</Text>
-                  <Text style={{ color: C.textMuted, fontSize: 13 }}>📍 {placeLabel(selected.location_city, selected.location_country)}</Text>
+                  <Text style={{ color: C.textMuted, fontSize: 13 }}>📍 {placeLabel(selected.location_country)}</Text>
                   {selected.max_guests != null && (
                     <Text style={{ color: C.text, fontSize: 13, fontWeight: '700' }}>👥 Up to {selected.max_guests} {selected.max_guests === 1 ? 'rider' : 'riders'}</Text>
                   )}
@@ -1093,7 +1095,7 @@ export default function MapScreen() {
                       <Text style={styles.cardRating}>★ {host.avg_rating.toFixed(1)} <Text style={styles.cardRatingCount}>({host.review_count})</Text></Text>
                     )}
                   </View>
-                  <Text style={styles.cardLocation}>📍 {placeLabel(host.location_city, host.location_country)}</Text>
+                  <Text style={styles.cardLocation}>📍 {placeLabel(host.location_country)}</Text>
                 </View>
                 <ContributionBadge loc={host} compact />
               </View>
