@@ -2104,7 +2104,7 @@ export default function RequestsScreen() {
               const name = conv.other.full_name || 'Rider'
               const isUnread = isConvUnread(conv, currentUser?.id, readMap)
               const preview = conv.lastMsgIsRequest
-                ? '🤞 Stay request'
+                ? '⛺ Stay request'
                 : (conv.lastMsgBody ?? '')
               const status = conversationStatus(C, conv, isUnread, currentUser?.id)
               const direction = conversationDirection(conv, currentUser?.id)
