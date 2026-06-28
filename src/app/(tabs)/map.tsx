@@ -20,6 +20,7 @@ import { compressBikePhoto } from '../../lib/compressImage'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
 import { NotificationBell } from '../../components/NotificationBell'
+import { refreshNotificationCount } from '../../lib/notificationStore'
 
 
 function placeLabel(city?: string | null, country?: string | null): string {
@@ -444,6 +445,7 @@ export default function MapScreen() {
       }).catch(e => { console.warn('notify failed', e); showToast("Couldn't send the notification — the host may not be alerted.") })
 
       setMyActiveByLocation(prev => ({ ...prev, [selected.id]: 'PENDING' }))
+      if (currentUserIdRef.current) void refreshNotificationCount(currentUserIdRef.current)
       setSendSuccess(true)
       setTimeout(() => {
         setSendSuccess(false)

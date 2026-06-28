@@ -16,6 +16,7 @@ import { showToast } from '../../lib/toastStore'
 import { sortSleep } from '../../lib/sleepOrder'
 import { UserChip } from '../../components/UserChip'
 import { NotificationBell } from '../../components/NotificationBell'
+import { refreshNotificationCount } from '../../lib/notificationStore'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { RequestPhoto } from '../../components/RequestPhoto'
 import { SafetyIcon } from '../../components/SafetyIcon'
@@ -1220,6 +1221,7 @@ export default function RequestsScreen() {
     setSubmittingStayId(null)
     if (!error) {
       setMyReviewsByStay(prev => ({ ...prev, [stayId]: { rating: stars, body, created_at: new Date().toISOString() } }))
+      void refreshNotificationCount(userId)   // a written review clears that pending-review badge item
     }
   }
 
@@ -1396,6 +1398,7 @@ export default function RequestsScreen() {
         ? { ...m, request: { ...m.request!, status } }
         : m
     ))
+    void refreshNotificationCount(userId)   // host acted on a knock → keep the badge current
     supabase.functions.invoke('notify-request', {
       body: { request_id: requestId, event: status === 'ACCEPTED' ? 'accepted' : 'rejected' },
     }).catch(e => { console.warn('notify failed', e); showToast("Couldn't send the notification — the other rider may not be alerted.") })
@@ -1464,6 +1467,7 @@ export default function RequestsScreen() {
     setConvs(prev => prev.map(c =>
       c.id === selected?.id ? { ...c, requestStatus: 'CANCELLED' } : c
     ))
+    void refreshNotificationCount(currentUser.id)
     withdrawingRef.current = false
     setWithdrawingFor(null)
   }
@@ -1500,6 +1504,7 @@ export default function RequestsScreen() {
     setConvs(prev => prev.map(c =>
       c.id === selected?.id ? { ...c, requestStatus: 'CANCELLED' } : c
     ))
+    void refreshNotificationCount(userId)   // a cancelled accepted stay drops its pending-review item
 
     // Let the rider know their accepted stay fell through (email + push, prefs-aware).
     supabase.functions.invoke('notify-request', {
