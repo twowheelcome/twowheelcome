@@ -15,6 +15,7 @@ import { getLocalYMD } from '../../lib/date'
 import { showToast } from '../../lib/toastStore'
 import { sortSleep } from '../../lib/sleepOrder'
 import { UserChip } from '../../components/UserChip'
+import { NotificationBell } from '../../components/NotificationBell'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { RequestPhoto } from '../../components/RequestPhoto'
 import { SafetyIcon } from '../../components/SafetyIcon'
@@ -2007,7 +2008,7 @@ export default function RequestsScreen() {
 
   return (
     <View style={styles.container}>
-      <AppHeader right={<UserChip />} />
+      <AppHeader right={<><NotificationBell /><UserChip /></>} />
 
       {loading ? (
         <View style={styles.center}>

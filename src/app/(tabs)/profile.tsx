@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase'
 import { router } from 'expo-router'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { UserChip, refreshUserChip } from '../../components/UserChip'
+import { NotificationBell } from '../../components/NotificationBell'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { compressBikePhoto } from '../../lib/compressImage'
 import { FONT } from '../../lib/theme'
@@ -239,7 +240,7 @@ export default function ProfileScreen() {
   return (
     <View style={styles.container}>
     <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
-      <AppHeader left={<HeaderBackButton />} right={<UserChip />} />
+      <AppHeader left={<HeaderBackButton />} right={<><NotificationBell /><UserChip /></>} />
 
       {/* Avatar + QR — warm Road→Trail gradient band */}
       <LinearGradient colors={[C.accentSoft, C.greenSoft]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>

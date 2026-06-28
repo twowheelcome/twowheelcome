@@ -19,6 +19,7 @@ import { Avatar } from '../../components/Avatar'
 import { compressBikePhoto } from '../../lib/compressImage'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
+import { NotificationBell } from '../../components/NotificationBell'
 
 
 function placeLabel(city?: string | null, country?: string | null): string {
@@ -716,7 +717,7 @@ export default function MapScreen() {
   // --- Main screen ---
   return (
     <View style={styles.container}>
-      <AppHeader right={<UserChip />} />
+      <AppHeader right={<><NotificationBell /><UserChip /></>} />
 
       <View style={styles.filterBar}>
         <TouchableOpacity style={[styles.filterBtn, activeCount > 0 && styles.filterBtnActive]} onPress={() => setShowFilters(true)}>
