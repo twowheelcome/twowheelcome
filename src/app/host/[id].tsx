@@ -278,6 +278,9 @@ export default function PublicHostProfile() {
                 </View>
               )}
 
+              {/* Capacity is a property of the place, not the person — sits with the sleep info */}
+              <Text style={styles.maxGuests}>👥 Up to {loc.max_guests} {loc.max_guests === 1 ? 'rider' : 'riders'}</Text>
+
               {amen.length ? (
                 <View style={styles.section}>
                   <Text style={styles.sectionLabel}>Amenities</Text>
@@ -305,8 +308,6 @@ export default function PublicHostProfile() {
                   <ListingGallery photos={loc.photos} />
                 </View>
               )}
-
-              <Text style={styles.maxGuests}>👥 Up to {loc.max_guests} {loc.max_guests === 1 ? 'rider' : 'riders'}</Text>
 
               <TouchableOpacity
                 style={styles.ctaBtn}

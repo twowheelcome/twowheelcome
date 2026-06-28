@@ -863,9 +863,6 @@ export default function MapScreen() {
                   {selected.profiles?.nationality ? (
                     <Text style={{ color: C.textMuted, fontSize: 13 }}>🌍 {selected.profiles.nationality}</Text>
                   ) : null}
-                  {selected.max_guests != null && (
-                    <Text style={{ color: C.text, fontSize: 13, fontWeight: '700' }}>👥 Up to {selected.max_guests} {selected.max_guests === 1 ? 'rider' : 'riders'}</Text>
-                  )}
                   {selected.avg_rating != null && (
                     <Text style={{ color: C.accent, fontSize: 13, fontWeight: '700' }}>
                       {'★'.repeat(Math.round(selected.avg_rating))}{'☆'.repeat(5 - Math.round(selected.avg_rating))} {selected.avg_rating.toFixed(1)} · {selected.review_count} {selected.review_count === 1 ? 'stay' : 'stays'}
@@ -898,6 +895,10 @@ export default function MapScreen() {
 
               <SafetyBlock parkings={parkings} />
               <HostOffer loc={selected} />
+              {/* Capacity is a property of the place, not the person — sits with the offer */}
+              {selected.max_guests != null && (
+                <Text style={{ color: C.text, fontSize: 13, fontWeight: '700' }}>👥 Up to {selected.max_guests} {selected.max_guests === 1 ? 'rider' : 'riders'}</Text>
+              )}
 
               {/* Reviews folder — opens this host's reviews (same style as the profile menu) */}
               {selected.review_count > 0 ? (
