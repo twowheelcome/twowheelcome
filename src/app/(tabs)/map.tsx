@@ -23,12 +23,6 @@ import { NotificationBell } from '../../components/NotificationBell'
 import { refreshNotificationCount } from '../../lib/notificationStore'
 
 
-// Country only — the public surface deliberately keeps the area approximate, so the
-// city name (too precise) is not shown to other riders. Exact area is the ~1 km pin.
-function placeLabel(country?: string | null): string {
-  return country || 'Location on the map'
-}
-
 // Open external maps on the host's APPROXIMATE (already fuzzed) coords — a rough pin so a
 // rider knows the area before knocking. The exact point is only shared in chat after accept.
 function openApproxNavigation(lat: number, lng: number) {
@@ -152,7 +146,7 @@ export default function MapScreen() {
 
     const userIds = [...new Set(data.map((h: any) => h.user_id))]
     const [{ data: profilesData }, { data: reviewsData }, { data: lastReviewsData }] = await Promise.all([
-      supabase.from('profiles').select('id, full_name, avatar_url, bio').in('id', userIds),
+      supabase.from('profiles').select('id, full_name, avatar_url, bio, nationality').in('id', userIds),
       supabase.from('reviews').select('reviewee_id, rating').in('reviewee_id', userIds),
       supabase.from('reviews')
         .select('reviewee_id, rating, body, reviewer_id')
@@ -481,7 +475,9 @@ export default function MapScreen() {
               <Avatar url={selected.profiles?.avatar_url} name={selected.profiles?.full_name} size={46} />
               <View style={styles.cardInfo}>
                 <Text style={styles.cardName}>{selected.profiles?.full_name || 'Anonymous Rider'}</Text>
-                <Text style={styles.cardLocation}>📍 {placeLabel(selected.location_country)}</Text>
+                {selected.profiles?.nationality ? (
+                  <Text style={styles.cardLocation}>🌍 {selected.profiles.nationality}</Text>
+                ) : null}
               </View>
             </View>
             {selected.max_guests != null && (
@@ -875,7 +871,9 @@ export default function MapScreen() {
                 <Avatar url={selected.profiles?.avatar_url} name={selected.profiles?.full_name} size={56} />
                 <View style={{ flex: 1, gap: 3 }}>
                   <Text style={{ color: C.text, fontSize: 18, fontWeight: '900' }}>{selected.profiles?.full_name || 'Anonymous Rider'}</Text>
-                  <Text style={{ color: C.textMuted, fontSize: 13 }}>📍 {placeLabel(selected.location_country)}</Text>
+                  {selected.profiles?.nationality ? (
+                    <Text style={{ color: C.textMuted, fontSize: 13 }}>🌍 {selected.profiles.nationality}</Text>
+                  ) : null}
                   {selected.max_guests != null && (
                     <Text style={{ color: C.text, fontSize: 13, fontWeight: '700' }}>👥 Up to {selected.max_guests} {selected.max_guests === 1 ? 'rider' : 'riders'}</Text>
                   )}
@@ -1095,7 +1093,9 @@ export default function MapScreen() {
                       <Text style={styles.cardRating}>★ {host.avg_rating.toFixed(1)} <Text style={styles.cardRatingCount}>({host.review_count})</Text></Text>
                     )}
                   </View>
-                  <Text style={styles.cardLocation}>📍 {placeLabel(host.location_country)}</Text>
+                  {host.profiles?.nationality ? (
+                    <Text style={styles.cardLocation}>🌍 {host.profiles.nationality}</Text>
+                  ) : null}
                 </View>
                 <ContributionBadge loc={host} compact />
               </View>
