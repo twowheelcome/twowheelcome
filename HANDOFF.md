@@ -1,118 +1,73 @@
-# TWOWHEELCOME — Handoff (noční běh, 2026-06-18)
+# TWOWHEELCOME — Handoff (aktualizováno 2026-06-28)
 
-Krátké shrnutí pro Petra je úplně dole („Co ráno otestovat"). Tahle část je technická,
-pro navázání v další session.
+Zápis pro pokračování v nové session bez paměti předchozí konverzace. Stručně a fakticky.
 
-App běží jako **web** (Expo Router static export → Vercel, doména `www.twowheelcome.com`).
-Backend **Supabase** (project ref `igrmxzvnadqckxjachdc`). Migrace v `supabase/migrations/`.
-Na živou DB i edge funkce se dostaneš přes **Supabase access token** v macOS Keychain:
-`security find-generic-password -s "Supabase CLI" -w`. SQL na živou DB jde přes Management
-API `POST https://api.supabase.com/v1/projects/<ref>/database/query`. Edge funkce se
-nasazují `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy <fn> --project-ref <ref> --use-api`
-(funguje bez Dockeru).
+## 1) Co je twowheelcome
 
-## Model (důležité)
-**Konverzace jsou vázané na konkrétní místo hostitele** (per-location): jedna konverzace =
-dvojice jezdců × jedno `host_location`. Vynuceno triggery + RLS (`validate_conversation_write`,
-`validate_stay_request_write`, `validate_message_request`). Recenze vázané na konkrétní pobyt.
+Seznamka **hostitel ↔ motorkář**: host nabídne bezpečné parkování pro motorku + nocleh,
+jezdec na cestě si najde místo na přespání. **Není to booking** (žádné platby/rezervační
+engine), je to **zdarma** — případný příspěvek („beer/tip") se řeší přímo mezi lidmi v chatu.
+**Ochrana polohy je core:** veřejně (mapa) jen **zaokrouhlená poloha ~1 km**, přesný bod
+host sdílí až **po akceptaci** žádosti v chatu.
 
----
+**Stack:** Expo / React Native (Expo Router, SDK 56, web target) + **Supabase** (Postgres,
+RLS, edge funkce). Web hostován na **Vercelu** (`www.twowheelcome.com`), repo lokálně.
+Jazyk aplikace je **angličtina**.
 
-## ✅ Ranní opravy 2026-06-18 (po Petrově testu pod dvěma účty)
+### Přístup k živé DB / edge funkcím
+- Supabase project ref: **`igrmxzvnadqckxjachdc`**.
+- Access token v macOS Keychain: `security find-generic-password -s "Supabase CLI" -w`.
+- SQL naostro: `POST https://api.supabase.com/v1/projects/<ref>/database/query` (Bearer token).
+- Security advisor: `GET https://api.supabase.com/v1/projects/<ref>/advisors/security`.
+- Deploy edge fn (bez Dockeru): `SUPABASE_ACCESS_TOKEN=<token> npx supabase functions deploy <fn> --project-ref <ref> --use-api`.
+- Edge funkce: `delete-account`, `notify-request`, `notify-review` (běží přes **service_role**).
 
-- **Duplicitní žádosti vyřešené.** Petr mohl znovu zaklepat na už schválený/čekající pobyt
-  a vznikla další žádost. Nově:
-  - **DB pojistka (ověřeno naostro):** nová migrace `prevent_duplicate_active_requests.sql`
-    — exclusion constraint `no_overlapping_active_stays` (rozšíření `btree_gist`) brání druhé
-    AKTIVNÍ (PENDING/ACCEPTED) žádosti stejný žadatel × místo × překrývající se datum. Aplikováno
-    na živou DB; funkčně otestováno (druhá překrývající žádost odmítnuta, kód 23P01). Před
-    nasazením jsem uklidil 2 existující duplicity (guest `399aef67…`, nechána nejstarší).
-  - **Klient (`map.tsx`):** host karta u místa s mojí aktivní žádostí už neukazuje „KNOCK ON
-    THE DOOR", ale stav — „⏳ REQUEST SENT — PENDING" nebo „✅ ACCEPTED — YOU'RE BOOKED" + tlačítko
-    „OPEN YOUR CHAT". Pojistky i v `beginRequest`/`sendRequest` a mapování chyby 23P01 na
-    srozumitelnou hlášku. Stav se načítá při startu, při fokusu mapy (po accept v chatu) a po
-    odeslání. (anglický jazyk appky zachován)
-- **Nepřečtené konverzace líp vidět (`requests.tsx`):** náhled poslední zprávy u nepřečtené je
-  teď tmavý a tučný (`C.text`/800) místo šedého; čas navíc v accent barvě. Po přečtení zpět do
-  normálu.
-- tsc + lint + build procházejí.
+## 2) Klíčová produktová rozhodnutí
 
----
+- **Konverzace = per-location:** jedna konverzace = dvojice jezdců × jedno konkrétní
+  `host_location`. Vynuceno triggery + RLS. Recenze vázané na konkrétní pobyt.
+- Sekce v detailu místa: **„Where to sleep"** i **„Bike safety"** řazené **nejlepší nahoře**.
+- **Profil vpravo nahoře, zvoneček vedle něj** — profil NEpatří do spodní lišty.
+- **Messages = konverzace; zvoneček = události** (žádosti přijato/odmítnuto/zrušeno…). Oddělené.
+- **Report konverzace zůstává** (DSA / bezpečnost) —capture + e-mail, žádná moderační UI.
+- **„Beer welcome" (host vibe na listingu) a dev-tip na profilu ZŮSTÁVAJÍ.**
+  **Tip z flow psaní recenze byl ODEBRÁN** (kdo chce dát tip, dá osobně).
+- **Expirace pending** žádostí podle data **příjezdu**, překlápí o **lokální půlnoci**.
 
-## ✅ Ověřeno NAOSTRO dnes v noci (živá DB, reální přihlášení klienti)
+## 3) Konvence / pracovní preference (Petr)
 
-- **CHAT — hlavní cíl — realtime funguje.** Otestováno dvěma reálnými přihlášenými klienty
-  přes Node, přesně s tím nastavením kanálu jako appka (jeden kanál `messages-stream`, dvě
-  postgres_changes vazby):
-  - **Živé naskočení zprávy** od druhého účastníka v otevřené konverzaci → ✅ PASS.
-  - **Živá změna stavu** (host přijme/odmítne → druhé straně se v otevřeném chatu změní
-    karta) → ✅ PASS.
-  - Spuštěno 4×, prošlo 3×; jediné selhání byl úplně první „studený" běh (první událost se
-    občas ztratí, než se realtime spojení plně ustaví). V appce je spojení trvale otevřené
-    a seznam se navíc obnovuje při přepnutí na záložku, takže je vůči tomu odolná.
-  - Regresní test je v repu: `node scripts/chat-realtime-autotest.mjs` (potřebuje token,
-    sám si vytvoří i smaže testovací účty). Manuální verze pro dva reálné účty:
-    `scripts/chat-realtime-test.mjs`.
-  - Pozn.: samotné React vykreslení nejde ověřit z Node, ale append cesta v kódu je
-    správně (příchozí zprávu připojuje `useEffect([incomingMsg, selected])` přes živý stav
-    otevřené konverzace) a doručení dat je prokázané. Petr ať to přesto proklikne (níže).
+- **Stručně a věcně**, žádný balast/motivační řeči. Odpovídat **česky**.
+- **Vizuál Road&Trail:** krémová/grafit, **terakota** akcent, fonty **Oswald** (nadpisy/tlačítka)
+  + **Inter** (text), hairline linky. **Nezavádět nové barvy** ani komponenty bez důvodu.
+- **Neměnit nad rámec zadání / ptát se na úpravy.** Stabilní řešení před experimentem.
+- **DB ověřovat naostro** (grep kódu + dotazy na živou DB) PŘED i PO změně.
+- Každá změna: **commit/push** (na pokyn) + **tsc + eslint zelené**; u buildu ověřit `expo export`.
+- **Migrace vždy živě I do baseline:** `supabase/migrations/00000000000000_baseline.sql`
+  (kanonický celý schema; staré inkrementální migrace jsou v `migrations_archive/`).
 
-- **Klient ↔ DB jsou v souladu.** Zakládání knocku (mapa → konverzace → žádost → zpráva)
-  přesně odpovídá novým triggerům (seřazení `user_a < user_b`, `location_id`, status PENDING).
-- **Živá DB 100% odpovídá migracím v repu** (ověřeno introspekcí): 3 validační triggery,
-  RLS politiky (conversations 3 / messages 2 / stay_requests 3 / reviews 2 / profiles 3 /
-  host_locations 1), `conversation_reads` i `request_notification_events` existují, `buddies`
-  dropnuté, view `host_locations_public`, cron `notify-review-daily` (10:00).
-- **Bezpečnost (anon test):** `host_locations_public` vrací jen zaokrouhlené souřadnice;
-  `profiles.push_token` = „permission denied" (nečitelné); veřejné jméno čitelné.
-- **Build / typy / lint procházejí.** Žádné polotovary, debug logy ani mrtvá tlačítka.
+## 4) Bezpečnostní model
 
-## ✅ Opraveno / nasazeno dnes v noci
+- **RLS všude, owner-only** politiky jako default; žádné blanket „ALL" pro veřejnost.
+- **Přesné souřadnice izolované:** tabulka **`host_location_coords`** (owner-only RLS;
+  anon = 0 práv, authenticated = jen SELECT vlastních; zápis jen přes definer RPC
+  `save_host_location`). `host_locations` drží **už jen zaokrouhlené** coords + nedůvěrná pole.
+- **`host_locations_public`** = **`security_invoker` view** (ne SECURITY DEFINER) — řídí ho RLS
+  volajícího; na veřejném povrchu nejsou žádné přesné coords, není co uniknout.
+- Veřejné čtení listingů: RLS policy `host_locations_public_read` (jen nepauznuté řádky).
+- Citlivá pole mimo veřejný surface: `profiles.push_token` nečitelné; notes server-side
+  scrubnuté (`strip_location_notes`), recenze scrubnuté (`strip_review_coords`).
+- Edge funkce přes **service_role** (má `bypassrls`); destruktivní RPC (`delete_account_data`)
+  odebrané z anon/authenticated.
+- **Reporty/audit v repu:** `REVIEW.md` (code review), `AUDIT.md` (security audit),
+  `PERF.md` (výkon), `DEADCODE.md` (nepoužitý kód).
 
-- **Edge funkce NASAZENÉ** (předtím byly podle starého handoffu nenasazené). Nasadil jsem
-  aktuální commitnutý kód všech tří: `delete-account`, `notify-request`, `notify-review`.
-  Tím odpadlo riziko, že stará `delete-account` nesedí na nový model.
-  - ⚠️ Mazání účtu jsem **neinvokoval** (je destruktivní). Petr ať otestuje smazání účtu
-    s jednorázovým účtem.
-- **NOVÝ FIX — profil se nově zakládá automaticky při registraci.** Našel jsem reálný
-  nedostatek: na `auth.users` nebyl žádný trigger, takže nový uživatel s potvrzením e-mailu
-  končil **bez profilu a bez jména** (jméno z registrace se ztratilo). 2 z 12 účtů profil
-  neměly. Přidal jsem migraci `add_profile_autocreate.sql` (trigger `on_auth_user_created`
-  + backfill), **aplikoval na živou DB** a ověřil: registrace „Jan Novák" → profil se jménem
-  vznikne sám. Po backfillu má profil všech 12 účtů. (Commitnuto.)
+## 5) Otevřené / odložené úkoly
 
-## Body ze zadání
-1. Soulad klient ↔ DB (priorita č. 1): ✅ v pořádku.
-2. host_locations „id null" blocker: ✅ vyřešeno dřív (klient generuje UUID).
-3. Mapa při zakládání místa moc malá: ✅ zvětšená na 400 px přes šířku.
-4. Chat živé naskočení + scroll: ✅ realtime ověřen naostro (viz výše).
-
----
-
-## E-maily / přihlášení — OK, jen ověřit doručení (už NENÍ blocker)
-Dřívější poznámka „SMTP čeká" je **zastaralá**. Ověřil jsem živou Auth konfiguraci:
-- Potvrzování e-mailu je zapnuté (`mailer_autoconfirm = false`).
-- **Vlastní SMTP je nastavený** (host i uživatel vyplněné, odesílatel
-  `TWOwheelCOME <noreply@twowheelcome.com>`) → potvrzovací e-maily se odesílají.
-- `site_url = https://www.twowheelcome.com/`, povolené redirecty zahrnují i
-  `…/reset-password` → reset hesla míří správně.
-
-Takže registrace + přihlášení mají fungovat. **Zbývá jen praktické ověření:** Petr ať
-jednou zaregistruje nový účet na reálný e-mail a potvrdí, že potvrzovací e-mail opravdu
-dorazí (a nespadne do spamu). To je jediné, co z Node ověřit nejde.
-
-## Menší TODO (nízká priorita)
-- **Legal stránky** (`privacy.tsx`, `terms.tsx`) — doplnit firemní/GDPR údaje (čeká na Petrovy
-  podklady; neměnit bez nich).
-- V DB je **8 testovacích účtů `@example.com`** z dřívějška (ne moje — moje noční testovací
-  data jsem uklidil). Před spuštěním je můžeš smazat v Supabase → Auth → Users.
-
-## Co ráno otestovat pod dvěma účty
-1. **Chat:** otevřít stejnou konverzaci na dvou účtech, napsat z jednoho → u druhého musí
-   zpráva naskočit živě a okno odscrollovat dolů; tečka „nepřečteno" svítí a po otevření zhasne.
-2. **Accept/reject živě:** host přijme/odmítne → druhé straně se v otevřeném chatu změní stav.
-3. **Become a host:** uložit první místo, přidat druhé, pohodlně napíchnout bod na (větší) mapě.
-4. **Knock:** zaklepat na konkrétní místo → konverzace vázaná na to místo, štítek místa sedí.
-5. **Jméno:** nový registrovaný uživatel má po přihlášení rovnou své jméno (ne „Rider").
-6. **Recenze:** po přijatém ukončeném pobytu výzva k hodnocení vázaná na ten pobyt.
-7. **Mazání účtu** (jednorázovým účtem) — funkce je nově nasazená.
+- **Právní texty** Podmínek + Zásad (`terms.tsx`, `privacy.tsx`): teď jen **předběžné znění
+  + placeholdery**; finál je na Petrovi (po založení s.r.o.). Neměnit bez podkladů.
+- **Překlady** EN/ES/FR/CZ/PL — až blíž launchi (app je zatím EN-only).
+- **Perf** z `PERF.md`: **A** = virtualizace dlouhých seznamů, **F** = zúžení realtime
+  odběrů, + drobnosti.
+- **LOW nálezy L1–L7** z `REVIEW.md` (nízká priorita).
+- Cleanup: žádné kritické zbytky nezůstaly (bike/vehicle balík i nepoužité npm deps už
+  odebrané; DB sloupce pročištěné).
