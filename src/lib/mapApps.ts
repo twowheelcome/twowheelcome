@@ -20,11 +20,8 @@ export const MAP_APPS: MapApp[] = [
   // point — no origin needed, the rider routes from there in-app.
   { key: 'mapycz', label: 'Mapy.cz', icon: 'map-pin', url: (lat, lng) => `https://mapy.com/fnc/v1/showmap?center=${lng},${lat}&zoom=16&marker=true` },
   { key: 'osmand', label: 'OsmAnd', icon: 'map', url: (lat, lng) => `https://osmand.net/map?pin=${lat},${lng}#16/${lat}/${lng}` },
-  // Stegra (moto navigation) has no documented coordinate deep link / URL scheme, so we
-  // fall back to the standard geo: URI. Android (native build + Android Chrome) offers
-  // an app chooser that includes geo-handlers like Stegra; iOS/desktop browsers don't
-  // handle geo: and will no-op. See the handoff note for details.
-  { key: 'stegra', label: 'Stegra', icon: 'navigation', url: (lat, lng) => `geo:${lat},${lng}?q=${lat},${lng}` },
+  // Stegra removed for now: its geo: fallback didn't actually open Stegra (Android opened
+  // Mapy.cz instead, web showed "invalid address"). Re-add once a real deep link exists.
 ]
 
 export function openMapApp(url: string) {
