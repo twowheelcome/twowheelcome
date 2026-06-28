@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Animated, FlatList, Image, KeyboardAvoidingView, Linking, Modal, PanResponder, Platform,
+  Animated, FlatList, Image, KeyboardAvoidingView, Modal, PanResponder, Platform,
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { Feather } from '@expo/vector-icons'
@@ -351,17 +351,6 @@ function summarizeLocation(loc: Partial<RequestLocation> | null | undefined): st
 
 function hasStayEnded(req: RequestData): boolean {
   return req.departure_date <= getLocalYMD()
-}
-
-async function openNavigation(lat: number, lng: number) {
-  const label = encodeURIComponent('TWOWHEELCOME meeting point')
-  const coords = `${lat},${lng}`
-  const url = Platform.select({
-    android: `geo:${coords}?q=${coords}(${label})`,
-    ios: `http://maps.apple.com/?ll=${coords}&q=${label}`,
-    default: `https://www.google.com/maps/search/?api=1&query=${coords}`,
-  })!
-  await Linking.openURL(url)
 }
 
 // ── RequestCard ───────────────────────────────────────────────────────────
@@ -1352,7 +1341,6 @@ export default function RequestsScreen() {
       const body = [
         'Exact meeting point:',
         coords,
-        Platform.OS === 'web' ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(coords)}` : null,
         place || null,
         recap.length ? '' : null,
         recap.length ? 'Agreed stay recap:' : null,
@@ -1977,7 +1965,7 @@ export default function RequestsScreen() {
                   {navCoords ? (
                     <TouchableOpacity
                       style={[styles.navAction, isMine && styles.navActionMine]}
-                      onPress={() => openNavigation(navCoords.lat, navCoords.lng)}
+                      onPress={() => setNavTarget({ lat: navCoords.lat, lng: navCoords.lng })}
                     >
                       <Text style={[styles.navActionText, isMine && styles.navActionTextMine]}>Open navigation</Text>
                     </TouchableOpacity>

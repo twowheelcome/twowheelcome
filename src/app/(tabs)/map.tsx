@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Platform, Modal, Linking } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Platform, Modal } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { supabase } from '../../lib/supabase'
 import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router'
@@ -20,21 +20,9 @@ import { compressBikePhoto } from '../../lib/compressImage'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
 import { NotificationBell } from '../../components/NotificationBell'
+import { MapAppPicker } from '../../components/MapAppPicker'
 import { refreshNotificationCount } from '../../lib/notificationStore'
 
-
-// Open external maps on the host's APPROXIMATE (already fuzzed) coords — a rough pin so a
-// rider knows the area before knocking. The exact point is only shared in chat after accept.
-function openApproxNavigation(lat: number, lng: number) {
-  const coords = `${lat},${lng}`
-  const label = encodeURIComponent('Approximate area')
-  const url = Platform.select({
-    android: `geo:${coords}?q=${coords}(${label})`,
-    ios: `http://maps.apple.com/?ll=${coords}&q=${label}`,
-    default: `https://www.google.com/maps/search/?api=1&query=${coords}`,
-  })!
-  void Linking.openURL(url)
-}
 
 // Local-day YYYY-MM-DD (avoids the UTC off-by-one that toISOString would cause for a
 // picker date at local midnight).
@@ -57,6 +45,7 @@ export default function MapScreen() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [selected, setSelected] = useState<any>(null)
+  const [navTarget, setNavTarget] = useState<{ lat: number; lng: number } | null>(null)  // shared map-app picker
   const [showHostProfile, setShowHostProfile] = useState(false)
   const [requesting, setRequesting] = useState(false)
   const [message, setMessage] = useState('')
@@ -898,7 +887,7 @@ export default function MapScreen() {
               {selected.location_lat != null && selected.location_lng != null && (
                 <TouchableOpacity
                   style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 6 }}
-                  onPress={() => openApproxNavigation(selected.location_lat, selected.location_lng)}
+                  onPress={() => setNavTarget({ lat: selected.location_lat, lng: selected.location_lng })}
                   accessibilityRole="button"
                   hitSlop={8}
                 >
@@ -1044,6 +1033,9 @@ export default function MapScreen() {
           {renderList()}
         </ScrollView>
       )}
+
+      {/* Shared map-app picker — approximate coords from the public place sheet */}
+      <MapAppPicker target={navTarget} onClose={() => setNavTarget(null)} message="Pick an app to navigate to the approximate area." />
     </View>
   )
 
