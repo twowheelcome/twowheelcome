@@ -19,6 +19,7 @@ import { NotificationBell } from '../../components/NotificationBell'
 import { refreshNotificationCount } from '../../lib/notificationStore'
 import { thumbnailUrl } from '../../lib/imageThumb'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
+import { MapAppPicker } from '../../components/MapAppPicker'
 import { RequestPhoto } from '../../components/RequestPhoto'
 import { SafetyIcon } from '../../components/SafetyIcon'
 import { ReportButton } from '../../components/ReportButton'
@@ -371,23 +372,6 @@ function copyCoords(lat: number, lng: number) {
     navigator.clipboard.writeText(text).then(() => showToast('Copied')).catch(() => showToast("Couldn't copy"))
   } else {
     showToast(text)
-  }
-}
-
-// Let the rider pick their map app instead of forcing one. Each builds a destination
-// deep link from the exact coordinates.
-const MAP_APPS: { key: string; label: string; icon: keyof typeof Feather.glyphMap; url: (lat: number, lng: number) => string }[] = [
-  { key: 'google', label: 'Google Maps', icon: 'map-pin', url: (lat, lng) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}` },
-  { key: 'apple', label: 'Apple Maps', icon: 'map-pin', url: (lat, lng) => `https://maps.apple.com/?daddr=${lat},${lng}` },
-  { key: 'waze', label: 'Waze', icon: 'navigation', url: (lat, lng) => `https://waze.com/ul?ll=${lat},${lng}&navigate=yes` },
-  { key: 'osm', label: 'OpenStreetMap', icon: 'map', url: (lat, lng) => `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}` },
-]
-
-function openMapApp(url: string) {
-  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    window.open(url, '_blank', 'noopener,noreferrer')
-  } else {
-    void Linking.openURL(url)
   }
 }
 
@@ -876,7 +860,7 @@ export default function RequestsScreen() {
         locCoordsRef.current = coords
       }
     }
-    if (coords) await openNavigation(coords.lat, coords.lng)
+    if (coords) setNavTarget(coords)
   }
 
   async function loadConvs(userId: string) {
@@ -1787,30 +1771,8 @@ export default function RequestsScreen() {
           </View>
         </Modal>
 
-        {/* Map-app picker for the unlocked meeting point */}
-        <Modal visible={!!navTarget} transparent animationType="fade" onRequestClose={() => setNavTarget(null)}>
-          <View style={styles.confirmOverlay}>
-            <View style={[styles.confirmSheet, { borderColor: C.border }]}>
-              <Text style={styles.confirmTitle}>Open in maps</Text>
-              <Text style={styles.confirmBody}>Pick an app to navigate to the meeting point.</Text>
-              {MAP_APPS.map(app => (
-                <TouchableOpacity
-                  key={app.key}
-                  style={styles.navOption}
-                  onPress={() => { const t = navTarget; setNavTarget(null); if (t) openMapApp(app.url(t.lat, t.lng)) }}
-                  accessibilityRole="button"
-                >
-                  <Feather name={app.icon} size={16} color={C.accent} />
-                  <Text style={styles.navOptionText}>{app.label}</Text>
-                  <Feather name="external-link" size={15} color={C.textDim} />
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity style={styles.confirmCancel} onPress={() => setNavTarget(null)}>
-                <Text style={styles.confirmCancelText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+        {/* Shared map-app picker — same list for the approximate area and the exact point */}
+        <MapAppPicker target={navTarget} onClose={() => setNavTarget(null)} />
 
         <FlatList
           ref={flatRef}
@@ -2425,23 +2387,6 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   coordsCopyText: {
     color: C.success,
     fontSize: 13,
-    fontWeight: '700',
-  },
-  navOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: C.border,
-    backgroundColor: C.surface,
-  },
-  navOptionText: {
-    flex: 1,
-    color: C.text,
-    fontSize: 15,
     fontWeight: '700',
   },
   meetingFacts: { gap: 11, paddingVertical: 2 },
