@@ -103,7 +103,8 @@ CREATE TABLE IF NOT EXISTS profiles (
   notify_push boolean NOT NULL DEFAULT true,
   nationality text,
   accepted_terms_at timestamptz,
-  terms_version text
+  terms_version text,
+  notifications_seen_at timestamptz
 );
 ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_nationality_length;
 ALTER TABLE profiles ADD CONSTRAINT profiles_nationality_length CHECK (((nationality IS NULL) OR (char_length(nationality) <= 60)));
@@ -781,10 +782,19 @@ GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON profiles 
 -- push_token is deliberately NOT readable (written only via set_push_token / own UPDATE),
 -- and notify_email/notify_push stay off the public surface, matching production.
 GRANT SELECT (id, full_name, bio, avatar_url, nationality) ON profiles TO anon;
-GRANT SELECT (id, full_name, bio, avatar_url, nationality) ON profiles TO authenticated;
+GRANT SELECT (id, full_name, bio, avatar_url, nationality, notifications_seen_at) ON profiles TO authenticated;
 GRANT INSERT (id, full_name, bio, avatar_url, push_token, nationality) ON profiles TO authenticated;
-GRANT UPDATE (full_name, bio, avatar_url, push_token, nationality) ON profiles TO authenticated;
+GRANT UPDATE (full_name, bio, avatar_url, push_token, nationality, notifications_seen_at) ON profiles TO authenticated;
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON request_notification_events TO service_role;
+-- Notification centre (bell): a participant may read the notification-event log for their
+-- OWN requests (drives the bell feed; distinguishes host-cancel from guest-withdraw).
+GRANT SELECT ON request_notification_events TO authenticated;
+CREATE POLICY rne_participant_select ON public.request_notification_events
+  FOR SELECT TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM public.stay_requests sr
+    WHERE sr.id = request_id AND (sr.guest_id = auth.uid() OR sr.host_id = auth.uid())
+  ));
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON reviews TO anon;
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON reviews TO authenticated;
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON reviews TO service_role;
