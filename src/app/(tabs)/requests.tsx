@@ -607,7 +607,6 @@ export default function RequestsScreen() {
   const [reviewDraftStars, setReviewDraftStars] = useState<Record<string, number>>({})
   const [reviewDraftBody, setReviewDraftBody] = useState<Record<string, string>>({})
   const [reviewDraftSafe, setReviewDraftSafe] = useState<Record<string, string>>({})   // 'secure'|'soso'|'not'
-  const [reviewDraftThanks, setReviewDraftThanks] = useState<Record<string, boolean>>({})   // optional beer gesture (no charge yet)
   const [submittingStayId, setSubmittingStayId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)   // accept/decline failure banner
   const [respondingFor, setRespondingFor] = useState<string | null>(null)
@@ -1177,7 +1176,7 @@ export default function RequestsScreen() {
       ).values()
     ).sort((a, b) => a.departure_date < b.departure_date ? -1 : a.departure_date > b.departure_date ? 1 : 0)
     setEndedStays(ended)
-    setReviewDraftStars({}); setReviewDraftBody({}); setReviewDraftSafe({}); setReviewDraftThanks({}); setMyReviewsByStay({})
+    setReviewDraftStars({}); setReviewDraftBody({}); setReviewDraftSafe({}); setMyReviewsByStay({})
     if (ended.length && currentUser) {
       const { data: revs } = await supabase
         .from('reviews')
@@ -1777,7 +1776,6 @@ export default function RequestsScreen() {
 	                  const dates = `${fmtDateStr(stay.arrival_date)}–${fmtDateStr(stay.departure_date)}`
 	                  const stars = reviewDraftStars[stay.id] || 0
 	                  const safe = reviewDraftSafe[stay.id] || ''
-	                  const firstName = (selected.other.full_name || 'them').split(' ')[0]
 	                  return (
 	                    <View key={stay.id} style={styles.reviewCard}>
 	                      {/* Hero — who you're reviewing */}
@@ -1832,20 +1830,6 @@ export default function RequestsScreen() {
 	                        />
 	                      </View>
 	                      <Text style={styles.reviewPrivacyHint}>🔒 Keep exact addresses and coordinates out of reviews.</Text>
-
-	                      {/* Say thanks — optional, never required (no charge yet) */}
-	                      {!isReviewingGuest && (
-	                        <View style={styles.thanksCard}>
-	                          <Text style={styles.thanksTitle}>Say thanks to {firstName}</Text>
-	                          <Text style={styles.thanksSub}>Optional — buy them a beer, never required.</Text>
-	                          <TouchableOpacity
-	                            style={[styles.thanksChip, reviewDraftThanks[stay.id] && styles.thanksChipOn]}
-	                            onPress={() => setReviewDraftThanks(p => ({ ...p, [stay.id]: !p[stay.id] }))}
-	                          >
-	                            <Text style={[styles.thanksChipText, reviewDraftThanks[stay.id] && styles.thanksChipTextOn]}>🍺 Beer · €3</Text>
-	                          </TouchableOpacity>
-	                        </View>
-	                      )}
 
 	                      <TouchableOpacity
 	                        style={[styles.reviewSubmit, (!stars || submittingStayId === stay.id) && styles.reviewSubmitDisabled]}
@@ -2577,13 +2561,6 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   reviewTagOn: { borderColor: C.accent, backgroundColor: C.accentSoft },
   reviewTagText: { color: C.textMuted, fontSize: 13, fontFamily: FONT.body },
   reviewTagTextOn: { color: C.accent, fontWeight: '700' },
-  thanksCard: { backgroundColor: C.bg, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 14, gap: 6, alignItems: 'center' },
-  thanksTitle: { color: C.text, fontSize: 14, fontWeight: '800' },
-  thanksSub: { color: C.textDim, fontSize: 12, fontFamily: FONT.body, textAlign: 'center' },
-  thanksChip: { borderRadius: 100, borderWidth: 1.5, borderColor: C.border, paddingHorizontal: 18, paddingVertical: 9, marginTop: 2 },
-  thanksChipOn: { borderColor: C.accent, backgroundColor: C.accentSoft },
-  thanksChipText: { color: C.textMuted, fontSize: 14, fontWeight: '700' },
-  thanksChipTextOn: { color: C.accent },
   reviewInput: {
     backgroundColor: C.elevated, borderRadius: 14, padding: 12,
     color: C.text, fontSize: 16, minHeight: 60, fontFamily: FONT.body,
