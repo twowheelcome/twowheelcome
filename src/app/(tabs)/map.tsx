@@ -469,12 +469,6 @@ export default function MapScreen() {
                 ) : null}
               </View>
             </View>
-            {selected.max_guests != null && (
-              <View style={styles.capacityBadge}>
-                <Text style={styles.capacityText}>👥 Up to {selected.max_guests} {selected.max_guests === 1 ? 'rider' : 'riders'}</Text>
-                <Text style={styles.capacitySub}>This is how many the host can take at once.</Text>
-              </View>
-            )}
             <SafetyBlock parkings={selectedParkings} />
             <HostOffer loc={selected} />
           </View>
@@ -895,10 +889,6 @@ export default function MapScreen() {
 
               <SafetyBlock parkings={parkings} />
               <HostOffer loc={selected} />
-              {/* Capacity is a property of the place, not the person — sits with the offer */}
-              {selected.max_guests != null && (
-                <Text style={{ color: C.text, fontSize: 13, fontWeight: '700' }}>👥 Up to {selected.max_guests} {selected.max_guests === 1 ? 'rider' : 'riders'}</Text>
-              )}
 
               {/* Reviews folder — opens this host's reviews (same style as the profile menu) */}
               {selected.review_count > 0 ? (
@@ -1218,9 +1208,6 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   sectionLabel:     { color: C.textMuted, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10, fontWeight: '700' },
   dateFieldLabel:   { color: C.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
   dateInput:        { backgroundColor: C.elevated, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: C.border },
-  capacityBadge:    { backgroundColor: C.accentSoft, borderWidth: 1, borderColor: C.accentBorder, borderRadius: 14, paddingVertical: 11, paddingHorizontal: 14, marginTop: 4 },
-  capacityText:     { color: C.accent, fontSize: 15, fontWeight: '900' },
-  capacitySub:      { color: C.textMuted, fontSize: 12, marginTop: 2 },
   counter:          { flexDirection: 'row', alignItems: 'center', gap: 16 },
   counterBtn:       { width: 36, height: 36, borderRadius: 18, backgroundColor: C.elevated, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
   counterBtnText:   { color: C.text, fontSize: 20, fontWeight: '700' },

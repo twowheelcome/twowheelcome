@@ -27,6 +27,7 @@ type OfferLoc = {
   photos?: string[] | null
   price_amount?: number | null
   price_currency?: string | null
+  max_guests?: number | null
 }
 
 function mapLabels(values: string[], labels: Record<string, string>): string {
@@ -44,7 +45,7 @@ export function HostOffer({ loc }: { loc: OfferLoc }) {
   const notes = loc.notes?.trim()
   const photos = loc.photos ?? []
 
-  if (!sleep.length && !amenities.length && !pricings.length && !notes && !photos.length) return null
+  if (!sleep.length && !amenities.length && !pricings.length && !notes && !photos.length && loc.max_guests == null) return null
 
   return (
     <View style={s.wrap}>
@@ -52,6 +53,10 @@ export function HostOffer({ loc }: { loc: OfferLoc }) {
       <ListingGallery photos={photos} />
       {sleep.length > 0 && (
         <View style={s.row}><Text style={s.icon}>🛏</Text><Text style={s.value}>{mapLabels(sleep, SLEEP_LABELS)}</Text></View>
+      )}
+      {/* Capacity belongs to this specific place, not the host in general */}
+      {loc.max_guests != null && (
+        <View style={s.row}><Text style={s.icon}>👥</Text><Text style={s.value}>Up to {loc.max_guests} {loc.max_guests === 1 ? 'rider' : 'riders'}</Text></View>
       )}
       {pricings.length > 0 && (
         <ContributionBadge loc={loc} />
