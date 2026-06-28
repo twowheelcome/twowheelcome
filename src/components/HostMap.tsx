@@ -54,7 +54,7 @@ interface Host {
   sleep_types?: string[]
   amenities?: string[]
   pricing: string
-  profiles: { full_name: string; avatar_url?: string | null } | null
+  profiles: { full_name: string; avatar_url?: string | null; nationality?: string | null } | null
   avg_rating: number | null
   review_count: number
   last_review: { rating: number; body: string | null; reviewer_name: string | null } | null
@@ -204,11 +204,12 @@ export default function HostMap({
       }).addTo(map)
       circlesRef.current.push(circle)
 
-      // Screen-reader label leads with the safety level (the point of the map), then place.
-      // Country only — the public map keeps the area approximate, no city name.
+      // Screen-reader label: the host (name + profile nationality, like the cards) and
+      // the safety level (the point of the map). No place/city/country — the location is
+      // carried only by the approximate (~1 km) pin, never as text.
       const ariaName = escapeHtml(host.profiles?.full_name || 'A rider')
-      const ariaPlace = escapeHtml(host.location_country || '')
-      const ariaLabel = `${ariaName}${ariaPlace ? `, ${ariaPlace}` : ''} — bike safety: ${safety.label} (${safety.rank})`
+      const ariaNationality = escapeHtml(host.profiles?.nationality || '')
+      const ariaLabel = `${ariaName}${ariaNationality ? `, ${ariaNationality}` : ''} — bike safety: ${safety.label} (${safety.rank})`
 
       // Teardrop pin coloured by safety level, with the safety icon inside (not an avatar).
       const markerHtml = `
