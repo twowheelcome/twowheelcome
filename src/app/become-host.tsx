@@ -89,7 +89,7 @@ function toggle(arr: string[], value: string): string[] {
 function stripContacts(text: string): string {
   let t = (text || '')
     // GPS coordinate pairs (e.g. "50.0871, 14.4210")
-    .replace(/[0-9]{1,3}\.[0-9]{3,}[\s,;]+[0-9]{1,3}\.[0-9]{3,}/g, '')
+    .replace(/-?[0-9]{1,3}\.[0-9]{3,}[\s,;]+-?[0-9]{1,3}\.[0-9]{3,}/g, '')
     // emails
     .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, '')
   // phone-like runs (7+ digits, optional +, spaces/dashes/parens)

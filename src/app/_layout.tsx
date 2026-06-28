@@ -6,6 +6,7 @@ import { useFonts, Oswald_500Medium, Oswald_600SemiBold, Oswald_700Bold } from '
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from '@expo-google-fonts/inter'
 import { ThemeProvider, useTheme } from '../lib/ThemeContext'
 import { LanguageProvider } from '../lib/i18n'
+import { Toast } from '../components/Toast'
 import { supabase } from '../lib/supabase'
 import { registerPushToken } from '../lib/pushNotifications'
 
@@ -86,6 +87,7 @@ export default function RootLayout() {
     <ThemeProvider>
       <LanguageProvider>
         <AppStack />
+        <Toast />
       </LanguageProvider>
     </ThemeProvider>
   )

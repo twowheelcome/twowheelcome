@@ -11,6 +11,8 @@ import { unreadStore } from '../../lib/unreadStore'
 import { pendingChatStore } from '../../lib/pendingChatStore'
 import { mapFocusStore } from '../../lib/mapFocusStore'
 import { fuzzCoords } from '../../lib/geo'
+import { getLocalYMD } from '../../lib/date'
+import { showToast } from '../../lib/toastStore'
 import { UserChip } from '../../components/UserChip'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { RequestPhoto } from '../../components/RequestPhoto'
@@ -173,7 +175,7 @@ function makeStatus(C: ThemeColors): Record<string, { label: string; color: stri
 // status, to avoid disturbing stats/history/other flows).
 function isExpiredPending(status: string | null, arrival: string | null): boolean {
   if (status !== 'PENDING' || !arrival) return false
-  return arrival < new Date().toISOString().split('T')[0]
+  return arrival < getLocalYMD()
 }
 
 function conversationDirection(conv: ConvRow, userId?: string | null): ConversationFilter {
@@ -344,7 +346,7 @@ function summarizeLocation(loc: Partial<RequestLocation> | null | undefined): st
 }
 
 function hasStayEnded(req: RequestData): boolean {
-  return req.departure_date <= new Date().toISOString().split('T')[0]
+  return req.departure_date <= getLocalYMD()
 }
 
 async function openNavigation(lat: number, lng: number) {
@@ -967,7 +969,7 @@ export default function RequestsScreen() {
   // withdrawn and cancelled chats are "behind us" and can be cleared.
   function canRemoveConv(conv: ConvRow): boolean {
     const s = conv.requestStatus
-    const today = new Date().toISOString().split('T')[0]
+    const today = getLocalYMD()
     // A pending knock blocks removal only while its ARRIVAL is still in the FUTURE.
     // Once the arrival day is here/past with no reply it's expired → removable.
     if (s === 'PENDING') return isExpiredPending(s, conv.requestArrival)
@@ -1189,7 +1191,7 @@ export default function RequestsScreen() {
   // host's exact spot. Needs 3+ decimals, so prices like "20.50" are untouched. The DB has
   // the same backstop for direct API calls.
   function stripCoords(text: string): string {
-    return text.replace(/\d{1,3}\.\d{3,}[\s,;]+\d{1,3}\.\d{3,}/g, '').replace(/\s{2,}/g, ' ').trim()
+    return text.replace(/-?\d{1,3}\.\d{3,}[\s,;]+-?\d{1,3}\.\d{3,}/g, '').replace(/\s{2,}/g, ' ').trim()
   }
 
   async function submitReview(stayId: string) {
@@ -1394,7 +1396,7 @@ export default function RequestsScreen() {
     ))
     supabase.functions.invoke('notify-request', {
       body: { request_id: requestId, event: status === 'ACCEPTED' ? 'accepted' : 'rejected' },
-    }).catch(() => {})
+    }).catch(e => { console.warn('notify failed', e); showToast("Couldn't send the notification — the other rider may not be alerted.") })
 
     // Auto-message in chat
     if (selected && currentUser) {
@@ -1500,7 +1502,7 @@ export default function RequestsScreen() {
     // Let the rider know their accepted stay fell through (email + push, prefs-aware).
     supabase.functions.invoke('notify-request', {
       body: { request_id: requestId, event: 'cancelled_by_host' },
-    }).catch(() => {})
+    }).catch(e => { console.warn('notify failed', e); showToast("Couldn't send the notification — the other rider may not be alerted.") })
 
     // System note in the thread (plain bubble, no request_id so it doesn't render a card).
     if (selected) {

@@ -8,6 +8,7 @@ import { FONT } from '../../lib/theme'
 import { pendingChatStore } from '../../lib/pendingChatStore'
 import { pendingKnockStore } from '../../lib/pendingKnockStore'
 import { mapFocusStore } from '../../lib/mapFocusStore'
+import { showToast } from '../../lib/toastStore'
 import { fuzzCoords } from '../../lib/geo'
 import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
 import { HostOffer } from '../../components/HostOffer'
@@ -438,7 +439,7 @@ export default function MapScreen() {
 
       supabase.functions.invoke('notify-request', {
         body: { request_id: row.request_id, event: 'new_request' },
-      }).catch(() => {})
+      }).catch(e => { console.warn('notify failed', e); showToast("Couldn't send the notification — the host may not be alerted.") })
 
       setMyActiveByLocation(prev => ({ ...prev, [selected.id]: 'PENDING' }))
       setSendSuccess(true)

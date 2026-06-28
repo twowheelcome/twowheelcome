@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 import { FONT } from '../lib/theme'
 import { pendingChatStore } from '../lib/pendingChatStore'
+import { getLocalYMD } from '../lib/date'
 import { AppHeader, HeaderBackButton } from '../components/AppHeader'
 
 type Stay = {
@@ -34,7 +35,7 @@ function dateRange(a?: string | null, d?: string | null): string {
 }
 
 function todayStr() {
-  return new Date().toISOString().split('T')[0]
+  return getLocalYMD()
 }
 
 const STATUS_META: Record<string, { label: string; key: 'success' | 'warning' | 'error' | 'info' }> = {

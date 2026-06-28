@@ -10,6 +10,7 @@ import { UserChip, refreshUserChip } from '../../components/UserChip'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { compressBikePhoto } from '../../lib/compressImage'
 import { FONT } from '../../lib/theme'
+import { getLocalYMD } from '../../lib/date'
 import { SUPPORT_URL, hasSupportLink } from '../../lib/support'
 import { LinearGradient } from 'expo-linear-gradient'
 
@@ -106,7 +107,7 @@ export default function ProfileScreen() {
     })))
 
     // Accepted stays drive both the review prompt and the Trips/Nights stats.
-    const today = new Date().toISOString().split('T')[0]
+    const today = getLocalYMD()
     const [{ data: acceptedStays }, { data: myRevs }] = await Promise.all([
       supabase.from('stay_requests')
         .select('id, arrival_date, departure_date')
