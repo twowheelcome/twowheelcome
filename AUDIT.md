@@ -1,5 +1,13 @@
 # TWOWHEELCOME — Audit (2026-06-19)
 
+> **🔴 C1 account-deletion hole FIXED (2026-06-28).** `delete_account_data` was EXECUTE-able by `anon`,
+> and its `auth.uid() IS NOT NULL AND <> p_uid` guard never fired for anon (NULL uid) → an
+> unauthenticated caller could delete ANY account by passing a public UUID. Fixed live + baseline with
+> `REVOKE EXECUTE … FROM anon, authenticated` (only the delete-account Edge Function via service_role may
+> run it). A `auth.uid() IS NULL → RAISE` was tried and reverted — it broke the legit flow (service_role
+> has NULL uid). Verified naostro: anon 204→401, cross-user 403, legit Edge-Function delete still
+> `{ok:true}` + row gone. See REVIEW.md → C1.
+
 > **Active-tab re-tap returns to section root (2026-06-27).**
 > - Chat detail and the map's sheet/form/filters are internal state, not pushed routes, so re-tapping
 >   the already-active tab did nothing. Added a `tabPress` listener per tab: **Messages** pops an open

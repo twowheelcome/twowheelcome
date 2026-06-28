@@ -393,6 +393,10 @@ BEGIN
   IF p_uid IS NULL THEN
     RAISE EXCEPTION 'Missing user id';
   END IF;
+  -- The only legitimate caller is the delete-account Edge Function via the service_role
+  -- key (NULL auth.uid()), so we must NOT reject on NULL. Defense-in-depth: a real
+  -- end-user JWT may only delete itself. Primary lock-down is the REVOKE below — EXECUTE
+  -- is removed from anon/authenticated (fixes the C1 anon account-wipe hole, 2026-06-28).
   IF auth.uid() IS NOT NULL AND auth.uid() <> p_uid THEN
     RAISE EXCEPTION 'Not allowed to delete another account';
   END IF;
@@ -443,6 +447,10 @@ BEGIN
 END;
 $function$
 ;
+-- C1 fix (2026-06-28): only the delete-account Edge Function (service_role) may run this.
+-- Without the REVOKE, anon had EXECUTE and its NULL auth.uid() slipped past the guard,
+-- allowing an unauthenticated caller to delete ANY account by passing a public UUID.
+REVOKE EXECUTE ON FUNCTION public.delete_account_data(uuid) FROM anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.enforce_message_rate_limit()
  RETURNS trigger

@@ -11,7 +11,18 @@ Severity: **CRITICAL** (exploitable now) · **HIGH** · **MEDIUM** · **LOW**.
 
 ## 🔴 CRITICAL
 
-### C1 — Anyone can delete ANY account, unauthenticated `delete_account_data` RPC
+### C1 — ✅ FIXED (2026-06-28) — Anyone can delete ANY account, unauthenticated `delete_account_data` RPC
+**Fix applied (live + baseline):** `REVOKE EXECUTE ON FUNCTION public.delete_account_data(uuid) FROM
+anon, authenticated;` — now only the delete-account Edge Function (service_role) can run it. Kept the
+`auth.uid() IS NOT NULL AND auth.uid() <> p_uid` guard as defense-in-depth. (Note: a plain
+`auth.uid() IS NULL → RAISE` was tried and **reverted** — it broke the real delete flow, because the
+Edge Function calls via service_role which has a NULL `auth.uid()`. The REVOKE is the correct primary
+fix.)
+**Verified naostro after fix:** anon RPC → **HTTP 401** (was 204); an authenticated user calling it for
+another uuid → **403**; legitimate delete via the Edge Function → **`{"ok":true}` 200** and the profile
+row is gone (`[]`). Privileges now: anon=false, authenticated=false, service_role=true.
+
+<details><summary>Original report</summary>
 **Where:** `supabase/migrations/00000000000000_baseline.sql:373` (function) + its EXECUTE grant.
 **Verified naostro:** with only the public **anon** key,
 `POST /rest/v1/rpc/delete_account_data {"p_uid":"<uuid>"}` returns **HTTP 204** (success), not 401.
@@ -30,6 +41,7 @@ IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Not authenticated' USING errcode = '
 ```
 **Recommendation:** apply this one first thing — it's a low-risk REVOKE that doesn't touch the working
 delete flow.
+</details>
 
 ---
 
@@ -144,9 +156,10 @@ digest; an unbounded `target_id` can bloat the row/email.
 
 ## TL;DR — top 5 to act on
 
-1. **C1 (CRITICAL, fix now):** `delete_account_data` is callable by **anon** and its auth guard is
-   bypassed → anyone can delete any account with just a public UUID (verified: anon → HTTP 204).
-   One-line `REVOKE EXECUTE … FROM anon, authenticated` + add the `auth.uid() IS NULL` raise.
+1. **C1 — ✅ FIXED (2026-06-28):** `delete_account_data` was callable by **anon** with its auth guard
+   bypassed → anyone could delete any account with a public UUID. Fixed by REVOKE EXECUTE from
+   anon/authenticated (verified: anon RPC 204→401, cross-user 403, legit Edge-Function delete still
+   200 + row gone).
 2. **H1:** revoke EXECUTE on `handle_new_user` / `set_push_token` from anon — shrink the RPC surface.
 3. **H2:** rate-limit the email Edge Functions (feedback/report) — cost & inbox-spam protection.
 4. **M1:** UTC-vs-local "today" in expiry/hide — switch to a local-date helper so the day boundary is
