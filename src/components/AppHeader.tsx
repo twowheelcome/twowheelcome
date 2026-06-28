@@ -1,6 +1,7 @@
 import { ReactNode, useMemo } from 'react'
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { router } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme, useThemeMode, type ThemeColors } from '../lib/ThemeContext'
 import { Wordmark } from './Wordmark'
 
@@ -33,6 +34,7 @@ export function HeaderBackButton({ onPress = () => router.back() }: { onPress?: 
 
 export function AppHeader({ left, right, children, onLogoPress }: { left?: ReactNode; right?: ReactNode; children?: ReactNode; onLogoPress?: () => void }) {
   const C = useTheme()
+  const insets = useSafeAreaInsets()
   const styles = useMemo(() => makeStyles(C), [C])
   const compactLogo = !!left && !!right
   const content = children ?? (
@@ -47,7 +49,7 @@ export function AppHeader({ left, right, children, onLogoPress }: { left?: React
     </TouchableOpacity>
   )
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
       <View style={styles.headerInner}>
         {left ? <View style={styles.headerLeft}>{left}</View> : null}
         <View style={styles.headerCenter}>{content}</View>
@@ -62,7 +64,8 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     backgroundColor: C.bg,
     borderBottomWidth: 1,
     borderBottomColor: C.border,
-    paddingTop: 46,
+    // paddingTop is applied at runtime from the safe-area inset (+10) so the header
+    // clears the notch/status bar without the old fixed 46px gap (esp. on web).
     paddingBottom: 14,
     paddingHorizontal: 20,
   },

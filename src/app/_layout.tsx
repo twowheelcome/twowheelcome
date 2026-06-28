@@ -7,6 +7,7 @@ import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from '@expo-goog
 import { ThemeProvider, useTheme } from '../lib/ThemeContext'
 import { LanguageProvider } from '../lib/i18n'
 import { Toast } from '../components/Toast'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
 import { registerPushToken } from '../lib/pushNotifications'
 
@@ -84,11 +85,13 @@ export default function RootLayout() {
   if (!fontsLoaded) return null
 
   return (
-    <ThemeProvider>
-      <LanguageProvider>
-        <AppStack />
-        <Toast />
-      </LanguageProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <LanguageProvider>
+          <AppStack />
+          <Toast />
+        </LanguageProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   )
 }
