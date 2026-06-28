@@ -11,6 +11,8 @@ import { Wordmark } from '../components/Wordmark'
 import { AppWordmark } from '../components/AppHeader'
 
 const ONBOARDING_KEY = '@twowheelcome/onboarding-seen'
+// Bump when the Terms/Privacy text materially changes (stored with each consent).
+const TERMS_VERSION = '2026-06-28'
 
 function isValidEmail(e: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim())
@@ -109,6 +111,7 @@ export default function AuthScreen() {
   const [canResend, setCanResend] = useState(false)   // show "Resend confirmation email"
   const { signup } = useLocalSearchParams<{ signup?: string }>()
   const [mode, setMode] = useState<'login' | 'register'>(signup ? 'register' : 'login')
+  const [agreed, setAgreed] = useState(false)   // required Terms/Privacy consent before sign-up
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
@@ -164,12 +167,16 @@ export default function AuthScreen() {
     if (!fullName.trim()) { setAuthError('Please enter your name.'); return }
     if (!isValidEmail(email)) { setAuthError('Please enter a valid email address.'); return }
     if (password.length < 6) { setAuthError('Password must be at least 6 characters.'); return }
+    if (!agreed) { setAuthError('Please accept the Terms of Use and Privacy Policy to continue.'); return }
     setLoading(true)
     const name = fullName.trim()
+    // Record consent in user_metadata so it reaches the profile via handle_new_user even
+    // before email confirmation (no session yet at sign-up).
+    const acceptedAt = new Date().toISOString()
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { data: { full_name: name } },
+      options: { data: { full_name: name, accepted_terms_at: acceptedAt, terms_version: TERMS_VERSION } },
     })
     if (error) {
       if (error.message) console.warn('signup error:', error.message)
@@ -273,10 +280,30 @@ export default function AuthScreen() {
           />
         </View>
 
+        {mode === 'register' && (
+          <TouchableOpacity
+            style={styles.agreeRow}
+            onPress={() => setAgreed(a => !a)}
+            activeOpacity={0.8}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: agreed }}
+          >
+            <View style={[styles.checkbox, agreed && styles.checkboxOn]}>
+              {agreed ? <Feather name="check" size={13} color={C.white} /> : null}
+            </View>
+            <Text style={styles.agreeText}>
+              I agree to the{' '}
+              <Text style={styles.agreeLink} onPress={() => router.push('/terms')}>Terms of Use</Text>
+              {' '}and{' '}
+              <Text style={styles.agreeLink} onPress={() => router.push('/privacy')}>Privacy Policy</Text>.
+            </Text>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity
-          style={styles.btnPrimary}
+          style={[styles.btnPrimary, (loading || (mode === 'register' && !agreed)) && styles.btnPrimaryDisabled]}
           onPress={mode === 'login' ? handleLogin : handleRegister}
-          disabled={loading}
+          disabled={loading || (mode === 'register' && !agreed)}
         >
           <Text style={styles.btnPrimaryText}>
             {loading ? 'Loading...' : mode === 'login' ? 'Log in' : 'Create account'}
@@ -285,7 +312,7 @@ export default function AuthScreen() {
 
         <TouchableOpacity
           style={styles.btnOutline}
-          onPress={() => { setAuthError(''); setAuthSuccess(''); setFullName(''); setMode(mode === 'login' ? 'register' : 'login') }}
+          onPress={() => { setAuthError(''); setAuthSuccess(''); setFullName(''); setAgreed(false); setMode(mode === 'login' ? 'register' : 'login') }}
         >
           <Text style={styles.btnOutlineText}>
             {mode === 'login' ? 'Create account' : 'Back to log in'}
@@ -376,7 +403,13 @@ function makeStyles(C: ThemeColors) {
     input:     { flex: 1, color: C.text, fontSize: 16 },
 
     btnPrimary:     { height: 54, backgroundColor: C.accent, borderRadius: 100, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+    btnPrimaryDisabled: { opacity: 0.5 },
     btnPrimaryText: { color: C.white, fontSize: 16, fontFamily: FONT.head, letterSpacing: 1, textTransform: 'uppercase' },
+    agreeRow:       { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingVertical: 2, marginTop: 2 },
+    checkbox:       { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: C.borderMid, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+    checkboxOn:     { backgroundColor: C.accent, borderColor: C.accent },
+    agreeText:      { flex: 1, color: C.textMuted, fontSize: 13, lineHeight: 19, fontFamily: FONT.body },
+    agreeLink:      { color: C.accent, fontWeight: '700' },
     btnOutline:     { height: 54, borderRadius: 100, borderWidth: 1.5, borderColor: C.borderMid, alignItems: 'center', justifyContent: 'center' },
     btnOutlineText: { color: C.text, fontSize: 16, fontFamily: FONT.head, letterSpacing: 1, textTransform: 'uppercase' },
 

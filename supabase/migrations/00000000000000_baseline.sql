@@ -101,7 +101,9 @@ CREATE TABLE IF NOT EXISTS profiles (
   cover_url text,
   notify_email boolean NOT NULL DEFAULT true,
   notify_push boolean NOT NULL DEFAULT true,
-  nationality text
+  nationality text,
+  accepted_terms_at timestamptz,
+  terms_version text
 );
 ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_nationality_length;
 ALTER TABLE profiles ADD CONSTRAINT profiles_nationality_length CHECK (((nationality IS NULL) OR (char_length(nationality) <= 60)));
@@ -481,8 +483,15 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
  SET search_path TO ''
 AS $function$
 BEGIN
-  INSERT INTO public.profiles (id, full_name)
-  VALUES (NEW.id, NULLIF(trim(NEW.raw_user_meta_data ->> 'full_name'), ''))
+  -- Copy the signup consent (timestamp + terms version) recorded in user_metadata, so the
+  -- profile carries proof of acceptance even before the email is confirmed / a session exists.
+  INSERT INTO public.profiles (id, full_name, accepted_terms_at, terms_version)
+  VALUES (
+    NEW.id,
+    NULLIF(trim(NEW.raw_user_meta_data ->> 'full_name'), ''),
+    (NULLIF(NEW.raw_user_meta_data ->> 'accepted_terms_at', ''))::timestamptz,
+    NULLIF(NEW.raw_user_meta_data ->> 'terms_version', '')
+  )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
