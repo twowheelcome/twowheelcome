@@ -251,7 +251,6 @@ export default function BecomeHostScreen() {
         id: loc.id || makeId(),
         user_id: userId,
         paused: loc.paused,
-        location_name: null,
         location_lat: loc.pin.lat,
         location_lng: loc.pin.lng,
         location_city: loc.pin.city || '',
@@ -268,7 +267,6 @@ export default function BecomeHostScreen() {
         // Price only applies to a Paid listing; otherwise stored as null.
         price_amount: loc.pricings.includes('fixed') && loc.priceAmount.trim() !== '' ? Number(loc.priceAmount) : null,
         price_currency: loc.pricings.includes('fixed') ? (loc.priceCurrency || 'EUR') : null,
-        price_unit: null,
       }
       const { error } = await supabase.from('host_locations').upsert(row, { onConflict: 'id' })
       if (error) {

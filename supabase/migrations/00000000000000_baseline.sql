@@ -46,15 +46,11 @@ CREATE TABLE IF NOT EXISTS host_locations (
   created_at timestamp with time zone DEFAULT now(),
   sleep_types text[] DEFAULT '{}'::text[],
   amenities text[] DEFAULT '{}'::text[],
-  available_from date,
-  available_to date,
   pricings text[] DEFAULT '{}'::text[],
   vehicle_types text[] DEFAULT '{}'::text[],
   parkings text[] DEFAULT '{}'::text[],
-  location_name text,
   photos text[] NOT NULL DEFAULT '{}'::text[],
   price_amount numeric,
-  price_unit text,
   price_currency text,
   paused boolean NOT NULL DEFAULT false
 );
@@ -91,14 +87,10 @@ CREATE TABLE IF NOT EXISTS profiles (
   full_name text,
   avatar_url text,
   bio text,
-  languages text[],
-  verified_phone boolean DEFAULT false,
   created_at timestamp without time zone DEFAULT now(),
-  last_seen timestamp without time zone DEFAULT now(),
   vehicle_types text[] DEFAULT '{}'::text[],
   push_token text,
   bike_model text,
-  cover_url text,
   notify_email boolean NOT NULL DEFAULT true,
   notify_push boolean NOT NULL DEFAULT true,
   nationality text,
@@ -123,8 +115,7 @@ CREATE TABLE IF NOT EXISTS reviews (
   created_at timestamp with time zone DEFAULT now(),
   reply_body text,
   reply_created_at timestamp with time zone,
-  bike_safe text,
-  tags text[]
+  bike_safe text
 );
 CREATE TABLE IF NOT EXISTS stay_requests (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -162,10 +153,8 @@ ALTER TABLE reviews ADD CONSTRAINT reviews_stay_request_id_reviewer_id_key UNIQU
 ALTER TABLE conversations ADD CONSTRAINT conversations_ordered_distinct_users CHECK (((user_a)::text < (user_b)::text));
 ALTER TABLE host_locations ADD CONSTRAINT host_locations_country_length CHECK (((location_country IS NULL) OR (char_length(location_country) <= 120)));
 ALTER TABLE host_locations ADD CONSTRAINT host_locations_notes_length CHECK (((notes IS NULL) OR (char_length(notes) <= 4000)));
-ALTER TABLE host_locations ADD CONSTRAINT host_locations_name_length CHECK (((location_name IS NULL) OR (char_length(location_name) <= 200)));
 ALTER TABLE host_locations ADD CONSTRAINT host_locations_city_length CHECK (((location_city IS NULL) OR (char_length(location_city) <= 120)));
 ALTER TABLE host_locations ADD CONSTRAINT host_locations_photos_max3 CHECK (((array_length(photos, 1) IS NULL) OR (array_length(photos, 1) <= 3)));
-ALTER TABLE host_locations ADD CONSTRAINT host_locations_price_unit_len CHECK (((price_unit IS NULL) OR (char_length(price_unit) <= 40)));
 ALTER TABLE host_locations ADD CONSTRAINT host_locations_price_currency_chk CHECK (((price_currency IS NULL) OR (price_currency = ANY (ARRAY['EUR'::text, 'USD'::text, 'GBP'::text, 'CHF'::text, 'JPY'::text, 'CAD'::text, 'AUD'::text, 'CZK'::text]))));
 ALTER TABLE messages ADD CONSTRAINT messages_body_length CHECK (((body IS NULL) OR (char_length(body) <= 4000)));
 ALTER TABLE profiles ADD CONSTRAINT profiles_bio_length CHECK (((bio IS NULL) OR (char_length(bio) <= 2000)));
@@ -750,7 +739,6 @@ CREATE OR REPLACE VIEW host_locations_public WITH (security_invoker=false) AS
     created_at,
     photos,
     price_amount,
-    price_unit,
     price_currency
    FROM host_locations
   WHERE (NOT COALESCE(paused, false));
