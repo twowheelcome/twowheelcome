@@ -515,7 +515,7 @@ BEGIN
   IF NEW.body IS NOT NULL THEN
     NEW.body := btrim(regexp_replace(
       regexp_replace(NEW.body,
-        '[0-9]{1,3}\.[0-9]{3,}[[:space:],;]+[0-9]{1,3}\.[0-9]{3,}', '', 'g'),
+        '-?[0-9]{1,3}\.[0-9]{3,}[[:space:],;]+-?[0-9]{1,3}\.[0-9]{3,}', '', 'g'),
       '[[:space:]]{2,}', ' ', 'g'));
     IF NEW.body = '' THEN NEW.body := NULL; END IF;
   END IF;
@@ -523,7 +523,7 @@ BEGIN
   IF NEW.reply_body IS NOT NULL THEN
     NEW.reply_body := btrim(regexp_replace(
       regexp_replace(NEW.reply_body,
-        '[0-9]{1,3}\.[0-9]{3,}[[:space:],;]+[0-9]{1,3}\.[0-9]{3,}', '', 'g'),
+        '-?[0-9]{1,3}\.[0-9]{3,}[[:space:],;]+-?[0-9]{1,3}\.[0-9]{3,}', '', 'g'),
       '[[:space:]]{2,}', ' ', 'g'));
     IF NEW.reply_body = '' THEN NEW.reply_body := NULL; END IF;
   END IF;
@@ -542,7 +542,7 @@ CREATE OR REPLACE FUNCTION public.strip_location_notes()
 AS $function$
 BEGIN
   IF NEW.notes IS NOT NULL THEN
-    NEW.notes := regexp_replace(NEW.notes, '[0-9]{1,3}\.[0-9]{3,}[[:space:],;]+[0-9]{1,3}\.[0-9]{3,}', '', 'g');
+    NEW.notes := regexp_replace(NEW.notes, '-?[0-9]{1,3}\.[0-9]{3,}[[:space:],;]+-?[0-9]{1,3}\.[0-9]{3,}', '', 'g');
     NEW.notes := regexp_replace(NEW.notes, '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}', '', 'g');
     NEW.notes := regexp_replace(NEW.notes, '\+?[0-9][0-9 ().-]{5,}[0-9]', '', 'g');
     NEW.notes := btrim(regexp_replace(NEW.notes, '[[:space:]]{2,}', ' ', 'g'));
@@ -848,7 +848,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.co
 -- ── Support-link interest log (drives a weekly developer digest email) ──
 CREATE TABLE IF NOT EXISTS public.support_clicks (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id uuid NOT NULL,
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   created_at timestamp with time zone NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS support_clicks_created_at_idx ON public.support_clicks (created_at);
@@ -856,6 +856,18 @@ ALTER TABLE public.support_clicks ENABLE ROW LEVEL SECURITY;
 CREATE POLICY support_clicks_own_insert ON public.support_clicks FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
 GRANT INSERT ON public.support_clicks TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON public.support_clicks TO service_role;
+
+-- ── H1 (2026-06-28): keep SECURITY DEFINER trigger/helper functions off the public RPC
+-- surface. Trigger functions still fire (triggers don't check the caller's EXECUTE), so
+-- registration/validation/rate-limit flows are unaffected; set_push_token stays for
+-- authenticated only. (delete_account_data is locked down above via C1.)
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.cascade_on_accept() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.enforce_message_rate_limit() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.validate_conversation_write() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.validate_message_request() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.validate_stay_request_write() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.set_push_token(text) FROM PUBLIC, anon;
 
 
 -- ── Storage (buckets + object policies) ──
