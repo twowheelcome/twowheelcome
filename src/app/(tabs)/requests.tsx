@@ -364,17 +364,6 @@ async function openNavigation(lat: number, lng: number) {
   await Linking.openURL(url)
 }
 
-// Copy the precise meeting point to the clipboard (web). Native has no built-in
-// clipboard without an extra dependency, so it falls back to showing the value.
-function copyCoords(lat: number, lng: number) {
-  const text = `${lat}, ${lng}`
-  if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
-    navigator.clipboard.writeText(text).then(() => showToast('Copied')).catch(() => showToast("Couldn't copy"))
-  } else {
-    showToast(text)
-  }
-}
-
 // ── RequestCard ───────────────────────────────────────────────────────────
 
 function RequestCard({
@@ -1952,15 +1941,6 @@ export default function RequestsScreen() {
                       <Text style={styles.coordsValue} selectable>
                         {exactPoint.coords.lat.toFixed(6)}, {exactPoint.coords.lng.toFixed(6)}
                       </Text>
-                      <TouchableOpacity
-                        style={styles.coordsCopyBtn}
-                        onPress={() => copyCoords(exactPoint.coords.lat, exactPoint.coords.lng)}
-                        accessibilityRole="button"
-                        accessibilityLabel="Copy coordinates"
-                      >
-                        <Feather name="copy" size={14} color={C.success} />
-                        <Text style={styles.coordsCopyText}>Copy coordinates</Text>
-                      </TouchableOpacity>
                     </View>
                     {exactPoint.lines.length ? (
                       <View style={styles.meetingFacts}>
@@ -2376,18 +2356,6 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     color: C.text,
     fontSize: 15,
     fontFamily: FONT.body,
-  },
-  coordsCopyBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    marginTop: 2,
-  },
-  coordsCopyText: {
-    color: C.success,
-    fontSize: 13,
-    fontWeight: '700',
   },
   meetingFacts: { gap: 11, paddingVertical: 2 },
   meetingFact: { flexDirection: 'row', alignItems: 'flex-start', gap: 11 },

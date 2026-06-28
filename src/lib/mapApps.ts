@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons'
 import { Linking, Platform } from 'react-native'
+import { showToast } from './toastStore'
 
 export type MapApp = {
   key: string
@@ -30,5 +31,16 @@ export function openMapApp(url: string) {
     window.open(url, '_blank', 'noopener,noreferrer')
   } else {
     void Linking.openURL(url)
+  }
+}
+
+// Copy coordinates to the clipboard (web). Native has no built-in clipboard without an
+// extra dependency, so it falls back to showing the value in the toast.
+export function copyCoords(lat: number, lng: number) {
+  const text = `${lat}, ${lng}`
+  if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => showToast('Copied')).catch(() => showToast("Couldn't copy"))
+  } else {
+    showToast(text)
   }
 }

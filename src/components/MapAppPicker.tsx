@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Feather } from '@expo/vector-icons'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
-import { MAP_APPS, openMapApp } from '../lib/mapApps'
+import { MAP_APPS, copyCoords, openMapApp } from '../lib/mapApps'
 
 // Shared map-app picker used by both navigate buttons (approximate area + exact
 // "Address unlocked" point). Open it by passing a coordinate target; close clears it.
@@ -35,6 +35,16 @@ export function MapAppPicker({
               <Feather name="external-link" size={15} color={C.textDim} />
             </TouchableOpacity>
           ))}
+          {/* Last item: copy the coordinates (approximate or exact, per the target). */}
+          <TouchableOpacity
+            style={s.option}
+            onPress={() => { const t = target; onClose(); if (t) copyCoords(t.lat, t.lng) }}
+            accessibilityRole="button"
+            accessibilityLabel="Copy coordinates"
+          >
+            <Feather name="copy" size={16} color={C.accent} />
+            <Text style={s.optionText}>Copy coordinates</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={s.cancel} onPress={onClose}>
             <Text style={s.cancelText}>Cancel</Text>
           </TouchableOpacity>
