@@ -6,6 +6,7 @@ import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { FONT } from '../../lib/theme'
 import { SafetyBlock } from '../../components/SafetyBlock'
 import { ContributionBadge } from '../../components/ContributionBadge'
+import { sortSleep } from '../../lib/sleepOrder'
 import { ReportButton } from '../../components/ReportButton'
 import { Avatar } from '../../components/Avatar'
 import { ListingGallery } from '../../components/ListingGallery'
@@ -259,7 +260,7 @@ export default function PublicHostProfile() {
                 <View style={styles.section}>
                   <Text style={styles.sectionLabel}>Where you sleep</Text>
                   <View style={styles.chips}>
-                    {(loc.sleep_types as string[]).map((s: string) => (
+                    {sortSleep(loc.sleep_types as string[]).map((s: string) => (
                       <View key={s} style={styles.chip}><Text style={styles.chipText}>{SLEEP_LABELS[s] || s}</Text></View>
                     ))}
                   </View>

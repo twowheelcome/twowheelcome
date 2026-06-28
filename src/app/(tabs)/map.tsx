@@ -9,6 +9,7 @@ import { pendingChatStore } from '../../lib/pendingChatStore'
 import { pendingKnockStore } from '../../lib/pendingKnockStore'
 import { mapFocusStore } from '../../lib/mapFocusStore'
 import { showToast } from '../../lib/toastStore'
+import { sortSleep } from '../../lib/sleepOrder'
 import { fuzzCoords } from '../../lib/geo'
 import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
 import { HostOffer } from '../../components/HostOffer'
@@ -763,9 +764,9 @@ export default function MapScreen() {
               {/* SLEEP */}
               <Text style={styles.filterSection}>Where to sleep</Text>
               {([
-                { value: 'tent', icon: '⛺', label: 'Tent', desc: 'Bring your own — space available' },
-                { value: 'roof', icon: '🏠', label: 'Roof over head', desc: 'Couch, mat, anything dry' },
                 { value: 'room', icon: '🛏', label: 'Private room', desc: 'Bed, privacy, proper sleep' },
+                { value: 'roof', icon: '🏠', label: 'Roof over head', desc: 'Couch, mat, anything dry' },
+                { value: 'tent', icon: '⛺', label: 'Tent', desc: 'Bring your own — space available' },
               ] as const).map(o => {
                 const on = filterSleep.includes(o.value)
                 return (
@@ -1098,7 +1099,7 @@ export default function MapScreen() {
                   <Text style={styles.detailInfo}>👥 Max. {host.max_guests} riders</Text>
                   {host.sleep_types?.length > 0 && (
                     <Text style={styles.detailInfo}>
-                      🛏 {(host.sleep_types as string[]).map(s => ({ tent: 'Tent', roof: 'Roof over head', room: 'Private room' }[s] || s)).join(' · ')}
+                      🛏 {sortSleep(host.sleep_types as string[]).map(s => ({ tent: 'Tent', roof: 'Roof over head', room: 'Private room' }[s] || s)).join(' · ')}
                     </Text>
                   )}
                   {(() => {

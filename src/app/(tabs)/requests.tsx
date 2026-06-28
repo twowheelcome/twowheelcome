@@ -13,6 +13,7 @@ import { mapFocusStore } from '../../lib/mapFocusStore'
 import { fuzzCoords } from '../../lib/geo'
 import { getLocalYMD } from '../../lib/date'
 import { showToast } from '../../lib/toastStore'
+import { sortSleep } from '../../lib/sleepOrder'
 import { UserChip } from '../../components/UserChip'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { RequestPhoto } from '../../components/RequestPhoto'
@@ -333,7 +334,7 @@ function summarizeLocation(loc: Partial<RequestLocation> | null | undefined): st
   if (!loc) return []
   const place = [loc.location_city, loc.location_country].filter(Boolean).join(', ')
   const parking = labelList(loc.parkings, PARKING_LABELS, loc.parking)
-  const sleep = labelList(loc.sleep_types, SLEEP_LABELS)
+  const sleep = labelList(sortSleep(loc.sleep_types), SLEEP_LABELS)
   const amenities = labelList(loc.amenities, AMENITY_LABELS)
   const pricing = labelList(loc.pricings, PRICING_LABELS, loc.pricing)
   return [
@@ -388,7 +389,7 @@ function RequestCard({
   const place = [loc?.location_city, loc?.location_country].filter(Boolean).join(', ')
   const parkingArr: string[] = loc?.parkings?.length ? loc.parkings : (loc?.parking ? [loc.parking] : [])
   const safetyLevel = parkingArr.length ? bestSafety(parkingArr) : null
-  const sleep = labelList(loc?.sleep_types, SLEEP_LABELS)
+  const sleep = labelList(sortSleep(loc?.sleep_types), SLEEP_LABELS)
   const amenities = labelList(loc?.amenities, AMENITY_LABELS)
   const pricing = labelList(loc?.pricings, PRICING_LABELS, loc?.pricing)
   // One consistent Feather icon per fact (icon = friendly cue, value = the point).

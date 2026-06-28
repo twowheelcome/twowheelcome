@@ -7,6 +7,7 @@ import { FONT } from '../lib/theme'
 import { AppHeader, HeaderBackButton } from '../components/AppHeader'
 import { SafetyBlock } from '../components/SafetyBlock'
 import { ContributionBadge } from '../components/ContributionBadge'
+import { sortSleep } from '../lib/sleepOrder'
 
 type Place = {
   id: string
@@ -95,7 +96,7 @@ export default function MyPlacesScreen() {
             </View>
           ) : (
             places.map(p => {
-              const sleep = (p.sleep_types || []).filter(s => SLEEP_LABELS[s]).map(s => SLEEP_LABELS[s]).join(' · ')
+              const sleep = sortSleep(p.sleep_types || []).filter(s => SLEEP_LABELS[s]).map(s => SLEEP_LABELS[s]).join(' · ')
               const isBusy = busy === p.id
               return (
                 <TouchableOpacity key={p.id} style={styles.card} activeOpacity={0.85} onPress={() => router.push({ pathname: '/become-host', params: { place: p.id } })}>

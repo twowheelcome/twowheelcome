@@ -25,9 +25,9 @@ function makePARKING(C: ThemeColors) {
 }
 
 const SLEEP = [
-  { value: 'tent', icon: '⛺', label: 'Tent', desc: 'Bring your own — space available' },
-  { value: 'roof', icon: '🏠', label: 'Roof over head', desc: 'Couch, mat, anything dry' },
   { value: 'room', icon: '🛏', label: 'Private room', desc: 'Bed, privacy, proper sleep' },
+  { value: 'roof', icon: '🏠', label: 'Roof over head', desc: 'Couch, mat, anything dry' },
+  { value: 'tent', icon: '⛺', label: 'Tent', desc: 'Bring your own — space available' },
 ]
 
 const AMENITIES = [

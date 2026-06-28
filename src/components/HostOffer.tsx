@@ -4,6 +4,7 @@ import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 import { FONT } from '../lib/theme'
 import { ListingGallery } from './ListingGallery'
 import { ContributionBadge } from './ContributionBadge'
+import { sortSleep } from '../lib/sleepOrder'
 
 // The host's full public offer (everything except parking, which SafetyBlock shows on its
 // own). Fed from host_locations_public — public fields only, never the exact address/GPS.
@@ -38,7 +39,7 @@ function mapLabels(values: string[], labels: Record<string, string>): string {
 export function HostOffer({ loc }: { loc: OfferLoc }) {
   const C = useTheme()
   const s = useMemo(() => makeStyles(C), [C])
-  const sleep = loc.sleep_types ?? []
+  const sleep = sortSleep(loc.sleep_types)
   // Only amenities we still offer (retired options in old data are dropped, not shown raw).
   const amenities = (loc.amenities ?? []).filter(a => AMENITY_LABELS[a])
   const pricings = loc.pricings?.length ? loc.pricings : (loc.pricing ? [loc.pricing] : [])
