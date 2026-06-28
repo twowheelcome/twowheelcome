@@ -48,6 +48,8 @@ export default function PublicHostProfile() {
   const [locations, setLocations] = useState<any[]>([])
   const [avgRating, setAvgRating] = useState<number | null>(null)
   const [reviewCount, setReviewCount] = useState(0)
+  const [bikeSafeYes, setBikeSafeYes] = useState(0)
+  const [bikeSafeTotal, setBikeSafeTotal] = useState(0)
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [isBlocked, setIsBlocked] = useState(false)
@@ -100,7 +102,7 @@ export default function PublicHostProfile() {
       supabase.from('profiles').select('id, full_name, bio, avatar_url, nationality').eq('id', userId).maybeSingle(),
       supabase.from('host_locations_public').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
       supabase.from('reviews')
-        .select('rating, body, reviewer_id')
+        .select('rating, body, reviewer_id, bike_safe')
         .eq('reviewee_id', userId)
         .order('created_at', { ascending: false })
     ])
@@ -123,6 +125,10 @@ export default function PublicHostProfile() {
       const sum = revs.reduce((acc: number, r: any) => acc + r.rating, 0)
       setAvgRating(sum / revs.length)
       setReviewCount(revs.length)
+      // Bike-safety trust signal: how many riders who answered felt the bike was secure.
+      const answered = revs.filter((r: any) => r.bike_safe != null)
+      setBikeSafeTotal(answered.length)
+      setBikeSafeYes(answered.filter((r: any) => r.bike_safe === 'secure').length)
     }
 
     setLoading(false)
@@ -175,6 +181,11 @@ export default function PublicHostProfile() {
             {avgRating != null && (
               <Text style={styles.rating}>
                 {`${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} ${avgRating.toFixed(1)} · ${reviewCount} ${reviewCount === 1 ? 'review' : 'reviews'}`}
+              </Text>
+            )}
+            {bikeSafeTotal > 0 && (
+              <Text style={styles.bikeSafe}>
+                {`🔒 Bike felt safe — ${bikeSafeYes} of ${bikeSafeTotal} ${bikeSafeTotal === 1 ? 'rider' : 'riders'}`}
               </Text>
             )}
             {(profile.nationality || locations.length > 1) && (
@@ -371,6 +382,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   heroInfo:     { flex: 1, gap: 3 },
   name:         { color: C.text, fontSize: 24, fontWeight: '900' },
   rating:       { color: C.accent, fontSize: 14, fontWeight: '700' },
+  bikeSafe:     { color: C.textMuted, fontSize: 13, fontWeight: '600', marginTop: 3 },
   meta:         { color: C.textMuted, fontSize: 13 },
 
   bio:          { color: C.text, fontSize: 15, lineHeight: 23, fontFamily: FONT.body },
