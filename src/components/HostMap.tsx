@@ -38,6 +38,10 @@ function escapeHtml(value: string): string {
 }
 
 let savedMapView: { center: [number, number]; zoom: number } | null = null
+// One-shot: centre the map on the user's location the first time it's opened in a session
+// (e.g. after login). Reuses the existing map.locate()/locationfound geolocation — no extra
+// permission prompt. Never overrides a view the user has already moved/searched.
+let didInitialLocate = false
 
 interface Host {
   id: string
@@ -300,6 +304,13 @@ export default function HostMap({
           className: '', iconSize: [14, 14], iconAnchor: [7, 7],
         })
         L.marker([e.latlng.lat, e.latlng.lng], { icon: youIcon, zIndexOffset: 2000 }).addTo(map)
+
+        // First map open of the session → centre on the user once. Skip if the user has
+        // already moved/searched (savedMapView set) so we never yank their view.
+        if (!didInitialLocate && savedMapView === null) {
+          didInitialLocate = true
+          map.setView([e.latlng.lat, e.latlng.lng], 12)
+        }
       })
     }
 
