@@ -384,7 +384,12 @@ function RequestCard({
   const C = useTheme()
   const rc = useMemo(() => makeRc(C), [C])
   const STATUS = useMemo(() => makeStatus(C), [C])
-  const s = STATUS[req.status] || STATUS.PENDING
+  // Same derived rule as the conversation list: a pending knock whose arrival day has
+  // passed reads as Expired here too — and stops offering live actions on it.
+  const expired = isExpiredPending(req.status, req.arrival_date)
+  const s = expired
+    ? { label: 'Expired', color: C.textMuted, bg: C.surface, border: C.border }
+    : (STATUS[req.status] || STATUS.PENDING)
   const vehicle = req.guest_vehicle === 'moto' ? 'Moto' : null
   const guestsLabel = req.guests_count === 1 ? '1 rider' : `${req.guests_count} riders`
   const isGuest = !isHost
@@ -421,7 +426,7 @@ function RequestCard({
       </View>
 
       {/* Privacy block — guest side only */}
-      {isGuest && req.status === 'PENDING' && (
+      {isGuest && req.status === 'PENDING' && !expired && (
         <View style={[rc.privacyBlock, { backgroundColor: C.accentSoft, borderColor: C.accentBorder }]}>
           <Text style={rc.privacyIcon}>🔒</Text>
           <Text style={[rc.privacyText, { color: C.textMuted }]}>
@@ -491,7 +496,7 @@ function RequestCard({
       ) : null}
 
       {/* Host actions */}
-      {isHost && req.status === 'PENDING' && (
+      {isHost && req.status === 'PENDING' && !expired && (
         <View style={rc.actions}>
           <TouchableOpacity
             style={[rc.acceptBtn, responding && rc.actionDisabled]}
@@ -511,7 +516,7 @@ function RequestCard({
       )}
 
       {/* Guest can withdraw their own request while it is still pending */}
-      {isGuest && req.status === 'PENDING' && onWithdraw && (
+      {isGuest && req.status === 'PENDING' && onWithdraw && !expired && (
         <TouchableOpacity
           style={[rc.withdrawBtn, withdrawing && rc.actionDisabled]}
           onPress={() => onWithdraw(req.id)}
