@@ -117,15 +117,22 @@ export default function BecomeHostScreen() {
     if (!placeParam) return
     const { data: d } = await supabase
       .from('host_locations')
-      .select('id, paused, location_lat, location_lng, location_city, location_country, parkings, parking, sleep_types, amenities, max_guests, pricings, pricing, notes, photos, price_amount, price_currency')
+      .select('id, paused, location_city, location_country, parkings, parking, sleep_types, amenities, max_guests, pricings, pricing, notes, photos, price_amount, price_currency')
       .eq('user_id', userId)
       .eq('id', placeParam)
       .maybeSingle()
     if (currentUserIdRef.current !== userId || !d) return
+    // Exact coords live in the owner-only table; host_locations only holds the rounded value.
+    const { data: c } = await supabase
+      .from('host_location_coords')
+      .select('lat, lng')
+      .eq('location_id', placeParam)
+      .maybeSingle()
+    if (currentUserIdRef.current !== userId) return
     setLocations([{
       id: d.id,
       paused: !!d.paused,
-      pin: { lat: d.location_lat, lng: d.location_lng, city: d.location_city, country: d.location_country },
+      pin: { lat: c?.lat ?? 0, lng: c?.lng ?? 0, city: d.location_city, country: d.location_country },
       parkings: d.parkings?.length ? d.parkings : (d.parking ? [d.parking] : []),
       sleepTypes: d.sleep_types || [],
       amenities: d.amenities || [],
@@ -247,28 +254,28 @@ export default function BecomeHostScreen() {
     }
     setSaving(true)
     try {
-      const row = {
-        id: loc.id || makeId(),
-        user_id: userId,
-        paused: loc.paused,
-        location_lat: loc.pin.lat,
-        location_lng: loc.pin.lng,
-        location_city: loc.pin.city || '',
-        location_country: loc.pin.country || '',
-        parkings: loc.parkings,
-        parking: loc.parkings[0] || 'yard',
-        sleep_types: loc.sleepTypes,
-        amenities: loc.amenities,
-        max_guests: loc.maxGuests,
-        pricings: loc.pricings,
-        pricing: loc.pricings[0] || 'free',
-        notes: stripContacts(loc.notes),
-        photos: loc.photos.slice(0, MAX_LISTING_PHOTOS),
+      // Atomic save: the RPC writes the rounded coords to host_locations (publicly readable)
+      // and the exact coords to host_location_coords (owner-only) in one transaction.
+      const { error } = await supabase.rpc('save_host_location', {
+        p_id: loc.id || makeId(),
+        p_lat: loc.pin.lat,
+        p_lng: loc.pin.lng,
+        p_city: loc.pin.city || '',
+        p_country: loc.pin.country || '',
+        p_parkings: loc.parkings,
+        p_parking: loc.parkings[0] || 'yard',
+        p_sleep_types: loc.sleepTypes,
+        p_amenities: loc.amenities,
+        p_max_guests: loc.maxGuests,
+        p_pricings: loc.pricings,
+        p_pricing: loc.pricings[0] || 'free',
+        p_notes: stripContacts(loc.notes),
+        p_photos: loc.photos.slice(0, MAX_LISTING_PHOTOS),
         // Price only applies to a Paid listing; otherwise stored as null.
-        price_amount: loc.pricings.includes('fixed') && loc.priceAmount.trim() !== '' ? Number(loc.priceAmount) : null,
-        price_currency: loc.pricings.includes('fixed') ? (loc.priceCurrency || 'EUR') : null,
-      }
-      const { error } = await supabase.from('host_locations').upsert(row, { onConflict: 'id' })
+        p_price_amount: loc.pricings.includes('fixed') && loc.priceAmount.trim() !== '' ? Number(loc.priceAmount) : null,
+        p_price_currency: loc.pricings.includes('fixed') ? (loc.priceCurrency || 'EUR') : null,
+        p_paused: loc.paused,
+      })
       if (error) {
         console.warn('save listing error:', error.message)
         setSaveError('Could not save your place. Please check your connection and try again.')

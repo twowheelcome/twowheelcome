@@ -187,6 +187,10 @@ CREATE POLICY "conv_insert" ON conversations FOR INSERT TO public WITH CHECK (((
 CREATE POLICY "conv_select" ON conversations FOR SELECT TO public USING (((auth.uid() = user_a) OR (auth.uid() = user_b)));
 CREATE POLICY "conv_update" ON conversations FOR UPDATE TO public USING (((auth.uid() = user_a) OR (auth.uid() = user_b))) WITH CHECK (((auth.uid() = user_a) OR (auth.uid() = user_b)));
 CREATE POLICY "host_locations_owner_all" ON host_locations FOR ALL TO public USING ((auth.uid() = user_id)) WITH CHECK ((auth.uid() = user_id));
+-- Public map: anyone may read non-paused listings. Combined with the security_invoker
+-- view this replaces the old SECURITY DEFINER view. host_locations holds only rounded
+-- coords, so this exposes nothing more than the public view already did.
+CREATE POLICY "host_locations_public_read" ON host_locations FOR SELECT TO anon, authenticated USING ((NOT COALESCE(paused, false)));
 CREATE POLICY "msg_insert" ON messages FOR INSERT TO public WITH CHECK (((auth.uid() = sender_id) AND (EXISTS ( SELECT 1
    FROM conversations c
   WHERE ((c.id = messages.conversation_id) AND ((auth.uid() = c.user_a) OR (auth.uid() = c.user_b)))))));
@@ -677,7 +681,11 @@ CREATE TRIGGER validate_message_request_trigger BEFORE INSERT OR UPDATE ON publi
 CREATE TRIGGER validate_stay_request_write_trigger BEFORE INSERT OR UPDATE ON public.stay_requests FOR EACH ROW EXECUTE FUNCTION validate_stay_request_write();
 
 -- ── Views ──
-CREATE OR REPLACE VIEW host_locations_public WITH (security_invoker=false) AS
+-- security_invoker=on: the view runs with the CALLER's privileges + RLS (not the
+-- definer's), so it no longer bypasses RLS. Public reads are governed by the
+-- host_locations_public_read policy below; exact coords are NOT in this table (they
+-- live owner-only in host_location_coords), so only the rounded (~1 km) values surface.
+CREATE OR REPLACE VIEW host_locations_public WITH (security_invoker=on) AS
  SELECT id,
     user_id,
     round(location_lat::numeric, 2)::double precision AS location_lat,
@@ -829,6 +837,107 @@ REVOKE EXECUTE ON FUNCTION public.validate_conversation_write() FROM PUBLIC, ano
 REVOKE EXECUTE ON FUNCTION public.validate_message_request() FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.validate_stay_request_write() FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.set_push_token(text) FROM PUBLIC, anon;
+
+
+-- ── Exact location coordinates (owner-only) ──
+-- Privacy core: the precise pin lives here, readable ONLY by its owner. host_locations
+-- keeps just the rounded (~1 km) coords, which is all the public map ever needs. This is
+-- what lets host_locations_public be a plain security_invoker view (no SECURITY DEFINER):
+-- there are simply no exact coords on any publicly-readable surface to leak.
+CREATE TABLE IF NOT EXISTS public.host_location_coords (
+  location_id uuid PRIMARY KEY REFERENCES public.host_locations(id) ON DELETE CASCADE,
+  user_id     uuid NOT NULL  REFERENCES auth.users(id)             ON DELETE CASCADE,
+  lat double precision NOT NULL,
+  lng double precision NOT NULL
+);
+ALTER TABLE public.host_location_coords ENABLE ROW LEVEL SECURITY;
+CREATE POLICY hlc_owner_all ON public.host_location_coords FOR ALL TO authenticated
+  USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+-- Hard lock-down (Supabase default privileges otherwise hand anon/authenticated full DML
+-- on new public tables): anon gets nothing; authenticated may only SELECT (own rows via
+-- RLS); all writes go through save_host_location (SECURITY DEFINER). Belt-and-braces with
+-- RLS so a future stray GRANT can't silently expose exact home coordinates.
+REVOKE ALL ON public.host_location_coords FROM anon;
+REVOKE ALL ON public.host_location_coords FROM authenticated;
+GRANT SELECT ON public.host_location_coords TO authenticated;
+GRANT ALL ON public.host_location_coords TO service_role;
+
+-- Atomic listing save: rounded coords + non-confidential fields into host_locations, exact
+-- coords into host_location_coords, in one transaction. SECURITY DEFINER so it can write
+-- the owner-only coords table; ownership is enforced against auth.uid().
+CREATE OR REPLACE FUNCTION public.save_host_location(
+  p_id uuid,
+  p_lat double precision,
+  p_lng double precision,
+  p_city text,
+  p_country text,
+  p_parkings text[],
+  p_parking text,
+  p_sleep_types text[],
+  p_amenities text[],
+  p_max_guests integer,
+  p_pricings text[],
+  p_pricing text,
+  p_notes text,
+  p_photos text[],
+  p_price_amount numeric,
+  p_price_currency text,
+  p_paused boolean
+) RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_owner uuid;
+BEGIN
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'Not authenticated' USING errcode = '28000'; END IF;
+  IF p_id IS NULL THEN RAISE EXCEPTION 'Missing location id'; END IF;
+  IF p_lat IS NULL OR p_lng IS NULL THEN RAISE EXCEPTION 'Missing coordinates'; END IF;
+
+  SELECT user_id INTO v_owner FROM host_locations WHERE id = p_id;
+  IF v_owner IS NOT NULL AND v_owner <> v_uid THEN
+    RAISE EXCEPTION 'Not allowed to edit another user''s location';
+  END IF;
+
+  INSERT INTO host_locations (
+    id, user_id, paused, location_lat, location_lng, location_city, location_country,
+    parkings, parking, sleep_types, amenities, max_guests, pricings, pricing,
+    notes, photos, price_amount, price_currency
+  ) VALUES (
+    p_id, v_uid, COALESCE(p_paused, false),
+    round(p_lat::numeric, 2)::double precision, round(p_lng::numeric, 2)::double precision,
+    p_city, p_country, p_parkings, p_parking, p_sleep_types, p_amenities, p_max_guests,
+    p_pricings, p_pricing, p_notes, p_photos, p_price_amount, p_price_currency
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    paused = excluded.paused,
+    location_lat = excluded.location_lat,
+    location_lng = excluded.location_lng,
+    location_city = excluded.location_city,
+    location_country = excluded.location_country,
+    parkings = excluded.parkings,
+    parking = excluded.parking,
+    sleep_types = excluded.sleep_types,
+    amenities = excluded.amenities,
+    max_guests = excluded.max_guests,
+    pricings = excluded.pricings,
+    pricing = excluded.pricing,
+    notes = excluded.notes,
+    photos = excluded.photos,
+    price_amount = excluded.price_amount,
+    price_currency = excluded.price_currency
+  WHERE host_locations.user_id = v_uid;
+
+  INSERT INTO host_location_coords (location_id, user_id, lat, lng)
+  VALUES (p_id, v_uid, p_lat, p_lng)
+  ON CONFLICT (location_id) DO UPDATE SET lat = excluded.lat, lng = excluded.lng;
+END
+$function$
+;
+REVOKE EXECUTE ON FUNCTION public.save_host_location(uuid,double precision,double precision,text,text,text[],text,text[],text[],integer,text[],text,text,text[],numeric,text,boolean) FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.save_host_location(uuid,double precision,double precision,text,text,text[],text,text[],text[],integer,text[],text,text,text[],numeric,text,boolean) TO authenticated;
 
 
 -- ── Storage (buckets + object policies) ──

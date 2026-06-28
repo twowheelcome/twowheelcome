@@ -1320,17 +1320,27 @@ export default function RequestsScreen() {
     setSendingCoordsFor(req.id)
 
     let loc: any = null
+    let exact: { lat: number; lng: number } | null = null
     if (req.location_id) {
-      const { data } = await supabase
-        .from('host_locations')
-        .select('location_lat, location_lng, location_city, location_country, parking, parkings, sleep_types, amenities, pricing, pricings, max_guests')
-        .eq('id', req.location_id)
-        .eq('user_id', req.host_id)
-        .maybeSingle()
-      loc = data
+      // Recap fields from the public row; the EXACT coords only from the owner-only table.
+      const [{ data: locData }, { data: coordData }] = await Promise.all([
+        supabase
+          .from('host_locations')
+          .select('location_city, location_country, parking, parkings, sleep_types, amenities, pricing, pricings, max_guests')
+          .eq('id', req.location_id)
+          .eq('user_id', req.host_id)
+          .maybeSingle(),
+        supabase
+          .from('host_location_coords')
+          .select('lat, lng')
+          .eq('location_id', req.location_id)
+          .maybeSingle(),
+      ])
+      loc = locData
+      if (coordData?.lat != null && coordData?.lng != null) exact = { lat: coordData.lat, lng: coordData.lng }
     }
-    if (loc?.location_lat != null && loc?.location_lng != null) {
-      const coords = `${Number(loc.location_lat).toFixed(6)}, ${Number(loc.location_lng).toFixed(6)}`
+    if (loc && exact) {
+      const coords = `${exact.lat.toFixed(6)}, ${exact.lng.toFixed(6)}`
       const place = [loc.location_city, loc.location_country].filter(Boolean).join(', ')
       const recap = summarizeLocation(loc)
       const body = [
