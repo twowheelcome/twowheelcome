@@ -55,11 +55,12 @@ export default function HistoryScreen() {
     if (!user) { setStays([]); setLoading(false); return }
     const userId = user.id
 
-    // City is read from the stay's own snapshot (location_city), so the log stays
-    // intact even after the listing is deleted — it's a historical record.
+    // Country is read from the stay's own snapshot, so the log stays intact even after
+    // the listing is deleted — it's a historical record. City is intentionally not shown
+    // (privacy): the exact point lived only in the chat between the two parties.
     const { data: reqs } = await supabase
       .from('stay_requests')
-      .select('id, status, host_id, guest_id, conversation_id, arrival_date, departure_date, location_city, location_country')
+      .select('id, status, host_id, guest_id, conversation_id, arrival_date, departure_date, location_country')
       .or(`guest_id.eq.${userId},host_id.eq.${userId}`)
       .order('arrival_date', { ascending: false })
 
@@ -86,7 +87,7 @@ export default function HistoryScreen() {
         status: r.status,
         role,
         otherName: nameMap[otherId] || 'Rider',
-        city: [r.location_city, r.location_country].filter(Boolean).join(', '),
+        city: [r.location_country].filter(Boolean).join(', '),
         arrival: r.arrival_date,
         departure: r.departure_date,
         conversationId: r.conversation_id,

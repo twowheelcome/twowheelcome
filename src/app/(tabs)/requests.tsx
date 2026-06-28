@@ -66,7 +66,6 @@ type RequestData = {
 
 type RequestLocation = {
   id: string
-  location_city: string | null
   location_country: string | null
   parking: string | null
   parkings: string[] | null
@@ -111,7 +110,7 @@ const REQUEST_SELECT = `
   id, arrival_date, departure_date, arrival_time,
   guests_count, guest_vehicle, status, photo_url, host_id, guest_id, location_id,
   location:host_locations!location_id(
-    id, location_city, location_country, parking, parkings,
+    id, location_country, parking, parkings,
     sleep_types, amenities, pricing, pricings, max_guests, notes
   )
 `
@@ -335,7 +334,7 @@ function labelList(values: string[] | null | undefined, labels: Record<string, s
 
 function summarizeLocation(loc: Partial<RequestLocation> | null | undefined): string[] {
   if (!loc) return []
-  const place = [loc.location_city, loc.location_country].filter(Boolean).join(', ')
+  const place = [loc.location_country].filter(Boolean).join(', ')
   const parking = labelList(loc.parkings, PARKING_LABELS, loc.parking)
   const sleep = labelList(sortSleep(loc.sleep_types), SLEEP_LABELS)
   const amenities = labelList(loc.amenities, AMENITY_LABELS)
@@ -417,7 +416,7 @@ function RequestCard({
   const guestsLabel = req.guests_count === 1 ? '1 rider' : `${req.guests_count} riders`
   const isGuest = !isHost
   const loc = req.location
-  const place = [loc?.location_city, loc?.location_country].filter(Boolean).join(', ')
+  const place = [loc?.location_country].filter(Boolean).join(', ')
   const parkingArr: string[] = loc?.parkings?.length ? loc.parkings : (loc?.parking ? [loc.parking] : [])
   const safetyLevel = parkingArr.length ? bestSafety(parkingArr) : null
   const sleep = labelList(sortSleep(loc?.sleep_types), SLEEP_LABELS)
@@ -803,12 +802,12 @@ export default function RequestsScreen() {
         ? supabase.from('profiles').select('id, full_name, avatar_url').eq('id', otherId).maybeSingle()
         : Promise.resolve({ data: null as any }),
       c.location_id
-        ? supabase.from('host_locations_public').select('location_city, location_country').eq('id', c.location_id).maybeSingle()
+        ? supabase.from('host_locations_public').select('location_country').eq('id', c.location_id).maybeSingle()
         : Promise.resolve({ data: null as any }),
     ])
     return {
       id: c.id, user_a: c.user_a, user_b: c.user_b, location_id: c.location_id,
-      locationLabel: loc ? ([loc.location_city, loc.location_country].filter(Boolean).join(', ') || 'Past location') : 'Past location',
+      locationLabel: loc ? ([loc.location_country].filter(Boolean).join(', ') || 'Past location') : 'Past location',
       last_message_at: c.last_message_at,
       other: { id: otherId, full_name: prof?.full_name ?? null, avatar_url: prof?.avatar_url ?? null },
       lastMsgBody: null, lastMsgSenderId: null, lastMsgIsRequest: false,
@@ -900,7 +899,7 @@ export default function RequestsScreen() {
 
     const [{ data: profiles }, { data: locations }, { data: lastMsgs }, { data: requestRows }, { data: readRows }, { data: blockRows }, { data: hideRows }] = await Promise.all([
       otherIds.length ? supabase.from('profiles').select('id, full_name, avatar_url').in('id', otherIds) : Promise.resolve({ data: [] as any[] }),
-      locationIds.length ? supabase.from('host_locations_public').select('id, location_city, location_country').in('id', locationIds) : Promise.resolve({ data: [] as any[] }),
+      locationIds.length ? supabase.from('host_locations_public').select('id, location_country').in('id', locationIds) : Promise.resolve({ data: [] as any[] }),
       supabase.from('messages')
         .select('conversation_id, body, sender_id, request_id, created_at')
         .in('conversation_id', convIds)
@@ -937,7 +936,7 @@ export default function RequestsScreen() {
     profiles?.forEach((p: any) => { profileMap[p.id] = { full_name: p.full_name, avatar_url: p.avatar_url } })
     const locationMap: Record<string, string> = {}
     locations?.forEach((location: any) => {
-      locationMap[location.id] = [location.location_city, location.location_country].filter(Boolean).join(', ')
+      locationMap[location.id] = [location.location_country].filter(Boolean).join(', ')
     })
 
     const lastMsgMap: Record<string, { body: string | null; sender_id: string; request_id: string | null }> = {}
@@ -1355,7 +1354,7 @@ export default function RequestsScreen() {
       const [{ data: locData }, { data: coordData }] = await Promise.all([
         supabase
           .from('host_locations')
-          .select('location_city, location_country, parking, parkings, sleep_types, amenities, pricing, pricings, max_guests')
+          .select('location_country, parking, parkings, sleep_types, amenities, pricing, pricings, max_guests')
           .eq('id', req.location_id)
           .eq('user_id', req.host_id)
           .maybeSingle(),
@@ -1370,7 +1369,7 @@ export default function RequestsScreen() {
     }
     if (loc && exact) {
       const coords = `${exact.lat.toFixed(6)}, ${exact.lng.toFixed(6)}`
-      const place = [loc.location_city, loc.location_country].filter(Boolean).join(', ')
+      const place = [loc.location_country].filter(Boolean).join(', ')
       const recap = summarizeLocation(loc)
       const body = [
         'Exact meeting point:',

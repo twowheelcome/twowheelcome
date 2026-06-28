@@ -47,7 +47,6 @@ interface Host {
   id: string
   location_lat: number
   location_lng: number
-  location_city: string
   location_country: string
   parking: string
   parkings?: string[]

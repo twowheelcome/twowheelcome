@@ -32,7 +32,7 @@ export async function loadNotifications(userId: string): Promise<NotifResult> {
   const [{ data: prof }, { data: reqs }, { data: revs }, { data: myRevs }] = await Promise.all([
     supabase.from('profiles').select('notifications_seen_at').eq('id', userId).maybeSingle(),
     supabase.from('stay_requests')
-      .select('id, status, host_id, guest_id, conversation_id, departure_date, location_city, location_country')
+      .select('id, status, host_id, guest_id, conversation_id, departure_date, location_country')
       .or(`guest_id.eq.${userId},host_id.eq.${userId}`),
     supabase.from('reviews').select('id, reviewer_id, created_at').eq('reviewee_id', userId).order('created_at', { ascending: false }),
     supabase.from('reviews').select('stay_request_id').eq('reviewer_id', userId),
@@ -62,7 +62,7 @@ export async function loadNotifications(userId: string): Promise<NotifResult> {
     const { data: profs } = await supabase.from('profiles').select('id, full_name').in('id', ids)
     profs?.forEach((p: any) => { nameMap[p.id] = p.full_name || 'Rider' })
   }
-  const placeOf = (r: any) => [r.location_city, r.location_country].filter(Boolean).join(', ')
+  const placeOf = (r: any) => [r.location_country].filter(Boolean).join(', ')
 
   const events: NotifEvent[] = []
 
