@@ -10,7 +10,7 @@ export const toastStore = {
   show(msg: string) {
     listeners.forEach(l => l(msg))
     if (timer) clearTimeout(timer)
-    timer = setTimeout(() => listeners.forEach(l => l(null)), 3500)
+    timer = setTimeout(() => listeners.forEach(l => l(null)), 4500)
   },
   subscribe(l: Listener) {
     listeners.push(l)

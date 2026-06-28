@@ -30,13 +30,15 @@ export function Toast() {
 
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
-    wrap: { position: 'absolute', left: 0, right: 0, bottom: 90, alignItems: 'center', zIndex: 9999 },
+    wrap: { position: 'absolute', left: 0, right: 0, bottom: 100, alignItems: 'center', zIndex: 9999 },
+    // High-contrast inverse pill: a graphite chip on the light theme, a light chip on the
+    // dark theme — clearly legible on either background.
     toast: {
       maxWidth: 480, marginHorizontal: 24,
-      backgroundColor: C.surface, borderWidth: 1, borderColor: C.border,
-      borderRadius: 14, paddingHorizontal: 16, paddingVertical: 11,
-      shadowColor: C.shadow, shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 6,
+      backgroundColor: C.text,
+      borderRadius: 100, paddingHorizontal: 22, paddingVertical: 14,
+      shadowColor: C.shadow, shadowOpacity: 0.3, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 10,
     },
-    text: { color: C.text, fontSize: 13, lineHeight: 18, fontFamily: FONT.body, textAlign: 'center' },
+    text: { color: C.bg, fontSize: 15, lineHeight: 20, fontWeight: '800', fontFamily: FONT.body, textAlign: 'center' },
   })
 }
