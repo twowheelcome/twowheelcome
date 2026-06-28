@@ -12,19 +12,33 @@ export function ReportButton({
   targetId,
   label = 'Report',
   style,
+  controlledOpen,
+  onRequestClose,
 }: {
   targetType: TargetType
   targetId: string
   label?: string
   style?: object
+  // Controlled mode: when `controlledOpen` is provided, the default trigger is hidden and
+  // the modal's visibility is driven by the parent (e.g. from a "⋯" menu item).
+  controlledOpen?: boolean
+  onRequestClose?: () => void
 }) {
   const C = useTheme()
   const s = useMemo(() => makeStyles(C), [C])
-  const [open, setOpen] = useState(false)
+  const controlled = controlledOpen !== undefined
+  const [openState, setOpenState] = useState(false)
+  const open = controlled ? !!controlledOpen : openState
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Reset on close so the next open (controlled or not) starts fresh.
+  const close = () => {
+    setReason(''); setDone(false); setError(null)
+    if (controlled) onRequestClose?.(); else setOpenState(false)
+  }
 
   async function submit() {
     if (busy) return
@@ -48,18 +62,20 @@ export function ReportButton({
 
   return (
     <>
-      <TouchableOpacity onPress={() => { setReason(''); setDone(false); setError(null); setOpen(true) }} hitSlop={8} style={style}>
-        <Text style={s.link}>🚩 {label}</Text>
-      </TouchableOpacity>
+      {!controlled && (
+        <TouchableOpacity onPress={() => { setReason(''); setDone(false); setError(null); setOpenState(true) }} hitSlop={8} style={style}>
+          <Text style={s.link}>🚩 {label}</Text>
+        </TouchableOpacity>
+      )}
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} transparent animationType="fade" onRequestClose={close}>
         <View style={s.overlay}>
           <View style={s.sheet}>
             {done ? (
               <>
                 <Text style={s.title}>Thanks — we&apos;ve received your report.</Text>
                 <Text style={s.body}>Our team will take a look. You won&apos;t get an automatic reply.</Text>
-                <TouchableOpacity style={s.primary} onPress={() => setOpen(false)}>
+                <TouchableOpacity style={s.primary} onPress={close}>
                   <Text style={s.primaryText}>Close</Text>
                 </TouchableOpacity>
               </>
@@ -80,7 +96,7 @@ export function ReportButton({
                 <TouchableOpacity style={[s.primary, busy && { opacity: 0.6 }]} onPress={submit} disabled={busy}>
                   <Text style={s.primaryText}>{busy ? 'Sending…' : 'Send report'}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.cancel} onPress={() => setOpen(false)} disabled={busy}>
+                <TouchableOpacity style={s.cancel} onPress={close} disabled={busy}>
                   <Text style={s.cancelText}>Cancel</Text>
                 </TouchableOpacity>
               </>

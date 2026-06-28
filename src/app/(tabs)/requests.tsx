@@ -616,8 +616,10 @@ export default function RequestsScreen() {
   const [cancelStayTarget, setCancelStayTarget] = useState<string | null>(null)   // host cancel confirm modal
   const [acceptTarget, setAcceptTarget] = useState<string | null>(null)           // host accept confirm modal
   const [coordsTarget, setCoordsTarget] = useState<RequestData | null>(null)       // send-coordinates confirm modal
-  const [removeTarget, setRemoveTarget] = useState<ConvRow | null>(null)           // "remove this chat" confirm modal
+  const [removeTarget, setRemoveTarget] = useState<ConvRow | null>(null)           // delete-conversation confirm modal
   const [removing, setRemoving] = useState(false)
+  const [menuConv, setMenuConv] = useState<{ conv: ConvRow; context: 'list' | 'chat' } | null>(null)  // "⋯" action sheet
+  const [reportConvOpen, setReportConvOpen] = useState(false)                       // controlled report modal (from chat ⋯)
   const [activeFilter, setActiveFilter] = useState<ConversationFilter>('all')
   const flatRef = useRef<FlatList<ChatItem>>(null)
   const nearBottomRef = useRef(true)   // is the user near the bottom of the thread?
@@ -1537,6 +1539,58 @@ export default function RequestsScreen() {
     setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100)
   }
 
+  // Shared conversation menus (delete-confirm + "⋯" action sheet) — rendered in both the
+  // list and chat views so the "⋯" works from either place (cross-platform: web + native).
+  const removeName = removeTarget?.other?.full_name || 'the other rider'
+  const convMenus = (
+    <>
+      <Modal visible={!!removeTarget} transparent animationType="fade" onRequestClose={() => setRemoveTarget(null)}>
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmSheet}>
+            <Text style={styles.confirmTitle}>Delete conversation?</Text>
+            <Text style={styles.confirmBody}>
+              This removes the conversation from your list only — {removeName} keeps their copy, and nothing else is deleted. It comes back if a new message arrives.
+            </Text>
+            <TouchableOpacity
+              style={[styles.confirmDanger, removing && { opacity: 0.6 }]}
+              onPress={() => { if (removeTarget) void hideConversation(removeTarget) }}
+              disabled={removing}
+            >
+              <Text style={styles.confirmDangerText}>{removing ? 'Deleting…' : 'Delete conversation'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.confirmCancel} onPress={() => setRemoveTarget(null)} disabled={removing}>
+              <Text style={styles.confirmCancelText}>Keep it</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={!!menuConv} transparent animationType="fade" onRequestClose={() => setMenuConv(null)}>
+        <TouchableOpacity style={styles.confirmOverlay} activeOpacity={1} onPress={() => setMenuConv(null)}>
+          <View style={[styles.confirmSheet, { borderColor: C.border }]}>
+            {menuConv && canRemoveConv(menuConv.conv) ? (
+              <TouchableOpacity style={styles.menuItem} onPress={() => { const c = menuConv.conv; setMenuConv(null); setRemoveTarget(c) }}>
+                <Feather name="trash-2" size={18} color={C.error} />
+                <Text style={[styles.menuItemText, { color: C.error }]}>Delete conversation</Text>
+              </TouchableOpacity>
+            ) : (
+              <Text style={styles.menuNote}>This conversation has an active stay and can’t be deleted yet.</Text>
+            )}
+            {menuConv?.context === 'chat' ? (
+              <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuConv(null); setReportConvOpen(true) }}>
+                <Feather name="flag" size={18} color={C.text} />
+                <Text style={styles.menuItemText}>Report this conversation</Text>
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity style={styles.confirmCancel} onPress={() => setMenuConv(null)}>
+              <Text style={styles.confirmCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </>
+  )
+
   // ── Chat view ────────────────────────────────────────────────────────────
 
   if (selected) {
@@ -1615,42 +1669,20 @@ export default function RequestsScreen() {
               <Text style={styles.chatLocation} numberOfLines={1}>{selected.locationLabel}</Text>
             </View>
           </TouchableOpacity>
-          <ReportButton targetType="conversation" targetId={selected.id} label="Report" style={{ marginRight: 4 }} />
-          {canRemoveConv(selected) ? (
-            <TouchableOpacity
-              onPress={() => setRemoveTarget(selected)}
-              style={{ padding: 6, marginRight: 2 }}
-              accessibilityRole="button"
-              accessibilityLabel="Remove this chat from your list"
-              hitSlop={8}
-            >
-              <Feather name="trash-2" size={18} color={C.textDim} />
-            </TouchableOpacity>
-          ) : null}
+          <TouchableOpacity
+            onPress={() => setMenuConv({ conv: selected, context: 'chat' })}
+            style={{ padding: 6, marginRight: 2 }}
+            accessibilityRole="button"
+            accessibilityLabel="Conversation options"
+            hitSlop={8}
+          >
+            <Feather name="more-horizontal" size={22} color={C.text} />
+          </TouchableOpacity>
+          <ReportButton targetType="conversation" targetId={selected.id} controlledOpen={reportConvOpen} onRequestClose={() => setReportConvOpen(false)} />
           <UserChip />
         </View>
 
-        {/* Remove-this-chat confirmation (per-user hide) */}
-        <Modal visible={!!removeTarget} transparent animationType="fade" onRequestClose={() => setRemoveTarget(null)}>
-          <View style={styles.confirmOverlay}>
-            <View style={styles.confirmSheet}>
-              <Text style={styles.confirmTitle}>Remove this chat?</Text>
-              <Text style={styles.confirmBody}>
-                This hides the chat from your list only — {otherName} keeps their copy, and nothing is deleted. It comes back if a new message arrives.
-              </Text>
-              <TouchableOpacity
-                style={[styles.confirmPrimary, removing && { opacity: 0.6 }]}
-                onPress={() => { if (removeTarget) void hideConversation(removeTarget) }}
-                disabled={removing}
-              >
-                <Text style={styles.confirmPrimaryText}>{removing ? 'Removing…' : 'Remove from my list'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.confirmCancel} onPress={() => setRemoveTarget(null)} disabled={removing}>
-                <Text style={styles.confirmCancelText}>Keep it</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+        {convMenus}
 
         {/* Host cancel-stay confirmation */}
         <Modal visible={!!cancelStayTarget} transparent animationType="fade" onRequestClose={() => setCancelStayTarget(null)}>
@@ -2130,6 +2162,15 @@ export default function RequestsScreen() {
                         </Text>
                       ) : null}
                     </View>
+                    <TouchableOpacity
+                      style={styles.convMenuBtn}
+                      onPress={(e) => { e?.stopPropagation?.(); setMenuConv({ conv, context: 'list' }) }}
+                      hitSlop={10}
+                      accessibilityRole="button"
+                      accessibilityLabel="Conversation options"
+                    >
+                      <Feather name="more-vertical" size={18} color={C.textDim} />
+                    </TouchableOpacity>
                   </View>
                 </TouchableOpacity>
               )
@@ -2141,6 +2182,7 @@ export default function RequestsScreen() {
             })}
         </ScrollView>
       )}
+      {convMenus}
     </View>
   )
 }
@@ -2168,6 +2210,10 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   confirmPrimaryText: { color: C.white, fontSize: 14, fontWeight: '800' },
   confirmCancel: { alignItems: 'center', paddingVertical: 8 },
   confirmCancelText: { color: C.textMuted, fontSize: 14, textDecorationLine: 'underline' },
+  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: C.border },
+  menuItemText: { color: C.text, fontSize: 15, fontWeight: '700' },
+  menuNote: { color: C.textDim, fontSize: 13, lineHeight: 19, fontFamily: FONT.body, paddingVertical: 8 },
+  convMenuBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginLeft: 2 },
   chatAvatar: {
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: C.elevated, alignItems: 'center', justifyContent: 'center',
