@@ -20,10 +20,11 @@ export const MAP_APPS: MapApp[] = [
   // point — no origin needed, the rider routes from there in-app.
   { key: 'mapycz', label: 'Mapy.cz', icon: 'map-pin', url: (lat, lng) => `https://mapy.com/fnc/v1/showmap?center=${lng},${lat}&zoom=16&marker=true` },
   { key: 'osmand', label: 'OsmAnd', icon: 'map', url: (lat, lng) => `https://osmand.net/map?pin=${lat},${lng}#16/${lat}/${lng}` },
-  // 5th slot — Sygic — parked pending confirmation. Sygic has no clean web deep link
-  // (only the native `com.sygic.aura://coordinate|LNG|LAT|drive` scheme, app-only).
-  // To enable, add the entry here:
-  // { key: 'sygic', label: 'Sygic', icon: 'navigation', url: (lat, lng) => `com.sygic.aura://coordinate|${lng}|${lat}|drive` },
+  // Stegra (moto navigation) has no documented coordinate deep link / URL scheme, so we
+  // fall back to the standard geo: URI. Android (native build + Android Chrome) offers
+  // an app chooser that includes geo-handlers like Stegra; iOS/desktop browsers don't
+  // handle geo: and will no-op. See the handoff note for details.
+  { key: 'stegra', label: 'Stegra', icon: 'navigation', url: (lat, lng) => `geo:${lat},${lng}?q=${lat},${lng}` },
 ]
 
 export function openMapApp(url: string) {
