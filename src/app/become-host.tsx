@@ -117,7 +117,7 @@ export default function BecomeHostScreen() {
     if (!placeParam) return
     const { data: d } = await supabase
       .from('host_locations')
-      .select('*')
+      .select('id, paused, location_lat, location_lng, location_city, location_country, parkings, parking, sleep_types, amenities, max_guests, pricings, pricing, notes, photos, price_amount, price_currency')
       .eq('user_id', userId)
       .eq('id', placeParam)
       .maybeSingle()

@@ -80,7 +80,7 @@ export default function ProfileScreen() {
     setUser(resolvedUser)
     const [p, h, r] = await Promise.all([
       supabase.from('profiles').select('id, full_name, bio, avatar_url, nationality').eq('id', resolvedUser.id).maybeSingle(),
-      supabase.from('host_locations').select('*').eq('user_id', resolvedUser.id).order('created_at', { ascending: true }),
+      supabase.from('host_locations').select('id, paused').eq('user_id', resolvedUser.id).order('created_at', { ascending: true }),
       // Reviews received by this user. reviewer_id has no FK to profiles, so a PostgREST
       // embed fails — fetch the reviewers' names in a separate query (like the public profile).
       supabase.from('reviews').select('rating, body, created_at, reviewer_id').eq('reviewee_id', resolvedUser.id).order('created_at', { ascending: false }),

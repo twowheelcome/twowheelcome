@@ -35,6 +35,7 @@ function escapeHtml(value: unknown): string {
 }
 
 const CATEGORIES = new Set(['bug', 'idea', 'other'])
+const MAX_FEEDBACK_PER_HOUR = 5
 
 Deno.serve(async req => {
   const CORS = corsHeaders(req)
@@ -62,6 +63,17 @@ Deno.serve(async req => {
   if (!message) return new Response('Empty feedback', { status: 400, headers: CORS })
 
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } })
+
+  // Rate limit: at most MAX_FEEDBACK_PER_HOUR per user per rolling hour (anti-spam / cost).
+  const since = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+  const { count: recentCount } = await admin
+    .from('feedback')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .gte('created_at', since)
+  if ((recentCount ?? 0) >= MAX_FEEDBACK_PER_HOUR) {
+    return new Response(JSON.stringify({ error: 'Too much feedback in a short time. Please try again later.' }), { status: 429, headers: { ...CORS, 'Content-Type': 'application/json' } })
+  }
 
   const { error: insertErr } = await admin.from('feedback').insert({
     user_id: user.id,

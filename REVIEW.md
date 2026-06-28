@@ -47,7 +47,12 @@ delete flow.
 
 ## 🟠 HIGH
 
-### H1 — Over-exposed EXECUTE on internal/helper functions
+### H1 — ✅ FIXED (2026-06-28) — Over-exposed EXECUTE on internal/helper functions
+**Applied (live + baseline):** `REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` on the trigger/helper
+SECURITY DEFINER funcs (`handle_new_user`, `cascade_on_accept`, `enforce_message_rate_limit`,
+`validate_conversation_write/_message_request/_stay_request_write`); `set_push_token` authenticated-only.
+**Verified naostro:** registration still auto-creates the profile (trigger fires regardless of EXECUTE);
+`set_push_token` authenticated→204, anon→401.
 **Where:** baseline.sql — EXECUTE grants. **Verified naostro** (privilege check):
 `handle_new_user` → EXECUTE for **anon + authenticated**; `set_push_token` → **anon + authenticated**;
 `delete_account_data` → **anon** (see C1).
@@ -58,7 +63,9 @@ but they shouldn't be in the public RPC surface at all.
 **Fix:** `REVOKE EXECUTE … FROM anon` on `handle_new_user` and `set_push_token`; keep `set_push_token`
 for `authenticated` only. Audit all SECURITY DEFINER functions and grant EXECUTE narrowly.
 
-### H2 — Email-sending Edge Functions have no rate limit (cost / spam)
+### H2 — ✅ FIXED (2026-06-28) — Email-sending Edge Functions have no rate limit (cost / spam)
+**Applied (deployed):** per-user rolling rate limits — `feedback` 5/hour, `report` 5/day (count check
+before insert, returns 429). **Verified naostro:** user at limit→429, fresh user→200.
 **Where:** `supabase/functions/feedback/index.ts` (insert + Resend), `report/index.ts`, and the
 `support_clicks` insert that feeds `support-digest`.
 **Why:** any authenticated user can loop `feedback`/`report` and fire unlimited emails to
@@ -72,7 +79,11 @@ function or a DB trigger like the message/knock limiter.
 
 ## 🟡 MEDIUM
 
-### M1 — "Today" is computed in UTC, not the user's local day
+### M1 — ✅ FIXED (2026-06-28) — "Today" is computed in UTC, not the user's local day
+**Applied:** new `src/lib/date.ts → getLocalYMD()` (device-local date) replaces the UTC
+`toISOString().split` in all day-vs-stored comparisons (isExpiredPending, hasStayEnded, canRemoveConv,
+history todayStr, profile accepted-stay cutoff). Behaviour unchanged; boundary now flips at local
+midnight. (Map date-picker defaults left as-is — input generation, not a comparison.)
 **Where:** `src/app/(tabs)/requests.tsx:~176` (`isExpiredPending`), the `canRemoveConv` today calc, and
 `src/app/history.tsx` (`todayStr`) — all use `new Date().toISOString().split('T')[0]`.
 **Why:** `toISOString()` is UTC. West-of-UTC users in the evening already roll to "tomorrow", so a
@@ -82,7 +93,9 @@ same logic Petr just tightened to `arrival < today`, so the boundary correctness
 **Fix:** a shared `getLocalYMD()` helper using local getFullYear/getMonth/getDate, used everywhere a
 "today" string is compared to a stored date.
 
-### M2 — Notification failures are silently swallowed
+### M2 — ✅ FIXED (2026-06-28) — Notification failures are silently swallowed
+**Applied:** the three `notify-request` `.catch(() => {})` now `console.warn` + show a non-blocking
+Toast (new `toastStore` + `<Toast>` mounted in `_layout`); the action itself still completes.
 **Where:** `src/app/(tabs)/map.tsx:~441` and `src/app/(tabs)/requests.tsx:~1397,~1503` —
 `supabase.functions.invoke('notify-request', …).catch(() => {})`.
 **Why:** if the notify call fails (rate limit, auth, network) the other party never gets the
@@ -90,7 +103,10 @@ email/push and nobody sees an error. Knock/accept/cancel "succeed" but the count
 **Impact:** missed critical updates; hard to diagnose (no log).
 **Fix:** at minimum `.catch(e => console.warn('notify failed', e))`; ideally a soft, non-blocking toast.
 
-### M3 — Coordinate-scrub regex misses negative coordinates
+### M3 — ✅ FIXED (2026-06-28) — Coordinate-scrub regex misses negative coordinates
+**Applied (live + baseline + client):** added `-?` to both numbers in `strip_review_coords`,
+`strip_location_notes`, and client `stripContacts`/`stripCoords`. Verified naostro: `-38.4, -145.1`
+is now stripped.
 **Where:** `strip_location_notes` / `strip_review_coords` in baseline.sql (~530, ~501) and the client
 `stripContacts` (`become-host.tsx`) / review coord strip — pattern `[0-9]{1,3}\.[0-9]{3,}…`.
 **Why:** no optional `-`, so a host/reviewer writing `-38.45, -145.12` (southern/western hemis) slips a
@@ -99,7 +115,10 @@ real coordinate pair past the backstop into public notes/reviews.
 approximate-area model is intact).
 **Fix:** prefix `-?` to both numbers in every coordinate regex.
 
-### M4 — `support-digest` / report tolerate deleted-user & unbounded inputs
+### M4 — ✅ FIXED (2026-06-28) — `support-digest` / report tolerate deleted-user & unbounded inputs
+**Applied:** FK `support_clicks.user_id → profiles(id) ON DELETE CASCADE` (live + baseline, 0 orphans);
+digest name defaults to "Unknown"; `report` now validates `target_id` is a UUID (else 400). Verified
+naostro: non-uuid target → 400.
 **Where:** `supabase/functions/support-digest/index.ts:~70,~98` (no FK on `support_clicks.user_id`,
 `undefined`/empty email can render into the dev email); `report/index.ts:~60` (`target_id` not
 length/format-validated before DB insert + email).
@@ -109,7 +128,11 @@ digest; an unbounded `target_id` can bloat the row/email.
 **Fix:** add FK `support_clicks.user_id → profiles(id) ON DELETE CASCADE` (and it's already deleted in
 `delete_account_data`); default missing names to "Unknown"; cap/validate `target_id` (uuid/len).
 
-### M5 — `select('*')` over-fetch on hot reads (also a perf item)
+### M5 — 🟡 PARTIALLY APPLIED (2026-06-28) — `select('*')` over-fetch on hot reads
+**Applied:** narrowed `profile.tsx` (→ `id, paused`) and `become-host.tsx` (→ the exact 17 fields the
+editor maps). **Left on `*` by design:** `map.tsx` reads the curated `host_locations_public` view (no
+PII, coords already rounded) and nearly every column feeds the markers/sheet/cards — narrowing risks
+silently dropping a field for marginal gain, so per the "leave if unsure" rule it stays.
 **Where:** `map.tsx:141` (`host_locations_public`), `profile.tsx:82`, `become-host.tsx:120`
 (`host_locations`). Already noted in PERF.md (item E). Functional risk is low; payload/typing only.
 **Fix:** enumerate needed columns (carefully, to not drop a used field).
@@ -160,9 +183,12 @@ digest; an unbounded `target_id` can bloat the row/email.
    bypassed → anyone could delete any account with a public UUID. Fixed by REVOKE EXECUTE from
    anon/authenticated (verified: anon RPC 204→401, cross-user 403, legit Edge-Function delete still
    200 + row gone).
-2. **H1:** revoke EXECUTE on `handle_new_user` / `set_push_token` from anon — shrink the RPC surface.
-3. **H2:** rate-limit the email Edge Functions (feedback/report) — cost & inbox-spam protection.
-4. **M1:** UTC-vs-local "today" in expiry/hide — switch to a local-date helper so the day boundary is
-   correct outside UTC.
-5. **M2:** stop swallowing `notify-request` failures — log/surface them so missed notifications are
-   visible.
+2. **H1 — ✅ fixed:** EXECUTE revoked from anon on trigger/helper funcs; set_push_token authenticated-only.
+3. **H2 — ✅ fixed:** feedback 5/hr, report 5/day rate limits (verified 429 at limit, 200 fresh).
+4. **M1 — ✅ fixed:** `getLocalYMD()` local-day helper across expiry/hide/ended comparisons.
+5. **M2 — ✅ fixed:** notify-request failures now logged + non-blocking Toast.
+
+**Also fixed 2026-06-28:** M3 (negative-coord scrub), M4 (support_clicks FK + report target_id UUID
+validation + digest "Unknown"). **Partial:** M5 (narrowed profile/become-host selects; map left on `*`
+by design). **Still open (LOW):** L1–L7 — non-null asserts, `any` types, CORS fallback, silent
+AsyncStorage catches, 2-decimal public coords (by design). None exploitable.

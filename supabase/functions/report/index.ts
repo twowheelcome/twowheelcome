@@ -35,6 +35,10 @@ function escapeHtml(value: unknown): string {
 }
 
 const TARGET_TYPES = new Set(['user', 'listing', 'message', 'conversation'])
+// All report targets reference a UUID primary key — validate the shape so an
+// unbounded/garbage target_id can't bloat the row or the email.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const MAX_REPORTS_PER_DAY = 5
 
 Deno.serve(async req => {
   const CORS = corsHeaders(req)
@@ -60,11 +64,22 @@ Deno.serve(async req => {
   const targetType = String(body.target_type ?? '')
   const targetId = String(body.target_id ?? '')
   const reason = typeof body.reason === 'string' ? body.reason.trim().slice(0, 2000) : ''
-  if (!TARGET_TYPES.has(targetType) || !targetId) {
+  if (!TARGET_TYPES.has(targetType) || !UUID_RE.test(targetId)) {
     return new Response('Invalid report', { status: 400, headers: CORS })
   }
 
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } })
+
+  // Rate limit: at most MAX_REPORTS_PER_DAY per reporter per rolling 24h (anti-spam / cost).
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const { count: recentCount } = await admin
+    .from('reports')
+    .select('id', { count: 'exact', head: true })
+    .eq('reporter_id', user.id)
+    .gte('created_at', since)
+  if ((recentCount ?? 0) >= MAX_REPORTS_PER_DAY) {
+    return new Response(JSON.stringify({ error: 'Too many reports today. Please try again later.' }), { status: 429, headers: { ...CORS, 'Content-Type': 'application/json' } })
+  }
 
   const { error: insertErr } = await admin.from('reports').insert({
     reporter_id: user.id,
