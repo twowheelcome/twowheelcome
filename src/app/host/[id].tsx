@@ -227,7 +227,7 @@ export default function PublicHostProfile() {
           onPress={() => router.push({ pathname: '/reviews', params: { user: profile.id } })}
         >
           <View style={{ flex: 1 }}>
-            <Text style={styles.reviewsLinkTitle}>Reviews from riders</Text>
+            <Text style={styles.reviewsLinkTitle}>{locations.length ? 'Reviews from riders' : 'Reviews from hosts'}</Text>
             <Text style={styles.reviewsLinkSub}>
               {reviewCount > 0 && avgRating != null
                 ? `⭐ ${avgRating.toFixed(1)} · ${reviewCount} ${reviewCount === 1 ? 'review' : 'reviews'}`
