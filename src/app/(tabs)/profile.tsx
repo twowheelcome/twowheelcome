@@ -12,6 +12,7 @@ import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { compressBikePhoto } from '../../lib/compressImage'
 import { FONT } from '../../lib/theme'
 import { getLocalYMD } from '../../lib/date'
+import { thumbnailUrl } from '../../lib/imageThumb'
 import { SUPPORT_URL, hasSupportLink } from '../../lib/support'
 import { LinearGradient } from 'expo-linear-gradient'
 
@@ -249,7 +250,7 @@ export default function ProfileScreen() {
           <div style={{ position: 'relative', width: 96, height: 96, flexShrink: 0 } as any}>
             <View style={styles.avatarCircle}>
               {profile?.avatar_url ? (
-                <Image source={{ uri: profile.avatar_url }} style={styles.avatarPhoto} />
+                <Image source={{ uri: thumbnailUrl(profile.avatar_url, 192) }} style={styles.avatarPhoto} />
               ) : (
                 <Text style={styles.avatarText}>{initials}</Text>
               )}
@@ -276,7 +277,7 @@ export default function ProfileScreen() {
           <TouchableOpacity style={styles.avatarWrap} onPress={pickAvatar} activeOpacity={0.8}>
             <View style={styles.avatarCircle}>
               {profile?.avatar_url ? (
-                <Image source={{ uri: profile.avatar_url }} style={styles.avatarPhoto} />
+                <Image source={{ uri: thumbnailUrl(profile.avatar_url, 192) }} style={styles.avatarPhoto} />
               ) : (
                 <Text style={styles.avatarText}>{initials}</Text>
               )}

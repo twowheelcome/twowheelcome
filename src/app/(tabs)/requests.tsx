@@ -17,6 +17,7 @@ import { sortSleep } from '../../lib/sleepOrder'
 import { UserChip } from '../../components/UserChip'
 import { NotificationBell } from '../../components/NotificationBell'
 import { refreshNotificationCount } from '../../lib/notificationStore'
+import { thumbnailUrl } from '../../lib/imageThumb'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { RequestPhoto } from '../../components/RequestPhoto'
 import { SafetyIcon } from '../../components/SafetyIcon'
@@ -1604,7 +1605,7 @@ export default function RequestsScreen() {
           >
             <View style={styles.chatAvatar}>
               {selected.other.avatar_url ? (
-                <Image source={{ uri: selected.other.avatar_url }} style={styles.chatAvatarImg} />
+                <Image source={{ uri: thumbnailUrl(selected.other.avatar_url, 76) }} style={styles.chatAvatarImg} />
               ) : (
                 <Text style={styles.chatAvatarText}>{otherName.charAt(0).toUpperCase()}</Text>
               )}
@@ -2097,7 +2098,7 @@ export default function RequestsScreen() {
                     {isUnread && <View style={styles.convAccentBar} />}
                     <View style={styles.convAvatarWrap}>
                       {conv.other.avatar_url ? (
-                        <Image source={{ uri: conv.other.avatar_url }} style={styles.convAvatarImg} />
+                        <Image source={{ uri: thumbnailUrl(conv.other.avatar_url, 104) }} style={styles.convAvatarImg} />
                       ) : (
                         <View style={styles.convAvatar}>
                           <Text style={styles.convAvatarText}>{name.split(' ').map(part => part.charAt(0)).join('').slice(0, 2).toUpperCase()}</Text>

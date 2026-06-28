@@ -3,6 +3,7 @@ import { Image, Text, TouchableOpacity, View } from 'react-native'
 import { router } from 'expo-router'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../lib/ThemeContext'
+import { thumbnailUrl } from '../lib/imageThumb'
 
 // Module-level cache so all instances share one fetch
 type UserChipData = { userId: string; name: string; avatarUrl: string | null }
@@ -96,7 +97,7 @@ export function UserChip() {
     >
       <View style={{ width: 40, height: 40, borderRadius: 20, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
         {state.profile.avatarUrl ? (
-          <Image source={{ uri: state.profile.avatarUrl }} style={{ width: 40, height: 40 }} resizeMode="cover" />
+          <Image source={{ uri: thumbnailUrl(state.profile.avatarUrl, 80) }} style={{ width: 40, height: 40 }} resizeMode="cover" />
         ) : (
           <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ color: C.white, fontSize: 12, fontWeight: '900' }}>{initials}</Text>

@@ -3,6 +3,7 @@ import {
   Image, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions,
 } from 'react-native'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
+import { thumbnailUrl } from '../lib/imageThumb'
 
 function initialsOf(name?: string | null): string {
   return (name || '?').split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase() || '?'
@@ -40,7 +41,7 @@ export function Avatar({
   return (
     <>
       <TouchableOpacity activeOpacity={0.85} onPress={() => setOpen(true)} style={[circle, style]} accessibilityRole="imagebutton" accessibilityLabel={`${name || 'Rider'} photo`}>
-        <Image source={{ uri: url }} style={[circle, s.img]} resizeMode="cover" />
+        <Image source={{ uri: thumbnailUrl(url, Math.round(size * 2)) }} style={[circle, s.img]} resizeMode="cover" />
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>

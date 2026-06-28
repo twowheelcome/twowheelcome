@@ -4,6 +4,7 @@ import {
 } from 'react-native'
 import { supabase } from '../lib/supabase'
 import { useTheme } from '../lib/ThemeContext'
+import { thumbnailUrl } from '../lib/imageThumb'
 
 const BUCKET = 'listing-photos'
 
@@ -25,7 +26,7 @@ export function ListingGallery({ photos }: { photos: string[] | null | undefined
     <View style={styles.row}>
       {photos.map((p, i) => (
         <TouchableOpacity key={i} activeOpacity={0.85} onPress={() => setOpen(i)} style={[styles.thumb, { borderColor: C.border }]}>
-          <Image source={{ uri: publicUrl(p) }} style={styles.img} resizeMode="cover" />
+          <Image source={{ uri: thumbnailUrl(publicUrl(p), 152) }} style={styles.img} resizeMode="cover" />
         </TouchableOpacity>
       ))}
 
