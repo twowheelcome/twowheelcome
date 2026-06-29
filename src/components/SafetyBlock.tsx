@@ -39,10 +39,16 @@ export function SafetyBlock({ parkings, bikeSafe, title, onNavigate }: {
       {/* Place title + navigate sit at the top of the card, above the safety content */}
       {title ? <Text style={[sb.placeTitle, { color: C.text }]} numberOfLines={1}>{title}</Text> : null}
       {onNavigate ? (
-        <TouchableOpacity style={sb.navBtn} onPress={onNavigate} accessibilityRole="button" hitSlop={8}>
-          <Text style={{ fontSize: 13 }}>🧭</Text>
-          <Text style={[sb.navText, { color: C.textMuted }]}>Navigate to approximate area</Text>
-        </TouchableOpacity>
+        <View style={sb.navWrap}>
+          <TouchableOpacity style={sb.navBtn} onPress={onNavigate} accessibilityRole="button" hitSlop={8}>
+            <Text style={{ fontSize: 13 }}>🧭</Text>
+            <Text style={[sb.navText, { color: C.textMuted }]}>Navigate to approximate area</Text>
+          </TouchableOpacity>
+          {/* Clarifier lives right here, with the approximate-area action — not on the map pins */}
+          <Text style={[sb.navHint, { color: C.textDim }]}>
+            📍 Approximate area only — the host shares the exact spot in chat after accepting your request.
+          </Text>
+        </View>
       ) : null}
       <Text style={[sb.bikeLabel, { color: s.color }]}>Your bike sleeps here</Text>
       <View style={sb.mainRow}>
@@ -86,8 +92,10 @@ export function SafetyBlock({ parkings, bikeSafe, title, onNavigate }: {
 const sb = StyleSheet.create({
   block:        { borderRadius: 20, borderWidth: 1.5, padding: 16 },
   placeTitle:   { fontSize: 16, fontFamily: FONT.headBold, letterSpacing: 0.3 },
-  navBtn:       { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, marginBottom: 12 },
+  navWrap:      { marginTop: 6, marginBottom: 12, gap: 4 },
+  navBtn:       { flexDirection: 'row', alignItems: 'center', gap: 6 },
   navText:      { fontSize: 13, fontWeight: '600' },
+  navHint:      { fontSize: 12, lineHeight: 17 },
   bikeLabel:    { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
   mainRow:      { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   iconWrap:     { marginTop: 1 },

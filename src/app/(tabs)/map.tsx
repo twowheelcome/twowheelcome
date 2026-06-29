@@ -899,12 +899,6 @@ export default function MapScreen() {
                 <Text style={{ color: C.textMuted, fontSize: 14, lineHeight: 21 }}>{selected.profiles.bio}</Text>
               ) : null}
 
-              {!isOwn && (
-                <Text style={{ color: C.textDim, fontSize: 12, lineHeight: 17 }}>
-                  📍 Approximate area only — the host shares the exact spot in chat after accepting your request.
-                </Text>
-              )}
-
               <SafetyBlock
                 parkings={parkings}
                 bikeSafe={{ yes: selected.bike_safe_yes ?? 0, total: selected.bike_safe_total ?? 0 }}
