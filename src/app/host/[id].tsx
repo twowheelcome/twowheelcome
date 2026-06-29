@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { FONT } from '../../lib/theme'
 import { SafetyBlock } from '../../components/SafetyBlock'
+import { placeName } from '../../lib/placeName'
 import { ContributionBadge } from '../../components/ContributionBadge'
 import { sortSleep } from '../../lib/sleepOrder'
 import { ReportButton } from '../../components/ReportButton'
@@ -256,9 +257,7 @@ export default function PublicHostProfile() {
           const amen = (loc.amenities as string[] | undefined)?.filter(a => AMENITY_LABELS[a]) ?? []
           return (
             <View key={loc.id} style={styles.placeCard}>
-              {locations.length > 1 ? (
-                <Text style={styles.placeHeader}>{`Place ${idx + 1}`}</Text>
-              ) : null}
+              <Text style={styles.placeHeader}>{placeName(loc, idx + 1)}</Text>
 
               {parkings.length > 0 && <SafetyBlock parkings={parkings} bikeSafe={bikeSafeByLoc[loc.id]} />}
 

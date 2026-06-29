@@ -711,14 +711,14 @@ CREATE TRIGGER validate_stay_request_write_trigger BEFORE INSERT OR UPDATE ON pu
 -- definer's), so it no longer bypasses RLS. Public reads are governed by the
 -- host_locations_public_read policy below; exact coords are NOT in this table (they
 -- live owner-only in host_location_coords), so only the rounded (~1 km) values surface.
--- location_city is deliberately NOT exposed (too precise); the public surface shows
--- only the coarse location_country plus the rounded pin. City stays owner-only on the
--- base table (and is snapshotted into stay_requests for historical records).
+-- City and country ARE exposed (the public place name is "[parking type] in [city]"); only
+-- the precise street/coords stay private — shared in chat after acceptance.
 CREATE OR REPLACE VIEW host_locations_public WITH (security_invoker=on) AS
  SELECT id,
     user_id,
     round(location_lat::numeric, 2)::double precision AS location_lat,
     round(location_lng::numeric, 2)::double precision AS location_lng,
+    location_city,
     location_country,
     parking,
     parkings,

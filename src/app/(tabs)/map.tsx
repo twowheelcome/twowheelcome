@@ -13,6 +13,7 @@ import { sortSleep } from '../../lib/sleepOrder'
 import { fuzzCoords } from '../../lib/geo'
 import { SafetyBlock, getSafetyKey } from '../../components/SafetyBlock'
 import { HostOffer } from '../../components/HostOffer'
+import { placeName } from '../../lib/placeName'
 import { ContributionBadge } from '../../components/ContributionBadge'
 import { SafetyIcon } from '../../components/SafetyIcon'
 import { Avatar } from '../../components/Avatar'
@@ -479,6 +480,7 @@ export default function MapScreen() {
                 ) : null}
               </View>
             </View>
+            <Text style={{ color: C.text, fontSize: 16, fontWeight: '800' }}>{placeName(selected)}</Text>
             <SafetyBlock parkings={selectedParkings} />
             <HostOffer loc={selected} />
           </View>
@@ -897,6 +899,7 @@ export default function MapScreen() {
                 </TouchableOpacity>
               )}
 
+              <Text style={{ color: C.text, fontSize: 16, fontWeight: '800' }}>{placeName(selected)}</Text>
               <SafetyBlock parkings={parkings} bikeSafe={{ yes: selected.bike_safe_yes ?? 0, total: selected.bike_safe_total ?? 0 }} />
               <HostOffer loc={selected} />
 
