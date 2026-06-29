@@ -28,6 +28,7 @@ export function Toast() {
   if (!msg) return null
   const node = (
     <Animated.View pointerEvents="none" style={[styles.wrap, { opacity }]}>
+      <View style={styles.backdrop} />
       <View style={styles.toast}>
         <Text style={styles.text}>{msg}</Text>
       </View>
@@ -38,12 +39,15 @@ export function Toast() {
 
 function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
-    // 'fixed' (web) keeps it pinned to the viewport from the body portal; native uses
-    // 'absolute'. zIndex tops the react-native-web Modal layer (9999).
+    // Full-screen overlay, centered. 'fixed' (web) pins it to the viewport from the body
+    // portal; native uses 'absolute'. zIndex tops the react-native-web Modal layer (9999).
     wrap: {
       position: (Platform.OS === 'web' ? 'fixed' : 'absolute') as 'absolute',
-      left: 0, right: 0, bottom: 100, alignItems: 'center', zIndex: 100000,
+      top: 0, left: 0, right: 0, bottom: 0,
+      alignItems: 'center', justifyContent: 'center', zIndex: 100000,
     },
+    // Faint dim so the centered pill stands out; pointerEvents on the wrap stays 'none'.
+    backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.12)' },
     // High-contrast inverse pill: a graphite chip on the light theme, a light chip on the
     // dark theme — clearly legible on either background.
     toast: {
