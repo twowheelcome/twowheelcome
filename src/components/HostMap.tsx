@@ -194,13 +194,13 @@ export default function HostMap({
       const size = 38
 
       // Honest privacy radius: the displayed centre is the TRUE point rounded to 2dp
-      // (≤0.005°/axis) AND fuzzed by fuzzCoords (≤2048/150000 = 0.013653°/axis), so the real
-      // spot sits up to 0.018653°/axis away — ~2077 m/axis (1°≈111320 m; lng worst at the
-      // equator), i.e. ~2937 m Euclidean. 3000 m guarantees the real location is always
+      // (≤0.005°/axis) AND fuzzed by fuzzCoords (≤2048/700000 = 0.00293°/axis), so the real
+      // spot sits up to 0.00793°/axis away — ~882 m/axis (1°≈111320 m; lng worst at the
+      // equator), i.e. ~1248 m Euclidean. 1300 m guarantees the real location is always
       // inside the circle, so the area cue can't be misleading. (Exact coords stay owner-only;
       // the pin is still rounded+fuzzed — only the circle size changed.)
       const circle = L.circle([host.location_lat, host.location_lng], {
-        radius: 3000,
+        radius: 1300,
         color: pinColor,
         fill: false,
         dashArray: '8 6',
