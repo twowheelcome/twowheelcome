@@ -964,10 +964,10 @@ $function$
 REVOKE EXECUTE ON FUNCTION public.save_host_location(uuid,double precision,double precision,text,text,text[],text,text[],text[],integer,text[],text,text,text[],numeric,text,boolean) FROM PUBLIC, anon;
 GRANT  EXECUTE ON FUNCTION public.save_host_location(uuid,double precision,double precision,text,text,text[],text,text[],text[],integer,text[],text,text,text[],numeric,text,boolean) TO authenticated;
 
--- Owner-only listing delete. Refuses while any stay_requests reference the place (those
--- carry other users' history — reviews/conversations — whose cascade isn't decided yet), so
--- the safe path only removes a listing with no stays. host_location_coords cascades; returns
--- the listing photo paths so the caller clears them from the listing-photos bucket.
+-- Owner-only listing delete, allowed ONLY for a place with no history (anti-washing): any
+-- stay_requests (past or active) or reviews block it, so reputation can't be wiped by
+-- deleting the place — such a place can only be paused. host_location_coords cascades;
+-- returns the listing photo paths so the caller clears them from the listing-photos bucket.
 CREATE OR REPLACE FUNCTION public.delete_host_location(p_id uuid)
  RETURNS text[]
  LANGUAGE plpgsql
@@ -986,8 +986,9 @@ BEGIN
   IF v_owner IS NULL THEN RAISE EXCEPTION 'No such place'; END IF;
   IF v_owner <> v_uid THEN RAISE EXCEPTION 'Not allowed to delete another user''s location'; END IF;
 
-  IF EXISTS (SELECT 1 FROM stay_requests WHERE location_id = p_id) THEN
-    RAISE EXCEPTION 'This place has stay requests and cannot be deleted yet' USING errcode = 'check_violation';
+  IF EXISTS (SELECT 1 FROM stay_requests WHERE location_id = p_id)
+     OR EXISTS (SELECT 1 FROM reviews WHERE location_id = p_id) THEN
+    RAISE EXCEPTION 'This place has history and cannot be deleted' USING errcode = 'check_violation';
   END IF;
 
   DELETE FROM host_locations WHERE id = p_id AND user_id = v_uid;  -- host_location_coords cascades

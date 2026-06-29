@@ -21,6 +21,7 @@ type Place = {
   price_amount: number | null
   price_currency: string | null
   paused: boolean
+  hasHistory?: boolean   // any stay_requests (past/active) — blocks hard delete (anti-washing)
 }
 
 const PARK_TITLE: Record<string, string> = {
@@ -57,7 +58,17 @@ export default function MyPlacesScreen() {
       .select('id, location_city, location_country, parking, parkings, sleep_types, pricings, pricing, price_amount, price_currency, paused')
       .eq('user_id', user.id)
       .order('created_at', { ascending: true })
-    setPlaces((data as Place[]) || [])
+    const list = (data as Place[]) || []
+    // A place with any stay_requests (past or active) has history → hard delete is blocked
+    // (anti-washing); only Pause is offered. A review always implies a stay, so this covers
+    // reviews too. The owner can read their own stays (host_id) under RLS.
+    const ids = list.map(p => p.id)
+    let history = new Set<string>()
+    if (ids.length) {
+      const { data: hist } = await supabase.from('stay_requests').select('location_id').in('location_id', ids)
+      history = new Set((hist ?? []).map((r: { location_id: string }) => r.location_id))
+    }
+    setPlaces(list.map(p => ({ ...p, hasHistory: history.has(p.id) })))
     setLoading(false)
   }, [])
 
@@ -90,8 +101,8 @@ export default function MyPlacesScreen() {
       console.warn('delete place error:', err.message)
       setDeleting(false)
       setConfirmDelete(null)
-      setError(err.message?.includes('stay requests')
-        ? 'This place has stay requests tied to it, so it can’t be deleted yet. Cleanup of past stays is coming.'
+      setError(err.message?.includes('history')
+        ? 'This place has stays or reviews, so it can’t be deleted — you can pause it instead.'
         : 'Could not delete this place. Please try again.')
       return
     }
@@ -155,13 +166,17 @@ export default function MyPlacesScreen() {
 
                   <Text style={styles.editHint}>Tap the card to edit this place →</Text>
 
-                  <TouchableOpacity
-                    style={styles.deleteBtn}
-                    onPress={() => { setError(null); setConfirmDelete(p) }}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.deleteText}>Delete this place</Text>
-                  </TouchableOpacity>
+                  {p.hasHistory ? (
+                    <Text style={styles.lockNote}>🔒 This place has stays/reviews — it can’t be deleted, only paused.</Text>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.deleteBtn}
+                      onPress={() => { setError(null); setConfirmDelete(p) }}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.deleteText}>Delete this place</Text>
+                    </TouchableOpacity>
+                  )}
                 </TouchableOpacity>
               )
             })
@@ -223,6 +238,7 @@ function makeStyles(C: ThemeColors) {
     editHint: { color: C.textDim, fontSize: 12, textAlign: 'center', fontFamily: FONT.body },
     deleteBtn: { alignItems: 'center', paddingVertical: 6 },
     deleteText: { color: C.error, fontSize: 13, fontWeight: '700' },
+    lockNote: { color: C.textDim, fontSize: 12, textAlign: 'center', lineHeight: 17, fontFamily: FONT.body },
     addBtn: { borderWidth: 1, borderColor: C.accent, borderRadius: 100, padding: 14, alignItems: 'center', borderStyle: 'dashed', marginTop: 2 },
     addBtnText: { color: C.accent, fontWeight: '700', fontSize: 14, letterSpacing: 1 },
     confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
