@@ -83,7 +83,8 @@ CREATE TABLE IF NOT EXISTS reviews (
   created_at timestamp with time zone DEFAULT now(),
   reply_body text,
   reply_created_at timestamp with time zone,
-  bike_safe text
+  bike_safe text,
+  location_id uuid
 );
 CREATE TABLE IF NOT EXISTS stay_requests (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -149,6 +150,10 @@ ALTER TABLE request_notification_events ADD CONSTRAINT request_notification_even
 ALTER TABLE reviews ADD CONSTRAINT reviews_stay_request_id_fkey FOREIGN KEY (stay_request_id) REFERENCES stay_requests(id);
 ALTER TABLE reviews ADD CONSTRAINT reviews_reviewee_id_fkey FOREIGN KEY (reviewee_id) REFERENCES auth.users(id);
 ALTER TABLE reviews ADD CONSTRAINT reviews_reviewer_id_fkey FOREIGN KEY (reviewer_id) REFERENCES auth.users(id);
+-- Denormalized place link so bike-safety can be aggregated per listing (reviews are public;
+-- stay_requests are not). Filled server-side by reviews_set_location_id() — never trusted
+-- from the client. ON DELETE SET NULL keeps the review if the listing is removed.
+ALTER TABLE reviews ADD CONSTRAINT reviews_location_id_fkey FOREIGN KEY (location_id) REFERENCES host_locations(id) ON DELETE SET NULL;
 ALTER TABLE stay_requests ADD CONSTRAINT stay_requests_location_id_fkey FOREIGN KEY (location_id) REFERENCES host_locations(id) ON DELETE RESTRICT;
 ALTER TABLE stay_requests ADD CONSTRAINT stay_requests_guest_id_fkey FOREIGN KEY (guest_id) REFERENCES profiles(id) ON DELETE CASCADE;
 ALTER TABLE stay_requests ADD CONSTRAINT stay_requests_host_id_fkey FOREIGN KEY (host_id) REFERENCES profiles(id) ON DELETE CASCADE;
@@ -168,6 +173,7 @@ CREATE INDEX IF NOT EXISTS stay_requests_guest_id_idx ON public.stay_requests US
 CREATE INDEX IF NOT EXISTS stay_requests_host_id_idx ON public.stay_requests USING btree (host_id);
 CREATE INDEX IF NOT EXISTS reviews_reviewee_id_idx ON public.reviews USING btree (reviewee_id);
 CREATE INDEX IF NOT EXISTS reviews_reviewer_id_idx ON public.reviews USING btree (reviewer_id);
+CREATE INDEX IF NOT EXISTS reviews_location_id_idx ON public.reviews USING btree (location_id);
 CREATE INDEX IF NOT EXISTS conversations_user_b_idx ON public.conversations USING btree (user_b);
 CREATE INDEX IF NOT EXISTS host_locations_user_id_idx ON public.host_locations USING btree (user_id);
 
@@ -492,6 +498,21 @@ END;
 $function$
 ;
 
+-- Stamp a review with the stay's listing, server-side, so bike-safety can be aggregated per
+-- place. Definer (reads RLS-private stay_requests); the client never sets location_id.
+CREATE OR REPLACE FUNCTION public.reviews_set_location_id()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+  SELECT location_id INTO NEW.location_id FROM stay_requests WHERE id = NEW.stay_request_id;
+  RETURN NEW;
+END;
+$function$
+;
+
 -- Server-side scrub of the PUBLIC listing notes (un-bypassable backstop to the client
 -- guard): cut obvious GPS coordinate pairs, emails and phone numbers — the exact meeting
 -- point belongs in chat after accepting. Addresses-in-words aren't detectable.
@@ -675,6 +696,7 @@ $function$
 CREATE TRIGGER cascade_on_accept_trigger AFTER UPDATE ON public.stay_requests FOR EACH ROW WHEN (((new.status = 'ACCEPTED'::text) AND (old.status IS DISTINCT FROM 'ACCEPTED'::text))) EXECUTE FUNCTION cascade_on_accept();
 CREATE TRIGGER enforce_message_rate_limit_trigger BEFORE INSERT ON public.messages FOR EACH ROW EXECUTE FUNCTION enforce_message_rate_limit();
 CREATE TRIGGER strip_review_coords_trigger BEFORE INSERT OR UPDATE ON public.reviews FOR EACH ROW EXECUTE FUNCTION strip_review_coords();
+CREATE TRIGGER reviews_set_location_id_trg BEFORE INSERT ON public.reviews FOR EACH ROW EXECUTE FUNCTION reviews_set_location_id();
 CREATE TRIGGER strip_location_notes_trigger BEFORE INSERT OR UPDATE ON public.host_locations FOR EACH ROW EXECUTE FUNCTION strip_location_notes();
 CREATE TRIGGER validate_conversation_write_trigger BEFORE INSERT OR UPDATE ON public.conversations FOR EACH ROW EXECUTE FUNCTION validate_conversation_write();
 CREATE TRIGGER validate_message_request_trigger BEFORE INSERT OR UPDATE ON public.messages FOR EACH ROW EXECUTE FUNCTION validate_message_request();
@@ -838,6 +860,7 @@ REVOKE EXECUTE ON FUNCTION public.enforce_message_rate_limit() FROM PUBLIC, anon
 REVOKE EXECUTE ON FUNCTION public.validate_conversation_write() FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.validate_message_request() FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.validate_stay_request_write() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.reviews_set_location_id() FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.set_push_token(text) FROM PUBLIC, anon;
 
 

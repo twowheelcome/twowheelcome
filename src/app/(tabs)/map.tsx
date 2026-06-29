@@ -136,7 +136,7 @@ export default function MapScreen() {
     const userIds = [...new Set(data.map((h: any) => h.user_id))]
     const [{ data: profilesData }, { data: reviewsData }, { data: lastReviewsData }] = await Promise.all([
       supabase.from('profiles').select('id, full_name, avatar_url, bio, nationality').in('id', userIds),
-      supabase.from('reviews').select('reviewee_id, rating').in('reviewee_id', userIds),
+      supabase.from('reviews').select('reviewee_id, rating, location_id, bike_safe').in('reviewee_id', userIds),
       supabase.from('reviews')
         .select('reviewee_id, rating, body, reviewer_id')
         .in('reviewee_id', userIds)
@@ -147,10 +147,18 @@ export default function MapScreen() {
     profilesData?.forEach(p => { profileMap[p.id] = p })
 
     const ratingMap: Record<string, { sum: number; count: number }> = {}
+    // Bike-safety confirmations per place (location_id) — answered total + "secure" yes.
+    const bikeSafeByLoc: Record<string, { yes: number; total: number }> = {}
     reviewsData?.forEach((r: any) => {
       if (!ratingMap[r.reviewee_id]) ratingMap[r.reviewee_id] = { sum: 0, count: 0 }
       ratingMap[r.reviewee_id].sum += r.rating
       ratingMap[r.reviewee_id].count += 1
+      if (r.bike_safe != null && r.location_id) {
+        const e = bikeSafeByLoc[r.location_id] ?? { yes: 0, total: 0 }
+        e.total += 1
+        if (r.bike_safe === 'secure') e.yes += 1
+        bikeSafeByLoc[r.location_id] = e
+      }
     })
 
     const lastReviewMap: Record<string, { rating: number; body: string | null; reviewer_name: string | null }> = {}
@@ -171,6 +179,8 @@ export default function MapScreen() {
         avg_rating: rev ? rev.sum / rev.count : null,
         review_count: rev ? rev.count : 0,
         last_review: lastReviewMap[h.user_id] ?? null,
+        bike_safe_yes: bikeSafeByLoc[h.id]?.yes ?? 0,
+        bike_safe_total: bikeSafeByLoc[h.id]?.total ?? 0,
       }
     }))
     setLoading(false)
@@ -888,6 +898,12 @@ export default function MapScreen() {
               )}
 
               <SafetyBlock parkings={parkings} />
+              {/* Riders' confirmation of THIS place's bike safety, by the host's own claim */}
+              {(selected.bike_safe_yes ?? 0) > 0 && (
+                <Text style={{ color: C.textMuted, fontSize: 13, fontWeight: '600' }}>
+                  🔒 Bike felt safe — {selected.bike_safe_yes} of {selected.bike_safe_total} {selected.bike_safe_total === 1 ? 'rider' : 'riders'}
+                </Text>
+              )}
               <HostOffer loc={selected} />
 
               {/* Reviews folder — opens this host's reviews (same style as the profile menu) */}

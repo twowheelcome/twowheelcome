@@ -48,8 +48,8 @@ export default function PublicHostProfile() {
   const [locations, setLocations] = useState<any[]>([])
   const [avgRating, setAvgRating] = useState<number | null>(null)
   const [reviewCount, setReviewCount] = useState(0)
-  const [bikeSafeYes, setBikeSafeYes] = useState(0)
-  const [bikeSafeTotal, setBikeSafeTotal] = useState(0)
+  // Bike-safety confirmations are per place (a property of the listing), keyed by location_id.
+  const [bikeSafeByLoc, setBikeSafeByLoc] = useState<Record<string, { yes: number; total: number }>>({})
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [isBlocked, setIsBlocked] = useState(false)
@@ -102,7 +102,7 @@ export default function PublicHostProfile() {
       supabase.from('profiles').select('id, full_name, bio, avatar_url, nationality').eq('id', userId).maybeSingle(),
       supabase.from('host_locations_public').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
       supabase.from('reviews')
-        .select('rating, body, reviewer_id, bike_safe')
+        .select('rating, body, reviewer_id, bike_safe, location_id')
         .eq('reviewee_id', userId)
         .order('created_at', { ascending: false })
     ])
@@ -125,10 +125,17 @@ export default function PublicHostProfile() {
       const sum = revs.reduce((acc: number, r: any) => acc + r.rating, 0)
       setAvgRating(sum / revs.length)
       setReviewCount(revs.length)
-      // Bike-safety trust signal: how many riders who answered felt the bike was secure.
-      const answered = revs.filter((r: any) => r.bike_safe != null)
-      setBikeSafeTotal(answered.length)
-      setBikeSafeYes(answered.filter((r: any) => r.bike_safe === 'secure').length)
+      // Bike-safety trust signal, aggregated per place (location_id) — answered = riders who
+      // answered the question, yes = those who said "secure".
+      const byLoc: Record<string, { yes: number; total: number }> = {}
+      revs.forEach((r: any) => {
+        if (r.bike_safe == null || !r.location_id) return
+        const e = byLoc[r.location_id] ?? { yes: 0, total: 0 }
+        e.total += 1
+        if (r.bike_safe === 'secure') e.yes += 1
+        byLoc[r.location_id] = e
+      })
+      setBikeSafeByLoc(byLoc)
     }
 
     setLoading(false)
@@ -181,11 +188,6 @@ export default function PublicHostProfile() {
             {avgRating != null && (
               <Text style={styles.rating}>
                 {`${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} ${avgRating.toFixed(1)} · ${reviewCount} ${reviewCount === 1 ? 'review' : 'reviews'}`}
-              </Text>
-            )}
-            {bikeSafeYes > 0 && (
-              <Text style={styles.bikeSafe}>
-                {`🔒 Bike felt safe — ${bikeSafeYes} of ${bikeSafeTotal} ${bikeSafeTotal === 1 ? 'rider' : 'riders'}`}
               </Text>
             )}
             {(profile.nationality || locations.length > 1) && (
@@ -259,6 +261,13 @@ export default function PublicHostProfile() {
               ) : null}
 
               {parkings.length > 0 && <SafetyBlock parkings={parkings} />}
+
+              {/* Riders' confirmation of this place's bike safety, right by the host's own claim */}
+              {(bikeSafeByLoc[loc.id]?.yes ?? 0) > 0 && (
+                <Text style={styles.bikeSafe}>
+                  {`🔒 Bike felt safe — ${bikeSafeByLoc[loc.id].yes} of ${bikeSafeByLoc[loc.id].total} ${bikeSafeByLoc[loc.id].total === 1 ? 'rider' : 'riders'}`}
+                </Text>
+              )}
 
               {loc.notes ? (
                 <View style={styles.section}>
