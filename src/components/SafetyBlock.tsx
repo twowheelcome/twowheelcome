@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from 'react-native'
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { SAFETY, FONT } from '../lib/theme'
 import { useTheme } from '../lib/ThemeContext'
 import { SafetyIcon } from './SafetyIcon'
@@ -21,7 +21,12 @@ export function bestSafety(parkings: string[]): keyof typeof SAFETY {
   return order.find(k => keys.includes(k)) ?? 'street'
 }
 
-export function SafetyBlock({ parkings, bikeSafe }: { parkings: string[]; bikeSafe?: { yes: number; total: number } }) {
+export function SafetyBlock({ parkings, bikeSafe, title, onNavigate }: {
+  parkings: string[]
+  bikeSafe?: { yes: number; total: number }
+  title?: string                 // place name shown as the card title (e.g. "Garage in Praha")
+  onNavigate?: () => void        // "Navigate to approximate area" — opens the shared map-app picker
+}) {
   const C = useTheme()
   const order: (keyof typeof SAFETY)[] = ['locked_garage', 'carport', 'fenced_yard', 'street']
   const keys = [...new Set(parkings.map(getSafetyKey))]
@@ -31,6 +36,14 @@ export function SafetyBlock({ parkings, bikeSafe }: { parkings: string[]; bikeSa
 
   return (
     <View style={[sb.block, { backgroundColor: s.color + '10', borderColor: s.color + '66' }]}>
+      {/* Place title + navigate sit at the top of the card, above the safety content */}
+      {title ? <Text style={[sb.placeTitle, { color: C.text }]} numberOfLines={1}>{title}</Text> : null}
+      {onNavigate ? (
+        <TouchableOpacity style={sb.navBtn} onPress={onNavigate} accessibilityRole="button" hitSlop={8}>
+          <Text style={{ fontSize: 13 }}>🧭</Text>
+          <Text style={[sb.navText, { color: C.textMuted }]}>Navigate to approximate area</Text>
+        </TouchableOpacity>
+      ) : null}
       <Text style={[sb.bikeLabel, { color: s.color }]}>Your bike sleeps here</Text>
       <View style={sb.mainRow}>
         <View style={sb.iconWrap}><SafetyIcon level={best} size={26} color={s.color} strokeWidth={2.2} /></View>
@@ -72,6 +85,9 @@ export function SafetyBlock({ parkings, bikeSafe }: { parkings: string[]; bikeSa
 
 const sb = StyleSheet.create({
   block:        { borderRadius: 20, borderWidth: 1.5, padding: 16 },
+  placeTitle:   { fontSize: 16, fontFamily: FONT.headBold, letterSpacing: 0.3 },
+  navBtn:       { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, marginBottom: 12 },
+  navText:      { fontSize: 13, fontWeight: '600' },
   bikeLabel:    { fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
   mainRow:      { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   iconWrap:     { marginTop: 1 },

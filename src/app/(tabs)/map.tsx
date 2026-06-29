@@ -480,8 +480,13 @@ export default function MapScreen() {
                 ) : null}
               </View>
             </View>
-            <Text style={{ color: C.text, fontSize: 16, fontWeight: '800' }}>{placeName(selected)}</Text>
-            <SafetyBlock parkings={selectedParkings} />
+            <SafetyBlock
+              parkings={selectedParkings}
+              title={placeName(selected)}
+              onNavigate={selected.location_lat != null && selected.location_lng != null
+                ? () => setNavTarget({ lat: selected.location_lat, lng: selected.location_lng })
+                : undefined}
+            />
             <HostOffer loc={selected} />
           </View>
 
@@ -705,6 +710,7 @@ export default function MapScreen() {
             </TouchableOpacity>
           )}
         </ScrollView>
+        <MapAppPicker target={navTarget} onClose={() => setNavTarget(null)} message="Pick an app to navigate to the approximate area." />
       </View>
     )
   }
@@ -887,20 +893,14 @@ export default function MapScreen() {
                 </Text>
               )}
 
-              {selected.location_lat != null && selected.location_lng != null && (
-                <TouchableOpacity
-                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 6 }}
-                  onPress={() => setNavTarget({ lat: selected.location_lat, lng: selected.location_lng })}
-                  accessibilityRole="button"
-                  hitSlop={8}
-                >
-                  <Text style={{ fontSize: 13 }}>🧭</Text>
-                  <Text style={{ color: C.textMuted, fontSize: 13, fontWeight: '600' }}>Navigate to approximate area</Text>
-                </TouchableOpacity>
-              )}
-
-              <Text style={{ color: C.text, fontSize: 16, fontWeight: '800' }}>{placeName(selected)}</Text>
-              <SafetyBlock parkings={parkings} bikeSafe={{ yes: selected.bike_safe_yes ?? 0, total: selected.bike_safe_total ?? 0 }} />
+              <SafetyBlock
+                parkings={parkings}
+                bikeSafe={{ yes: selected.bike_safe_yes ?? 0, total: selected.bike_safe_total ?? 0 }}
+                title={placeName(selected)}
+                onNavigate={selected.location_lat != null && selected.location_lng != null
+                  ? () => setNavTarget({ lat: selected.location_lat, lng: selected.location_lng })
+                  : undefined}
+              />
               <HostOffer loc={selected} />
 
               {/* Reviews folder — opens this host's reviews (same style as the profile menu) */}

@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { FONT } from '../../lib/theme'
 import { SafetyBlock } from '../../components/SafetyBlock'
+import { MapAppPicker } from '../../components/MapAppPicker'
 import { placeName } from '../../lib/placeName'
 import { ContributionBadge } from '../../components/ContributionBadge'
 import { sortSleep } from '../../lib/sleepOrder'
@@ -51,6 +52,7 @@ export default function PublicHostProfile() {
   const [reviewCount, setReviewCount] = useState(0)
   // Bike-safety confirmations are per place (a property of the listing), keyed by location_id.
   const [bikeSafeByLoc, setBikeSafeByLoc] = useState<Record<string, { yes: number; total: number }>>({})
+  const [navTarget, setNavTarget] = useState<{ lat: number; lng: number } | null>(null)  // shared map-app picker
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [isBlocked, setIsBlocked] = useState(false)
@@ -257,9 +259,16 @@ export default function PublicHostProfile() {
           const amen = (loc.amenities as string[] | undefined)?.filter(a => AMENITY_LABELS[a]) ?? []
           return (
             <View key={loc.id} style={styles.placeCard}>
-              <Text style={styles.placeHeader} numberOfLines={1}>{placeName(loc, idx + 1)}</Text>
-
-              {parkings.length > 0 && <SafetyBlock parkings={parkings} bikeSafe={bikeSafeByLoc[loc.id]} />}
+              {parkings.length > 0 && (
+                <SafetyBlock
+                  parkings={parkings}
+                  bikeSafe={bikeSafeByLoc[loc.id]}
+                  title={placeName(loc, idx + 1)}
+                  onNavigate={loc.location_lat != null && loc.location_lng != null
+                    ? () => setNavTarget({ lat: loc.location_lat, lng: loc.location_lng })
+                    : undefined}
+                />
+              )}
 
               {loc.notes ? (
                 <View style={styles.section}>
@@ -348,6 +357,8 @@ export default function PublicHostProfile() {
         ) : null}
       </ScrollView>
 
+      <MapAppPicker target={navTarget} onClose={() => setNavTarget(null)} message="Pick an app to navigate to the approximate area." />
+
       {/* Block confirmation */}
       <Modal visible={showBlockConfirm} transparent animationType="fade" onRequestClose={() => setShowBlockConfirm(false)}>
         <View style={styles.blockOverlay}>
@@ -398,7 +409,6 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   section:      { gap: 8 },
   sectionLabel: { color: C.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' },
   placeCard:    { backgroundColor: C.surface, borderRadius: 22, borderWidth: 1, borderColor: C.border, padding: 16, gap: 14 },
-  placeHeader:  { color: C.text, fontSize: 16, fontFamily: FONT.headBold, letterSpacing: 0.3 },
   chips:        { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip:         { backgroundColor: C.surface, borderRadius: 100, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, paddingVertical: 6 },
   chipText:     { color: C.text, fontSize: 13, fontWeight: '600' },
