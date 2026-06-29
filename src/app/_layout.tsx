@@ -16,6 +16,17 @@ export { ErrorBoundary } from '../components/AppErrorBoundary'
 
 SplashScreen.preventAutoHideAsync()
 
+// A push notification's data.url is attacker-influenceable, so we never route to it blindly.
+// Allow only known internal relative routes (no scheme, no protocol-relative, leading '/'),
+// matching what our own notify-* functions emit; anything else falls back to the inbox.
+function safeNotifRoute(raw: unknown): string {
+  const fallback = '/(tabs)/requests'
+  if (typeof raw !== 'string' || !raw.startsWith('/') || raw.startsWith('//') || raw.includes(':')) return fallback
+  const path = raw.split('?')[0]
+  const allowed = ['/requests', '/(tabs)/requests', '/notifications', '/reviews']
+  return (allowed.includes(path) || path.startsWith('/host/')) ? raw : fallback
+}
+
 function AppStack() {
   const C = useTheme()
 
@@ -74,9 +85,7 @@ export default function RootLayout() {
     })
 
     notifSubRef.current = Notifications.addNotificationResponseReceivedListener(response => {
-      const url = response.notification.request.content.data?.url
-      if (typeof url === 'string') router.push(url as any)
-      else router.push('/(tabs)/requests')
+      router.push(safeNotifRoute(response.notification.request.content.data?.url) as never)
     })
 
     return () => { subscription.unsubscribe(); notifSubRef.current?.remove() }

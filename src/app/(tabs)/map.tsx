@@ -869,7 +869,7 @@ export default function MapScreen() {
                   ) : null}
                   {selected.avg_rating != null && (
                     <Text style={{ color: C.accent, fontSize: 13, fontWeight: '700' }}>
-                      {'★'.repeat(Math.round(selected.avg_rating))}{'☆'.repeat(5 - Math.round(selected.avg_rating))} {selected.avg_rating.toFixed(1)} · {selected.review_count} {selected.review_count === 1 ? 'stay' : 'stays'}
+                      {'★'.repeat(Math.round(selected.avg_rating))}{'☆'.repeat(5 - Math.round(selected.avg_rating))} {selected.avg_rating.toFixed(1)} · {selected.review_count} {selected.review_count === 1 ? 'review' : 'reviews'}
                     </Text>
                   )}
                 </View>

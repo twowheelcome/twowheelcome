@@ -1309,6 +1309,7 @@ export default function RequestsScreen() {
   async function sendCoordinates(req: RequestData) {
     if (sendingCoordsRef.current) return   // guard against a double-tap sending two pins
     if (!selected || !currentUser || currentUser.id !== req.host_id) return
+    if (req.status !== 'ACCEPTED') return  // defense-in-depth: never share the exact pin before acceptance
     const userId = currentUser.id
     if (currentUserIdRef.current !== userId || (selected.user_a !== userId && selected.user_b !== userId)) return
     sendingCoordsRef.current = true
