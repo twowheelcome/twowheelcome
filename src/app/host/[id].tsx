@@ -189,9 +189,17 @@ export default function PublicHostProfile() {
           <View style={styles.heroInfo}>
             <Text style={styles.name}>{profile.full_name || 'Anonymous Rider'}</Text>
             {avgRating != null && (
-              <Text style={styles.rating}>
-                {`${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} ${avgRating.toFixed(1)} · ${reviewCount} ${reviewCount === 1 ? 'review' : 'reviews'}`}
-              </Text>
+              <TouchableOpacity
+                style={styles.ratingRow}
+                onPress={() => router.push({ pathname: '/reviews', params: { user: profile.id } })}
+                accessibilityRole="button"
+                hitSlop={6}
+              >
+                <Text style={styles.rating}>
+                  {`${'★'.repeat(Math.round(avgRating))}${'☆'.repeat(5 - Math.round(avgRating))} ${avgRating.toFixed(1)} · ${reviewCount} ${reviewCount === 1 ? 'review' : 'reviews'}`}
+                </Text>
+                <Text style={styles.ratingChevron}>›</Text>
+              </TouchableOpacity>
             )}
             {(profile.nationality || locations.length > 1) && (
               <Text style={styles.meta}>
@@ -390,7 +398,9 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   avatarText:   { color: C.white, fontWeight: '800', fontSize: 28 },
   heroInfo:     { flex: 1, gap: 3 },
   name:         { color: C.text, fontSize: 24, fontWeight: '900' },
+  ratingRow:    { flexDirection: 'row', alignItems: 'center', gap: 4 },
   rating:       { color: C.accent, fontSize: 14, fontWeight: '700' },
+  ratingChevron:{ color: C.accent, fontSize: 16, fontWeight: '700' },
   meta:         { color: C.textMuted, fontSize: 13 },
 
   bio:          { color: C.text, fontSize: 15, lineHeight: 23, fontFamily: FONT.body },

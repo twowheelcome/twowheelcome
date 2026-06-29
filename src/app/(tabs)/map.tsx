@@ -876,9 +876,21 @@ export default function MapScreen() {
                     <Text style={{ color: C.textMuted, fontSize: 13 }}>🌍 {selected.profiles.nationality}</Text>
                   ) : null}
                   {selected.avg_rating != null && (
-                    <Text style={{ color: C.accent, fontSize: 13, fontWeight: '700' }}>
-                      {'★'.repeat(Math.round(selected.avg_rating))}{'☆'.repeat(5 - Math.round(selected.avg_rating))} {selected.avg_rating.toFixed(1)} · {selected.review_count} {selected.review_count === 1 ? 'review' : 'reviews'}
-                    </Text>
+                    <TouchableOpacity
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                      onPress={() => {
+                        reopenHostSheetRef.current = true
+                        setShowHostProfile(false)
+                        router.push({ pathname: '/reviews', params: { user: selected.user_id } })
+                      }}
+                      accessibilityRole="button"
+                      hitSlop={6}
+                    >
+                      <Text style={{ color: C.accent, fontSize: 13, fontWeight: '700' }}>
+                        {'★'.repeat(Math.round(selected.avg_rating))}{'☆'.repeat(5 - Math.round(selected.avg_rating))} {selected.avg_rating.toFixed(1)} · {selected.review_count} {selected.review_count === 1 ? 'review' : 'reviews'}
+                      </Text>
+                      <Text style={{ color: C.accent, fontSize: 15, fontWeight: '700' }}>›</Text>
+                    </TouchableOpacity>
                   )}
                 </View>
               </View>
@@ -903,33 +915,7 @@ export default function MapScreen() {
               />
               <HostOffer loc={selected} />
 
-              {/* Reviews folder — opens this host's reviews (same style as the profile menu) */}
-              {selected.review_count > 0 ? (
-                <TouchableOpacity
-                  style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: C.border, paddingVertical: 14, paddingHorizontal: 16 }}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    // Close the modal so /reviews is visible above the map, but flag a reopen
-                    // so back returns to this host detail, not the bare map.
-                    reopenHostSheetRef.current = true
-                    setShowHostProfile(false)
-                    router.push({ pathname: '/reviews', params: { user: selected.user_id } })
-                  }}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: C.text, fontSize: 15, fontWeight: '800' }}>Reviews</Text>
-                    <Text style={{ color: C.textMuted, fontSize: 13, marginTop: 2 }}>
-                      ⭐ {selected.avg_rating != null ? selected.avg_rating.toFixed(1) : '—'} · {selected.review_count} {selected.review_count === 1 ? 'review' : 'reviews'}
-                    </Text>
-                  </View>
-                  <Text style={{ color: C.textDim, fontSize: 24, fontWeight: '300', marginLeft: 8 }}>›</Text>
-                </TouchableOpacity>
-              ) : (
-                <View style={{ backgroundColor: C.surface, borderRadius: 16, borderWidth: 1, borderColor: C.border, paddingVertical: 14, paddingHorizontal: 16 }}>
-                  <Text style={{ color: C.text, fontSize: 15, fontWeight: '800' }}>Reviews</Text>
-                  <Text style={{ color: C.textMuted, fontSize: 13, marginTop: 2 }}>No reviews yet</Text>
-                </View>
-              )}
+              {/* (Reviews are reached by tapping the rating under the name — no duplicate folder here.) */}
 
               {/* Full profile — where block / report live (reachable from the pin) */}
               {!isOwn && (
