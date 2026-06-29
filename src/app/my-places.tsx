@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { supabase } from '../lib/supabase'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
@@ -44,6 +44,8 @@ export default function MyPlacesScreen() {
   const [places, setPlaces] = useState<Place[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<Place | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const load = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -74,6 +76,30 @@ export default function MyPlacesScreen() {
       setError('Could not update availability. Please try again.')
     }
     setBusy(null)
+  }
+
+  // Owner-only delete via the SECURITY DEFINER RPC. It refuses (and we explain) while the
+  // place still has stay requests, so no shared history is destroyed; on success it returns
+  // the photo paths and we clear them from the listing-photos bucket. Coords cascade in DB.
+  async function deletePlace(p: Place) {
+    if (deleting) return
+    setDeleting(true)
+    setError(null)
+    const { data, error: err } = await supabase.rpc('delete_host_location', { p_id: p.id })
+    if (err) {
+      console.warn('delete place error:', err.message)
+      setDeleting(false)
+      setConfirmDelete(null)
+      setError(err.message?.includes('stay requests')
+        ? 'This place has stay requests tied to it, so it can’t be deleted yet. Cleanup of past stays is coming.'
+        : 'Could not delete this place. Please try again.')
+      return
+    }
+    const photos = (data as string[] | null) ?? []
+    if (photos.length) await supabase.storage.from('listing-photos').remove(photos).catch(() => {})
+    setPlaces(prev => prev.filter(x => x.id !== p.id))
+    setDeleting(false)
+    setConfirmDelete(null)
   }
 
   return (
@@ -128,6 +154,14 @@ export default function MyPlacesScreen() {
                   </TouchableOpacity>
 
                   <Text style={styles.editHint}>Tap the card to edit this place →</Text>
+
+                  <TouchableOpacity
+                    style={styles.deleteBtn}
+                    onPress={() => { setError(null); setConfirmDelete(p) }}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.deleteText}>Delete this place</Text>
+                  </TouchableOpacity>
                 </TouchableOpacity>
               )
             })
@@ -138,6 +172,27 @@ export default function MyPlacesScreen() {
           </TouchableOpacity>
         </ScrollView>
       )}
+
+      <Modal visible={!!confirmDelete} transparent animationType="fade" onRequestClose={() => !deleting && setConfirmDelete(null)}>
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmSheet}>
+            <Text style={styles.confirmTitle}>Delete this place?</Text>
+            <Text style={styles.confirmBody}>
+              This permanently removes the listing, its exact coordinates and its photos. Riders will no longer see it on the map. This can’t be undone.
+            </Text>
+            <TouchableOpacity
+              style={[styles.confirmDanger, deleting && { opacity: 0.6 }]}
+              onPress={() => { if (confirmDelete) void deletePlace(confirmDelete) }}
+              disabled={deleting}
+            >
+              <Text style={styles.confirmDangerText}>{deleting ? 'Deleting…' : 'Yes, delete it'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.confirmCancel} onPress={() => setConfirmDelete(null)} disabled={deleting}>
+              <Text style={styles.confirmCancelText}>Keep it</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -166,7 +221,17 @@ function makeStyles(C: ThemeColors) {
     toggleResume: { backgroundColor: C.greenSoft, borderColor: C.green },
     toggleText: { fontSize: 14, fontWeight: '800' },
     editHint: { color: C.textDim, fontSize: 12, textAlign: 'center', fontFamily: FONT.body },
+    deleteBtn: { alignItems: 'center', paddingVertical: 6 },
+    deleteText: { color: C.error, fontSize: 13, fontWeight: '700' },
     addBtn: { borderWidth: 1, borderColor: C.accent, borderRadius: 100, padding: 14, alignItems: 'center', borderStyle: 'dashed', marginTop: 2 },
     addBtnText: { color: C.accent, fontWeight: '700', fontSize: 14, letterSpacing: 1 },
+    confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+    confirmSheet: { backgroundColor: C.bg, borderRadius: 20, padding: 24, width: '100%', maxWidth: 400, gap: 12, borderWidth: 1, borderColor: C.errorBorder },
+    confirmTitle: { color: C.text, fontSize: 20, fontWeight: '900' },
+    confirmBody: { color: C.textMuted, fontSize: 14, lineHeight: 21, fontFamily: FONT.body },
+    confirmDanger: { backgroundColor: C.error, borderRadius: 100, paddingVertical: 13, alignItems: 'center' },
+    confirmDangerText: { color: C.white, fontSize: 15, fontWeight: '800' },
+    confirmCancel: { alignItems: 'center', paddingVertical: 8 },
+    confirmCancelText: { color: C.textMuted, fontSize: 14, textDecorationLine: 'underline' },
   })
 }
