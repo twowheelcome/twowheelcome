@@ -257,12 +257,7 @@ export default function PublicHostProfile() {
           const amen = (loc.amenities as string[] | undefined)?.filter(a => AMENITY_LABELS[a]) ?? []
           return (
             <View key={loc.id} style={styles.placeCard}>
-              <View style={styles.placeHeaderRow}>
-                <Text style={styles.placeHeader} numberOfLines={1}>{placeName(loc, idx + 1)}</Text>
-                {isLoggedIn && currentUserId && currentUserId !== id ? (
-                  <ReportButton targetType="listing" targetId={loc.id} label="Report" />
-                ) : null}
-              </View>
+              <Text style={styles.placeHeader} numberOfLines={1}>{placeName(loc, idx + 1)}</Text>
 
               {parkings.length > 0 && <SafetyBlock parkings={parkings} bikeSafe={bikeSafeByLoc[loc.id]} />}
 
@@ -339,7 +334,7 @@ export default function PublicHostProfile() {
             </View>
           ) : (
             <TouchableOpacity style={styles.blockBtn} onPress={() => setShowBlockConfirm(true)}>
-              <Text style={styles.blockText}>Block user</Text>
+              <Text style={styles.blockText}>{locations.length ? 'Block this host' : 'Block this rider'}</Text>
             </TouchableOpacity>
           )
         ) : null}
@@ -403,8 +398,7 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   section:      { gap: 8 },
   sectionLabel: { color: C.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' },
   placeCard:    { backgroundColor: C.surface, borderRadius: 22, borderWidth: 1, borderColor: C.border, padding: 16, gap: 14 },
-  placeHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  placeHeader:  { color: C.text, fontSize: 16, fontFamily: FONT.headBold, letterSpacing: 0.3, flex: 1 },
+  placeHeader:  { color: C.text, fontSize: 16, fontFamily: FONT.headBold, letterSpacing: 0.3 },
   chips:        { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip:         { backgroundColor: C.surface, borderRadius: 100, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, paddingVertical: 6 },
   chipText:     { color: C.text, fontSize: 13, fontWeight: '600' },
