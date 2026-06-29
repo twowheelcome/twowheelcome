@@ -21,7 +21,7 @@ type Place = {
   price_amount: number | null
   price_currency: string | null
   paused: boolean
-  hasHistory?: boolean   // any stay_requests (past/active) — blocks hard delete (anti-washing)
+  hasActiveRequest?: boolean   // a live PENDING/ACCEPTED stay — the only thing blocking delete
 }
 
 const PARK_TITLE: Record<string, string> = {
@@ -59,16 +59,22 @@ export default function MyPlacesScreen() {
       .eq('user_id', user.id)
       .order('created_at', { ascending: true })
     const list = (data as Place[]) || []
-    // A place with any stay_requests (past or active) has history → hard delete is blocked
-    // (anti-washing); only Pause is offered. A review always implies a stay, so this covers
-    // reviews too. The owner can read their own stays (host_id) under RLS.
+    // Delete is allowed for any place except one with a live request (PENDING/ACCEPTED, not
+    // yet finished) — that must be resolved first. History doesn't block (it detaches on
+    // delete). The owner can read their own stays (host_id) under RLS.
     const ids = list.map(p => p.id)
-    let history = new Set<string>()
+    let active = new Set<string>()
     if (ids.length) {
-      const { data: hist } = await supabase.from('stay_requests').select('location_id').in('location_id', ids)
-      history = new Set((hist ?? []).map((r: { location_id: string }) => r.location_id))
+      const today = new Date().toISOString().split('T')[0]
+      const { data: act } = await supabase
+        .from('stay_requests')
+        .select('location_id')
+        .in('location_id', ids)
+        .in('status', ['PENDING', 'ACCEPTED'])
+        .gte('departure_date', today)
+      active = new Set((act ?? []).map((r: { location_id: string }) => r.location_id))
     }
-    setPlaces(list.map(p => ({ ...p, hasHistory: history.has(p.id) })))
+    setPlaces(list.map(p => ({ ...p, hasActiveRequest: active.has(p.id) })))
     setLoading(false)
   }, [])
 
@@ -101,8 +107,8 @@ export default function MyPlacesScreen() {
       console.warn('delete place error:', err.message)
       setDeleting(false)
       setConfirmDelete(null)
-      setError(err.message?.includes('history')
-        ? 'This place has stays or reviews, so it can’t be deleted — you can pause it instead.'
+      setError(err.message?.includes('active stay request')
+        ? 'This place has an active request. Resolve it first, then you can delete the place.'
         : 'Could not delete this place. Please try again.')
       return
     }
@@ -166,8 +172,8 @@ export default function MyPlacesScreen() {
 
                   <Text style={styles.editHint}>Tap the card to edit this place →</Text>
 
-                  {p.hasHistory ? (
-                    <Text style={styles.lockNote}>🔒 This place has stays/reviews — it can’t be deleted, only paused.</Text>
+                  {p.hasActiveRequest ? (
+                    <Text style={styles.lockNote}>🔒 This place has an active request — resolve it first, then you can delete.</Text>
                   ) : (
                     <TouchableOpacity
                       style={styles.deleteBtn}
@@ -193,7 +199,7 @@ export default function MyPlacesScreen() {
           <View style={styles.confirmSheet}>
             <Text style={styles.confirmTitle}>Delete this place?</Text>
             <Text style={styles.confirmBody}>
-              This permanently removes the listing, its exact coordinates and its photos. Riders will no longer see it on the map. This can’t be undone.
+              This permanently removes the listing, its exact coordinates and its photos. Past stays and reviews stay on your profile but detach from this place. Riders will no longer see it on the map. This can’t be undone.
             </Text>
             <TouchableOpacity
               style={[styles.confirmDanger, deleting && { opacity: 0.6 }]}

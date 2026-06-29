@@ -101,7 +101,7 @@ CREATE TABLE IF NOT EXISTS stay_requests (
   guest_vehicle text,
   conversation_id uuid NOT NULL,
   photo_url text,
-  location_id uuid NOT NULL,
+  location_id uuid,   -- nullable: ON DELETE SET NULL detaches a stay from a deleted listing
   location_city text,
   location_country text
 );
@@ -154,7 +154,7 @@ ALTER TABLE reviews ADD CONSTRAINT reviews_reviewer_id_fkey FOREIGN KEY (reviewe
 -- stay_requests are not). Filled server-side by reviews_set_location_id() — never trusted
 -- from the client. ON DELETE SET NULL keeps the review if the listing is removed.
 ALTER TABLE reviews ADD CONSTRAINT reviews_location_id_fkey FOREIGN KEY (location_id) REFERENCES host_locations(id) ON DELETE SET NULL;
-ALTER TABLE stay_requests ADD CONSTRAINT stay_requests_location_id_fkey FOREIGN KEY (location_id) REFERENCES host_locations(id) ON DELETE RESTRICT;
+ALTER TABLE stay_requests ADD CONSTRAINT stay_requests_location_id_fkey FOREIGN KEY (location_id) REFERENCES host_locations(id) ON DELETE SET NULL;
 ALTER TABLE stay_requests ADD CONSTRAINT stay_requests_guest_id_fkey FOREIGN KEY (guest_id) REFERENCES profiles(id) ON DELETE CASCADE;
 ALTER TABLE stay_requests ADD CONSTRAINT stay_requests_host_id_fkey FOREIGN KEY (host_id) REFERENCES profiles(id) ON DELETE CASCADE;
 ALTER TABLE stay_requests ADD CONSTRAINT stay_requests_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES conversations(id);
@@ -668,6 +668,10 @@ BEGIN
     RETURN NEW;
   END IF;
 
+  -- service_role / internal cascade (e.g. deleting a host_location SET NULLs location_id)
+  -- may rewrite otherwise-immutable fields.
+  IF bypass_actor THEN RETURN NEW; END IF;
+
   IF (to_jsonb(NEW) - 'status' - 'updated_at') IS DISTINCT FROM (to_jsonb(OLD) - 'status' - 'updated_at') THEN
     RAISE EXCEPTION 'Only stay request status may be changed';
   END IF;
@@ -964,10 +968,13 @@ $function$
 REVOKE EXECUTE ON FUNCTION public.save_host_location(uuid,double precision,double precision,text,text,text[],text,text[],text[],integer,text[],text,text,text[],numeric,text,boolean) FROM PUBLIC, anon;
 GRANT  EXECUTE ON FUNCTION public.save_host_location(uuid,double precision,double precision,text,text,text[],text,text[],text[],integer,text[],text,text,text[],numeric,text,boolean) TO authenticated;
 
--- Owner-only listing delete, allowed ONLY for a place with no history (anti-washing): any
--- stay_requests (past or active) or reviews block it, so reputation can't be wiped by
--- deleting the place — such a place can only be paused. host_location_coords cascades;
--- returns the listing photo paths so the caller clears them from the listing-photos bucket.
+-- Owner-only listing delete. Allowed for any place EXCEPT one with an active (PENDING or
+-- not-yet-finished ACCEPTED) stay request — resolve those first. History (past stays,
+-- reviews) does NOT block: stay_requests/reviews/conversations detach via ON DELETE SET
+-- NULL and survive (reviews stay on the host via reviewee_id; washing reputation by deleting
+-- a place gains nothing over deleting the whole account). host_location_coords cascades; the
+-- app.cascade flag lets the SET NULL cascades past the immutability triggers (cf.
+-- delete_account_data). Returns photo paths so the caller clears the listing-photos bucket.
 CREATE OR REPLACE FUNCTION public.delete_host_location(p_id uuid)
  RETURNS text[]
  LANGUAGE plpgsql
@@ -986,12 +993,16 @@ BEGIN
   IF v_owner IS NULL THEN RAISE EXCEPTION 'No such place'; END IF;
   IF v_owner <> v_uid THEN RAISE EXCEPTION 'Not allowed to delete another user''s location'; END IF;
 
-  IF EXISTS (SELECT 1 FROM stay_requests WHERE location_id = p_id)
-     OR EXISTS (SELECT 1 FROM reviews WHERE location_id = p_id) THEN
-    RAISE EXCEPTION 'This place has history and cannot be deleted' USING errcode = 'check_violation';
+  IF EXISTS (
+    SELECT 1 FROM stay_requests
+    WHERE location_id = p_id AND status IN ('PENDING','ACCEPTED')
+      AND departure_date >= (now() AT TIME ZONE 'utc')::date
+  ) THEN
+    RAISE EXCEPTION 'This place has an active stay request' USING errcode = 'check_violation';
   END IF;
 
-  DELETE FROM host_locations WHERE id = p_id AND user_id = v_uid;  -- host_location_coords cascades
+  PERFORM set_config('app.cascade', '1', true);
+  DELETE FROM host_locations WHERE id = p_id AND user_id = v_uid;  -- coords cascade; stays/reviews/convs SET NULL
   RETURN COALESCE(v_photos, '{}');
 END
 $function$
