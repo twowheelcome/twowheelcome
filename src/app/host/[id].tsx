@@ -260,14 +260,7 @@ export default function PublicHostProfile() {
                 <Text style={styles.placeHeader}>{`Place ${idx + 1}`}</Text>
               ) : null}
 
-              {parkings.length > 0 && <SafetyBlock parkings={parkings} />}
-
-              {/* Riders' confirmation of this place's bike safety, right by the host's own claim */}
-              {(bikeSafeByLoc[loc.id]?.yes ?? 0) > 0 && (
-                <Text style={styles.bikeSafe}>
-                  {`🔒 Bike felt safe — ${bikeSafeByLoc[loc.id].yes} of ${bikeSafeByLoc[loc.id].total} ${bikeSafeByLoc[loc.id].total === 1 ? 'rider' : 'riders'}`}
-                </Text>
-              )}
+              {parkings.length > 0 && <SafetyBlock parkings={parkings} bikeSafe={bikeSafeByLoc[loc.id]} />}
 
               {loc.notes ? (
                 <View style={styles.section}>
@@ -392,7 +385,6 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   heroInfo:     { flex: 1, gap: 3 },
   name:         { color: C.text, fontSize: 24, fontWeight: '900' },
   rating:       { color: C.accent, fontSize: 14, fontWeight: '700' },
-  bikeSafe:     { color: C.textMuted, fontSize: 13, fontWeight: '600', marginTop: 3 },
   meta:         { color: C.textMuted, fontSize: 13 },
 
   bio:          { color: C.text, fontSize: 15, lineHeight: 23, fontFamily: FONT.body },

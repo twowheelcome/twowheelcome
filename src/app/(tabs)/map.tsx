@@ -897,13 +897,7 @@ export default function MapScreen() {
                 </TouchableOpacity>
               )}
 
-              <SafetyBlock parkings={parkings} />
-              {/* Riders' confirmation of THIS place's bike safety, by the host's own claim */}
-              {(selected.bike_safe_yes ?? 0) > 0 && (
-                <Text style={{ color: C.textMuted, fontSize: 13, fontWeight: '600' }}>
-                  🔒 Bike felt safe — {selected.bike_safe_yes} of {selected.bike_safe_total} {selected.bike_safe_total === 1 ? 'rider' : 'riders'}
-                </Text>
-              )}
+              <SafetyBlock parkings={parkings} bikeSafe={{ yes: selected.bike_safe_yes ?? 0, total: selected.bike_safe_total ?? 0 }} />
               <HostOffer loc={selected} />
 
               {/* Reviews folder — opens this host's reviews (same style as the profile menu) */}

@@ -21,7 +21,7 @@ export function bestSafety(parkings: string[]): keyof typeof SAFETY {
   return order.find(k => keys.includes(k)) ?? 'street'
 }
 
-export function SafetyBlock({ parkings }: { parkings: string[] }) {
+export function SafetyBlock({ parkings, bikeSafe }: { parkings: string[]; bikeSafe?: { yes: number; total: number } }) {
   const C = useTheme()
   const order: (keyof typeof SAFETY)[] = ['locked_garage', 'carport', 'fenced_yard', 'street']
   const keys = [...new Set(parkings.map(getSafetyKey))]
@@ -57,6 +57,15 @@ export function SafetyBlock({ parkings }: { parkings: string[] }) {
           ))}
         </View>
       )}
+      {/* Riders' confirmation of this place's bike safety, inside the safety card next to
+          the host's own claim. Shown only with at least one "secure" answer. */}
+      {bikeSafe && bikeSafe.yes > 0 && (
+        <View style={[sb.confirmRow, { borderTopColor: C.border }]}>
+          <Text style={[sb.confirmText, { color: C.textMuted }]}>
+            🔒 Bike felt safe — {bikeSafe.yes} of {bikeSafe.total} {bikeSafe.total === 1 ? 'rider' : 'riders'}
+          </Text>
+        </View>
+      )}
     </View>
   )
 }
@@ -73,6 +82,8 @@ const sb = StyleSheet.create({
   rankText:     { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
   sub:          { fontSize: 13, lineHeight: 19, fontFamily: FONT.body },
   secondaryRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 10, paddingTop: 10, borderTopWidth: 1 },
+  confirmRow:   { marginTop: 10, paddingTop: 10, borderTopWidth: 1 },
+  confirmText:  { fontSize: 13, fontWeight: '600' },
   alsoLabel:    { fontSize: 11, fontWeight: '700', marginRight: 2 },
   chip:         { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 100, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4 },
   chipText:     { fontSize: 11, fontWeight: '600' },
