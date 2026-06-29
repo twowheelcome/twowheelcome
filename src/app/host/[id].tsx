@@ -257,7 +257,12 @@ export default function PublicHostProfile() {
           const amen = (loc.amenities as string[] | undefined)?.filter(a => AMENITY_LABELS[a]) ?? []
           return (
             <View key={loc.id} style={styles.placeCard}>
-              <Text style={styles.placeHeader}>{placeName(loc, idx + 1)}</Text>
+              <View style={styles.placeHeaderRow}>
+                <Text style={styles.placeHeader} numberOfLines={1}>{placeName(loc, idx + 1)}</Text>
+                {isLoggedIn && currentUserId && currentUserId !== id ? (
+                  <ReportButton targetType="listing" targetId={loc.id} label="Report" />
+                ) : null}
+              </View>
 
               {parkings.length > 0 && <SafetyBlock parkings={parkings} bikeSafe={bikeSafeByLoc[loc.id]} />}
 
@@ -319,10 +324,6 @@ export default function PublicHostProfile() {
               >
                 <Text style={styles.ctaBtnText}>{isLoggedIn === false ? 'Join to knock on the door' : 'Knock on the door'}</Text>
               </TouchableOpacity>
-
-              {isLoggedIn && currentUserId && currentUserId !== id ? (
-                <ReportButton targetType="listing" targetId={loc.id} label="Report this listing" style={{ alignSelf: 'center', marginTop: 2 }} />
-              ) : null}
             </View>
           )
         })}
@@ -402,7 +403,8 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   section:      { gap: 8 },
   sectionLabel: { color: C.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' },
   placeCard:    { backgroundColor: C.surface, borderRadius: 22, borderWidth: 1, borderColor: C.border, padding: 16, gap: 14 },
-  placeHeader:  { color: C.text, fontSize: 16, fontFamily: FONT.headBold, letterSpacing: 0.3 },
+  placeHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  placeHeader:  { color: C.text, fontSize: 16, fontFamily: FONT.headBold, letterSpacing: 0.3, flex: 1 },
   chips:        { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip:         { backgroundColor: C.surface, borderRadius: 100, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, paddingVertical: 6 },
   chipText:     { color: C.text, fontSize: 13, fontWeight: '600' },
