@@ -643,6 +643,78 @@ function makeRc(C: ThemeColors) { return StyleSheet.create({
   placeToggleText: { flex: 1, color: C.textMuted, fontSize: 13, fontWeight: '700' },
 }) }
 
+// ── Address-unlocked card (rider view, after acceptance) ────────────────────
+// We store only lat/lng (owner-only, shared after acceptance) — no textual street address
+// exists anywhere — so the card leads with the coordinates + "city, country" and a big
+// Navigate button. The agreed stay recap (bike/sleep/services/return) collapses under
+// "Place details", default closed.
+function MeetingCard({ styles, C, exactPoint, isMine, time, onNavigate }: {
+  styles: ReturnType<typeof makeStyles>
+  C: ThemeColors
+  exactPoint: ExactPointSummary
+  isMine: boolean
+  time: string
+  onNavigate: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const placeLine = exactPoint.lines.find(l => l.label === 'Place')
+  const detailLines = exactPoint.lines.filter(l => l.label !== 'Place')
+  return (
+    <View style={[styles.msgRow, isMine ? styles.msgRowRight : styles.msgRowLeft]}>
+      <View style={styles.meetingCard}>
+        <View style={styles.meetingHeader}>
+          <View style={styles.meetingIcon}>
+            <Feather name="unlock" size={17} color={C.success} />
+          </View>
+          <View style={styles.meetingHeaderText}>
+            <Text style={styles.meetingTitle}>🔓 Address unlocked</Text>
+          </View>
+        </View>
+
+        <View style={styles.coordsBlock}>
+          <Text style={styles.coordsLabel}>COORDINATES</Text>
+          <Text style={styles.coordsValue} selectable>
+            {exactPoint.coords.lat.toFixed(6)}, {exactPoint.coords.lng.toFixed(6)}
+          </Text>
+          {placeLine ? (
+            <View style={styles.meetingPlace}>
+              <Feather name="map-pin" size={14} color={C.success} />
+              <Text style={styles.meetingPlaceText}>{placeLine.value}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        <TouchableOpacity style={styles.meetingNavButton} onPress={onNavigate}>
+          <Feather name="navigation" size={15} color={C.white} />
+          <Text style={styles.meetingNavText}>Navigate</Text>
+        </TouchableOpacity>
+
+        {detailLines.length ? (
+          <View>
+            <TouchableOpacity style={styles.meetingToggle} onPress={() => setOpen(v => !v)} accessibilityRole="button">
+              <Feather name="list" size={15} color={C.textMuted} />
+              <Text style={styles.meetingToggleText}>Place details</Text>
+              <Feather name={open ? 'chevron-up' : 'chevron-down'} size={16} color={C.textMuted} />
+            </TouchableOpacity>
+            {open ? (
+              <View style={[styles.meetingFacts, { marginTop: 10 }]}>
+                {detailLines.map(line => (
+                  <View key={line.label} style={styles.meetingFact}>
+                    <Feather name={MEETING_ICONS[line.label] ?? 'info'} size={16} color={C.success} style={styles.meetingFactIcon} />
+                    <Text style={styles.meetingFactValue}>{line.value}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        <Text style={styles.autoTime}>{time}</Text>
+      </View>
+    </View>
+  )
+}
+
 // ── Main Screen ───────────────────────────────────────────────────────────
 
 export default function RequestsScreen() {
@@ -2051,42 +2123,14 @@ export default function RequestsScreen() {
 
             if (exactPoint) {
               return (
-                <View style={[styles.msgRow, isMine ? styles.msgRowRight : styles.msgRowLeft]}>
-                  <View style={styles.meetingCard}>
-                    <View style={styles.meetingHeader}>
-                      <View style={styles.meetingIcon}>
-                        <Feather name="unlock" size={17} color={C.success} />
-                      </View>
-                      <View style={styles.meetingHeaderText}>
-                        <Text style={styles.meetingTitle}>🔓 Address unlocked</Text>
-                      </View>
-                    </View>
-                    <View style={styles.coordsBlock}>
-                      <Text style={styles.coordsLabel}>COORDINATES</Text>
-                      <Text style={styles.coordsValue} selectable>
-                        {exactPoint.coords.lat.toFixed(6)}, {exactPoint.coords.lng.toFixed(6)}
-                      </Text>
-                    </View>
-                    {exactPoint.lines.length ? (
-                      <View style={styles.meetingFacts}>
-                        {exactPoint.lines.map(line => (
-                          <View key={line.label} style={styles.meetingFact}>
-                            <Feather name={MEETING_ICONS[line.label] ?? 'info'} size={16} color={C.success} style={styles.meetingFactIcon} />
-                            <Text style={styles.meetingFactValue}>{line.value}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    ) : null}
-                    <TouchableOpacity
-                      style={styles.meetingNavButton}
-                      onPress={() => setNavTarget(exactPoint.coords)}
-                    >
-                      <Feather name="navigation" size={15} color={C.white} />
-                      <Text style={styles.meetingNavText}>Navigate</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.autoTime}>{fmtTime(m.created_at)}</Text>
-                  </View>
-                </View>
+                <MeetingCard
+                  styles={styles}
+                  C={C}
+                  exactPoint={exactPoint}
+                  isMine={isMine}
+                  time={fmtTime(m.created_at)}
+                  onNavigate={() => setNavTarget(exactPoint.coords)}
+                />
               )
             }
 
@@ -2499,6 +2543,10 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
   },
+  meetingPlace: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 2 },
+  meetingPlaceText: { flex: 1, color: C.text, fontSize: 14, fontWeight: '700' },
+  meetingToggle: { flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: C.border, paddingTop: 10 },
+  meetingToggleText: { flex: 1, color: C.textMuted, fontSize: 13, fontWeight: '700' },
 
   // Input
   coordinateTray: {
