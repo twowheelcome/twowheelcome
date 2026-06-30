@@ -359,7 +359,9 @@ function RequestCard({
   const s = expired
     ? { label: 'Expired', color: C.textMuted, bg: C.surface, border: C.border }
     : (STATUS[req.status] || STATUS.PENDING)
-  const vehicle = req.guest_vehicle === 'moto' ? 'Moto' : null
+  // twowheelcome is motorcycle-only — every guest arrives on two wheels. guest_vehicle is a
+  // vestigial column the knock flow never sets, so the bike line defaults to "Moto".
+  const vehicle = 'Moto'
   const guestsLabel = req.guests_count === 1 ? '1 rider' : `${req.guests_count} riders`
   const isGuest = !isHost
   const loc = req.location
@@ -393,8 +395,8 @@ function RequestCard({
     amenities ? { icon: 'coffee', value: amenities } : null,
     pricing ? { icon: 'tag', value: pricing } : null,
   ].filter(Boolean) as Fact[])
-  // Host-side rider bike line: prefer their saved motorcycle, else the per-request flag.
-  const riderBike = rider?.motorcycle || (req.guest_vehicle === 'moto' ? 'Moto' : null)
+  // Host-side rider bike line: prefer their saved motorcycle, else the generic "Moto".
+  const riderBike = rider?.motorcycle?.trim() || 'Moto'
 
   const safetyRow = safetyLevel ? (
     <View style={rc.fact}>

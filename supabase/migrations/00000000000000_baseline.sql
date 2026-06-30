@@ -762,8 +762,8 @@ GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON profiles 
 -- identity columns and own-profile writes would otherwise fail on permissions.
 -- push_token is deliberately NOT readable (written only via set_push_token / own UPDATE),
 -- and notify_email/notify_push stay off the public surface, matching production.
-GRANT SELECT (id, full_name, bio, avatar_url, nationality, motorcycle) ON profiles TO anon;
-GRANT SELECT (id, full_name, bio, avatar_url, nationality, motorcycle, notifications_seen_at) ON profiles TO authenticated;
+GRANT SELECT (id, full_name, bio, avatar_url, nationality, motorcycle, created_at) ON profiles TO anon;
+GRANT SELECT (id, full_name, bio, avatar_url, nationality, motorcycle, created_at, notifications_seen_at) ON profiles TO authenticated;
 GRANT INSERT (id, full_name, bio, avatar_url, push_token, nationality, motorcycle) ON profiles TO authenticated;
 GRANT UPDATE (full_name, bio, avatar_url, push_token, nationality, motorcycle, notifications_seen_at) ON profiles TO authenticated;
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON request_notification_events TO service_role;
