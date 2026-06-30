@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet 
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 import { FONT } from '../lib/theme'
 import type { Pin } from './LocationPicker'
+import { districtFromAddress } from '../lib/placeName'
 
 // Inline address/city geocoder — type an address, pick a result, drop the pin.
 // Same Nominatim source as the map picker, so a host can set a spot by address
@@ -11,7 +12,7 @@ interface Result {
   display_name: string
   lat: string
   lon: string
-  address?: { city?: string; town?: string; village?: string; county?: string; country_code?: string }
+  address?: { city?: string; town?: string; village?: string; county?: string; country_code?: string; suburb?: string; neighbourhood?: string; city_district?: string; quarter?: string; borough?: string; district?: string }
 }
 
 async function searchAddress(query: string): Promise<Result[]> {
@@ -51,6 +52,7 @@ export function AddressSearch({ onPick }: { onPick: (pin: Pin) => void }) {
       lng: parseFloat(r.lon),
       city: a.city || a.town || a.village || a.county || '',
       country: a.country_code?.toUpperCase() || '',
+      district: districtFromAddress(a),
     })
     setQuery(r.display_name.split(',').slice(0, 2).join(','))
     setResults([])

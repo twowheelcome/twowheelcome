@@ -6,6 +6,7 @@ export interface Pin {
   lng: number
   city?: string
   country?: string
+  district?: string
 }
 
 interface Props {

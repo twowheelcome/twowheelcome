@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS host_locations (
   location_lng double precision NOT NULL,
   location_city text DEFAULT ''::text,
   location_country text DEFAULT ''::text,
+  location_district text DEFAULT ''::text,
   parking text DEFAULT 'yard'::text,
   max_guests integer DEFAULT 2,
   pricing text DEFAULT 'free'::text,
@@ -720,6 +721,7 @@ CREATE OR REPLACE VIEW host_locations_public WITH (security_invoker=on) AS
     round(location_lng::numeric, 2)::double precision AS location_lng,
     location_city,
     location_country,
+    location_district,
     parking,
     parkings,
     sleep_types,
@@ -900,6 +902,7 @@ CREATE OR REPLACE FUNCTION public.save_host_location(
   p_lng double precision,
   p_city text,
   p_country text,
+  p_district text,
   p_parkings text[],
   p_parking text,
   p_sleep_types text[],
@@ -931,13 +934,13 @@ BEGIN
   END IF;
 
   INSERT INTO host_locations (
-    id, user_id, paused, location_lat, location_lng, location_city, location_country,
+    id, user_id, paused, location_lat, location_lng, location_city, location_country, location_district,
     parkings, parking, sleep_types, amenities, max_guests, pricings, pricing,
     notes, photos, price_amount, price_currency
   ) VALUES (
     p_id, v_uid, COALESCE(p_paused, false),
     round(p_lat::numeric, 2)::double precision, round(p_lng::numeric, 2)::double precision,
-    p_city, p_country, p_parkings, p_parking, p_sleep_types, p_amenities, p_max_guests,
+    p_city, p_country, p_district, p_parkings, p_parking, p_sleep_types, p_amenities, p_max_guests,
     p_pricings, p_pricing, p_notes, p_photos, p_price_amount, p_price_currency
   )
   ON CONFLICT (id) DO UPDATE SET
@@ -946,6 +949,7 @@ BEGIN
     location_lng = excluded.location_lng,
     location_city = excluded.location_city,
     location_country = excluded.location_country,
+    location_district = excluded.location_district,
     parkings = excluded.parkings,
     parking = excluded.parking,
     sleep_types = excluded.sleep_types,
@@ -965,8 +969,8 @@ BEGIN
 END
 $function$
 ;
-REVOKE EXECUTE ON FUNCTION public.save_host_location(uuid,double precision,double precision,text,text,text[],text,text[],text[],integer,text[],text,text,text[],numeric,text,boolean) FROM PUBLIC, anon;
-GRANT  EXECUTE ON FUNCTION public.save_host_location(uuid,double precision,double precision,text,text,text[],text,text[],text[],integer,text[],text,text,text[],numeric,text,boolean) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.save_host_location(uuid,double precision,double precision,text,text,text,text[],text,text[],text[],integer,text[],text,text,text[],numeric,text,boolean) FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION public.save_host_location(uuid,double precision,double precision,text,text,text,text[],text,text[],text[],integer,text[],text,text,text[],numeric,text,boolean) TO authenticated;
 
 -- Owner-only listing delete. Allowed for any place EXCEPT one with an active (PENDING or
 -- not-yet-finished ACCEPTED) stay request — resolve those first. History (past stays,

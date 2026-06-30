@@ -117,7 +117,7 @@ export default function BecomeHostScreen() {
     if (!placeParam) return
     const { data: d } = await supabase
       .from('host_locations')
-      .select('id, paused, location_city, location_country, parkings, parking, sleep_types, amenities, max_guests, pricings, pricing, notes, photos, price_amount, price_currency')
+      .select('id, paused, location_city, location_country, location_district, parkings, parking, sleep_types, amenities, max_guests, pricings, pricing, notes, photos, price_amount, price_currency')
       .eq('user_id', userId)
       .eq('id', placeParam)
       .maybeSingle()
@@ -132,7 +132,7 @@ export default function BecomeHostScreen() {
     setLocations([{
       id: d.id,
       paused: !!d.paused,
-      pin: { lat: c?.lat ?? 0, lng: c?.lng ?? 0, city: d.location_city, country: d.location_country },
+      pin: { lat: c?.lat ?? 0, lng: c?.lng ?? 0, city: d.location_city, country: d.location_country, district: d.location_district },
       parkings: d.parkings?.length ? d.parkings : (d.parking ? [d.parking] : []),
       sleepTypes: d.sleep_types || [],
       amenities: d.amenities || [],
@@ -262,6 +262,7 @@ export default function BecomeHostScreen() {
         p_lng: loc.pin.lng,
         p_city: loc.pin.city || '',
         p_country: loc.pin.country || '',
+        p_district: loc.pin.district || '',
         p_parkings: loc.parkings,
         p_parking: loc.parkings[0] || 'yard',
         p_sleep_types: loc.sleepTypes,

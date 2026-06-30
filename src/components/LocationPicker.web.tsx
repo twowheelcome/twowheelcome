@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTheme, useThemeMode } from '../lib/ThemeContext'
+import { districtFromAddress } from '../lib/placeName'
 
 // CARTO basemap matching the app theme (dark tiles in dark mode), same as HostMap.
 function tileUrl(scheme: 'light' | 'dark'): string {
@@ -14,6 +15,7 @@ export interface Pin {
   lng: number
   city?: string
   country?: string
+  district?: string
 }
 
 interface Props {
@@ -30,17 +32,17 @@ function injectLeafletCSS() {
   document.head.appendChild(link)
 }
 
-async function reverseGeocode(lat: number, lng: number): Promise<{ city: string; country: string }> {
+async function reverseGeocode(lat: number, lng: number): Promise<{ city: string; country: string; district: string }> {
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`
     )
     const d = await res.json()
     const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || ''
     const country = d.address?.country_code?.toUpperCase() || ''
-    return { city, country }
+    return { city, country, district: districtFromAddress(d.address) }
   } catch {
-    return { city: '', country: '' }
+    return { city: '', country: '', district: '' }
   }
 }
 
@@ -205,7 +207,7 @@ export default function LocationPicker({ pin, onChange }: Props) {
     }, 400)
   }
 
-  function applyDraft(L: any, lat: number, lng: number, geo: { city: string; country: string }) {
+  function applyDraft(L: any, lat: number, lng: number, geo: { city: string; country: string; district: string }) {
     const map = fsMapRef.current
     if (map) { placeMarker(L, map, fsMarkerRef, lat, lng); map.setView([lat, lng], 14) }
     const next = { lat, lng, ...geo }

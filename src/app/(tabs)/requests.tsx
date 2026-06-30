@@ -14,6 +14,7 @@ import { fuzzCoords } from '../../lib/geo'
 import { getLocalYMD } from '../../lib/date'
 import { showToast } from '../../lib/toastStore'
 import { sortSleep } from '../../lib/sleepOrder'
+import { placeNameWithCountry, cityCountry, withRating } from '../../lib/placeName'
 import { UserChip } from '../../components/UserChip'
 import { NotificationBell } from '../../components/NotificationBell'
 import { refreshNotificationCount } from '../../lib/notificationStore'
@@ -67,7 +68,9 @@ type RequestData = {
 
 type RequestLocation = {
   id: string
+  location_city: string | null
   location_country: string | null
+  location_district: string | null
   parking: string | null
   parkings: string[] | null
   sleep_types: string[] | null
@@ -111,7 +114,7 @@ const REQUEST_SELECT = `
   id, arrival_date, departure_date, arrival_time,
   guests_count, guest_vehicle, status, photo_url, host_id, guest_id, location_id,
   location:host_locations!location_id(
-    id, location_country, parking, parkings,
+    id, location_city, location_country, location_district, parking, parkings,
     sleep_types, amenities, pricing, pricings, max_guests, notes
   )
 `
@@ -335,7 +338,7 @@ function labelList(values: string[] | null | undefined, labels: Record<string, s
 
 function summarizeLocation(loc: Partial<RequestLocation> | null | undefined): string[] {
   if (!loc) return []
-  const place = [loc.location_country].filter(Boolean).join(', ')
+  const place = cityCountry(loc)
   const parking = labelList(loc.parkings, PARKING_LABELS, loc.parking)
   const sleep = labelList(sortSleep(loc.sleep_types), SLEEP_LABELS)
   const amenities = labelList(loc.amenities, AMENITY_LABELS)
@@ -383,7 +386,7 @@ function RequestCard({
   const guestsLabel = req.guests_count === 1 ? '1 rider' : `${req.guests_count} riders`
   const isGuest = !isHost
   const loc = req.location
-  const place = [loc?.location_country].filter(Boolean).join(', ')
+  const place = loc ? cityCountry(loc) : ''
   const parkingArr: string[] = loc?.parkings?.length ? loc.parkings : (loc?.parking ? [loc.parking] : [])
   const safetyLevel = parkingArr.length ? bestSafety(parkingArr) : null
   const sleep = labelList(sortSleep(loc?.sleep_types), SLEEP_LABELS)
@@ -764,17 +767,23 @@ export default function RequestsScreen() {
       .maybeSingle()
     if (!c || (c.user_a !== userId && c.user_b !== userId)) return null
     const otherId = c.user_a === userId ? c.user_b : c.user_a
-    const [{ data: prof }, { data: loc }] = await Promise.all([
+    const [{ data: prof }, { data: loc }, { data: locReviews }] = await Promise.all([
       otherId
         ? supabase.from('profiles').select('id, full_name, avatar_url').eq('id', otherId).maybeSingle()
         : Promise.resolve({ data: null as any }),
       c.location_id
-        ? supabase.from('host_locations_public').select('location_country').eq('id', c.location_id).maybeSingle()
+        ? supabase.from('host_locations_public').select('user_id, location_city, location_country, location_district, parking, parkings').eq('id', c.location_id).maybeSingle()
         : Promise.resolve({ data: null as any }),
+      c.location_id
+        ? supabase.from('reviews').select('rating, reviewee_id').eq('location_id', c.location_id)
+        : Promise.resolve({ data: [] as any[] }),
     ])
+    // Per-place rating: only reviews about the host (reviewee = place owner) count.
+    const ownerReviews = (locReviews || []).filter((r: any) => loc && r.reviewee_id === loc.user_id)
+    const rating = ownerReviews.length ? ownerReviews.reduce((s: number, r: any) => s + r.rating, 0) / ownerReviews.length : null
     return {
       id: c.id, user_a: c.user_a, user_b: c.user_b, location_id: c.location_id,
-      locationLabel: loc ? ([loc.location_country].filter(Boolean).join(', ') || 'Past location') : 'Past location',
+      locationLabel: loc ? (withRating(placeNameWithCountry(loc), rating) || 'Past location') : 'Past location',
       last_message_at: c.last_message_at,
       other: { id: otherId, full_name: prof?.full_name ?? null, avatar_url: prof?.avatar_url ?? null },
       lastMsgBody: null, lastMsgSenderId: null, lastMsgIsRequest: false,
@@ -864,9 +873,10 @@ export default function RequestsScreen() {
       .filter((id: string | null): id is string => !!id)
     const locationIds = convData.map((c: any) => c.location_id).filter(Boolean)
 
-    const [{ data: profiles }, { data: locations }, { data: lastMsgs }, { data: requestRows }, { data: readRows }, { data: blockRows }, { data: hideRows }] = await Promise.all([
+    const [{ data: profiles }, { data: locations }, { data: locationReviews }, { data: lastMsgs }, { data: requestRows }, { data: readRows }, { data: blockRows }, { data: hideRows }] = await Promise.all([
       otherIds.length ? supabase.from('profiles').select('id, full_name, avatar_url').in('id', otherIds) : Promise.resolve({ data: [] as any[] }),
-      locationIds.length ? supabase.from('host_locations_public').select('id, location_country').in('id', locationIds) : Promise.resolve({ data: [] as any[] }),
+      locationIds.length ? supabase.from('host_locations_public').select('id, user_id, location_city, location_country, location_district, parking, parkings').in('id', locationIds) : Promise.resolve({ data: [] as any[] }),
+      locationIds.length ? supabase.from('reviews').select('rating, location_id, reviewee_id').in('location_id', locationIds) : Promise.resolve({ data: [] as any[] }),
       supabase.from('messages')
         .select('conversation_id, body, sender_id, request_id, created_at')
         .in('conversation_id', convIds)
@@ -901,9 +911,23 @@ export default function RequestsScreen() {
 
     const profileMap: Record<string, { full_name: string | null; avatar_url: string | null }> = {}
     profiles?.forEach((p: any) => { profileMap[p.id] = { full_name: p.full_name, avatar_url: p.avatar_url } })
+    // Per-place rating = average of reviews ABOUT the host (reviewee = the place owner)
+    // tied to this location_id; reviews of the guest share the same location_id and must
+    // be excluded.
+    const ownerById: Record<string, string> = {}
+    locations?.forEach((location: any) => { ownerById[location.id] = location.user_id })
+    const ratingAgg: Record<string, { sum: number; n: number }> = {}
+    locationReviews?.forEach((r: any) => {
+      if (r.reviewee_id !== ownerById[r.location_id]) return
+      const e = ratingAgg[r.location_id] ?? { sum: 0, n: 0 }
+      e.sum += r.rating; e.n += 1
+      ratingAgg[r.location_id] = e
+    })
     const locationMap: Record<string, string> = {}
     locations?.forEach((location: any) => {
-      locationMap[location.id] = [location.location_country].filter(Boolean).join(', ')
+      const agg = ratingAgg[location.id]
+      const rating = agg && agg.n > 0 ? agg.sum / agg.n : null
+      locationMap[location.id] = withRating(placeNameWithCountry(location), rating)
     })
 
     const lastMsgMap: Record<string, { body: string | null; sender_id: string; request_id: string | null }> = {}
@@ -1322,7 +1346,7 @@ export default function RequestsScreen() {
       const [{ data: locData }, { data: coordData }] = await Promise.all([
         supabase
           .from('host_locations')
-          .select('location_country, parking, parkings, sleep_types, amenities, pricing, pricings, max_guests')
+          .select('location_city, location_country, location_district, parking, parkings, sleep_types, amenities, pricing, pricings, max_guests')
           .eq('id', req.location_id)
           .eq('user_id', req.host_id)
           .maybeSingle(),
@@ -1337,7 +1361,7 @@ export default function RequestsScreen() {
     }
     if (loc && exact) {
       const coords = `${exact.lat.toFixed(6)}, ${exact.lng.toFixed(6)}`
-      const place = [loc.location_country].filter(Boolean).join(', ')
+      const place = cityCountry(loc)
       const recap = summarizeLocation(loc)
       const body = [
         'Exact meeting point:',
@@ -2135,22 +2159,24 @@ export default function RequestsScreen() {
                     </View>
                     <View style={styles.convInfo}>
                       <View style={styles.convTopRow}>
-                        <Text style={[styles.convName, isUnread && styles.convNameUnread]} numberOfLines={1}>{name}</Text>
+                        <Text style={[styles.convPlace, isUnread && styles.convPlaceUnread]} numberOfLines={1}>{conv.locationLabel}</Text>
                         <Text style={[styles.convTime, isUnread && styles.convTimeUnread]}>{fmtDate(conv.last_message_at)}</Text>
                       </View>
-                      <View style={styles.convMetaRow}>
-                        {dir ? (
-                          <View style={[styles.dirPill, { backgroundColor: dir.bg }]}>
-                            <Text style={[styles.dirText, { color: dir.color }]}>{dir.label}</Text>
-                          </View>
-                        ) : null}
-                        {conv.hasRequest && (
-                          <View style={[styles.convStatusBadge, { backgroundColor: status.bg, borderColor: status.border }]}>
-                            <Text style={[styles.convStatusText, { color: status.color }]}>{status.label}</Text>
-                          </View>
-                        )}
-                        <Text style={styles.convLocation} numberOfLines={1}>📍 {conv.locationLabel}</Text>
-                      </View>
+                      <Text style={styles.convName} numberOfLines={1}>{name}</Text>
+                      {(dir || conv.hasRequest) ? (
+                        <View style={styles.convMetaRow}>
+                          {dir ? (
+                            <View style={[styles.dirPill, { backgroundColor: dir.bg }]}>
+                              <Text style={[styles.dirText, { color: dir.color }]}>{dir.label}</Text>
+                            </View>
+                          ) : null}
+                          {conv.hasRequest && (
+                            <View style={[styles.convStatusBadge, { backgroundColor: status.bg, borderColor: status.border }]}>
+                              <Text style={[styles.convStatusText, { color: status.color }]}>{status.label}</Text>
+                            </View>
+                          )}
+                        </View>
+                      ) : null}
                       {preview ? (
                         <Text style={[styles.convPreview, isUnread && styles.convPreviewUnread]} numberOfLines={1}>
                           {preview}
@@ -2540,15 +2566,16 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   },
   convInfo: { flex: 1, gap: 4, minWidth: 0 },
   convTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  convName: { color: C.text, fontWeight: '800', fontSize: 16, flex: 1, paddingRight: 8 },
-  convNameUnread: { fontWeight: '900' },
+  // Primary line: the place (parking + city + district + ★rating). Name is secondary below.
+  convPlace: { color: C.text, fontWeight: '800', fontSize: 16, flex: 1, paddingRight: 8 },
+  convPlaceUnread: { fontWeight: '900' },
+  convName: { color: C.textMuted, fontSize: 13, lineHeight: 17 },
   convTime: { color: C.textDim, fontSize: 12 },
   convTimeUnread: { color: C.accent, fontWeight: '800' },
   convPreview: { color: C.textDim, fontSize: 13, lineHeight: 18 },
   convMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dirPill: { borderRadius: 100, paddingHorizontal: 8, paddingVertical: 2 },
   dirText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4, textTransform: 'uppercase' },
-  convLocation: { color: C.textMuted, fontSize: 11, lineHeight: 16, flex: 1, minWidth: 0 },
   // Unread: dark + bold so a new message is obvious at a glance in the list.
   convPreviewUnread: { color: C.text, fontWeight: '800' },
   convStatusBadge: {
