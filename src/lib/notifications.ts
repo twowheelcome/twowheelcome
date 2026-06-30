@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { getLocalYMD } from './date'
+import { placeNameWithCountry } from './placeName'
 
 // Notification centre (the header bell). Events are DERIVED from existing data — there is
 // no notifications table. Sources:
@@ -32,7 +33,7 @@ export async function loadNotifications(userId: string): Promise<NotifResult> {
   const [{ data: prof }, { data: reqs }, { data: revs }, { data: myRevs }] = await Promise.all([
     supabase.from('profiles').select('notifications_seen_at').eq('id', userId).maybeSingle(),
     supabase.from('stay_requests')
-      .select('id, status, host_id, guest_id, conversation_id, departure_date, location_country')
+      .select('id, status, host_id, guest_id, conversation_id, departure_date, location_id, location_city, location_country')
       .or(`guest_id.eq.${userId},host_id.eq.${userId}`),
     supabase.from('reviews').select('id, reviewer_id, created_at').eq('reviewee_id', userId).order('created_at', { ascending: false }),
     supabase.from('reviews').select('stay_request_id').eq('reviewer_id', userId),
@@ -62,7 +63,23 @@ export async function loadNotifications(userId: string): Promise<NotifResult> {
     const { data: profs } = await supabase.from('profiles').select('id, full_name').in('id', ids)
     profs?.forEach((p: any) => { nameMap[p.id] = p.full_name || 'Rider' })
   }
-  const placeOf = (r: any) => [r.location_country].filter(Boolean).join(', ')
+  // Same place name as the Messages list ("Garage in Prague (Josefov), CZ"), built from the
+  // live public listing when it still exists; otherwise fall back to the denormalized
+  // city/country snapshot kept on the stay request (survives a deleted listing). No ★ rating
+  // here — a transactional notification shouldn't carry a quality signal.
+  const notifLocIds = [...new Set(reqList.map(r => r.location_id).filter(Boolean))] as string[]
+  const locById: Record<string, any> = {}
+  if (notifLocIds.length) {
+    const { data: locs } = await supabase
+      .from('host_locations_public')
+      .select('id, location_city, location_country, location_district, parking, parkings')
+      .in('id', notifLocIds)
+    locs?.forEach((l: any) => { locById[l.id] = l })
+  }
+  const placeOf = (r: any) => {
+    const live = r.location_id ? locById[r.location_id] : null
+    return placeNameWithCountry(live ?? { location_city: r.location_city, location_country: r.location_country })
+  }
 
   const events: NotifEvent[] = []
 

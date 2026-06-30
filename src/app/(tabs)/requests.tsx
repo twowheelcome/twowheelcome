@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Animated, FlatList, Image, KeyboardAvoidingView, Modal, PanResponder, Platform,
+  FlatList, Image, KeyboardAvoidingView, Modal, Platform,
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { Feather } from '@expo/vector-icons'
@@ -217,52 +217,6 @@ function fmtDateStr(s: string): string {
   const [y, m, d] = s.split('-')
   return `${d}.${m}.${y.slice(2)}`
 }
-
-// iOS-style swipe-to-remove for a conversation row. Drag left to reveal a red
-// Remove action; tapping it hides the chat. PanResponder + Animated so it works on
-// web and native without extra gesture-root setup.
-/* eslint-disable react-hooks/refs -- gesture closures read .current at touch time, not render */
-function SwipeToRemove({ onRemove, children, C }: { onRemove: () => void; children: React.ReactNode; C: ThemeColors }) {
-  const ACTION_W = 92
-  const tx = useRef(new Animated.Value(0)).current
-  const openRef = useRef(false)
-  const pan = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > 14 && Math.abs(g.dx) > Math.abs(g.dy) * 1.4,
-      onPanResponderMove: (_e, g) => {
-        let nx = (openRef.current ? -ACTION_W : 0) + g.dx
-        if (nx > 0) nx = 0
-        if (nx < -ACTION_W - 24) nx = -ACTION_W - 24
-        tx.setValue(nx)
-      },
-      onPanResponderRelease: (_e, g) => {
-        const open = openRef.current ? g.dx < ACTION_W / 2 : g.dx < -ACTION_W / 2
-        openRef.current = open
-        Animated.spring(tx, { toValue: open ? -ACTION_W : 0, useNativeDriver: true, bounciness: 0 }).start()
-      },
-    }),
-  ).current
-
-  function close() {
-    openRef.current = false
-    Animated.spring(tx, { toValue: 0, useNativeDriver: true, bounciness: 0 }).start()
-  }
-
-  return (
-    <View style={{ position: 'relative' }}>
-      <View style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: ACTION_W, backgroundColor: C.error, borderRadius: 18, justifyContent: 'center', alignItems: 'center' }}>
-        <TouchableOpacity onPress={() => { close(); onRemove() }} style={{ flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center', gap: 3 }} accessibilityRole="button" accessibilityLabel="Remove this chat">
-          <Feather name="trash-2" size={18} color={C.white} />
-          <Text style={{ color: C.white, fontSize: 11, fontWeight: '800' }}>Remove</Text>
-        </TouchableOpacity>
-      </View>
-      <Animated.View style={{ transform: [{ translateX: tx }] }} {...pan.panHandlers}>
-        {children}
-      </Animated.View>
-    </View>
-  )
-}
-/* eslint-enable react-hooks/refs */
 
 // For full ISO timestamps (last_message_at etc.)
 function fmtDate(iso: string): string {
@@ -2138,7 +2092,6 @@ export default function RequestsScreen() {
                 : direction === 'hosting'
                   ? { label: 'Hosting', bg: C.infoSoft, color: C.info }
                   : null
-              const removable = canRemoveConv(conv)
               const rowInner = (
                 <TouchableOpacity
                   style={styles.convRow}
@@ -2195,11 +2148,7 @@ export default function RequestsScreen() {
                   </View>
                 </TouchableOpacity>
               )
-              return removable ? (
-                <SwipeToRemove key={conv.id} C={C} onRemove={() => hideConversation(conv)}>{rowInner}</SwipeToRemove>
-              ) : (
-                <View key={conv.id}>{rowInner}</View>
-              )
+              return <View key={conv.id}>{rowInner}</View>
             })}
         </ScrollView>
       )}

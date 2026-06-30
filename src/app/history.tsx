@@ -6,6 +6,7 @@ import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 import { FONT } from '../lib/theme'
 import { pendingChatStore } from '../lib/pendingChatStore'
 import { getLocalYMD } from '../lib/date'
+import { placeNameWithCountry } from '../lib/placeName'
 import { AppHeader, HeaderBackButton } from '../components/AppHeader'
 
 type Stay = {
@@ -55,12 +56,13 @@ export default function HistoryScreen() {
     if (!user) { setStays([]); setLoading(false); return }
     const userId = user.id
 
-    // Country is read from the stay's own snapshot, so the log stays intact even after
-    // the listing is deleted — it's a historical record. City is intentionally not shown
-    // (privacy): the exact point lived only in the chat between the two parties.
+    // City + country are read from the stay's own snapshot, so the log stays intact even after
+    // the listing is deleted — it's a historical record. City + country are public (same as the
+    // map and the Messages list); only the precise street/coords ever stayed private, and those
+    // were never here. District/parking aren't snapshotted, so this shows just "city, country".
     const { data: reqs } = await supabase
       .from('stay_requests')
-      .select('id, status, host_id, guest_id, conversation_id, arrival_date, departure_date, location_country')
+      .select('id, status, host_id, guest_id, conversation_id, arrival_date, departure_date, location_city, location_country')
       .or(`guest_id.eq.${userId},host_id.eq.${userId}`)
       .order('arrival_date', { ascending: false })
 
@@ -87,7 +89,7 @@ export default function HistoryScreen() {
         status: r.status,
         role,
         otherName: nameMap[otherId] || 'Rider',
-        city: [r.location_country].filter(Boolean).join(', '),
+        city: placeNameWithCountry({ location_city: r.location_city, location_country: r.location_country }),
         arrival: r.arrival_date,
         departure: r.departure_date,
         conversationId: r.conversation_id,
