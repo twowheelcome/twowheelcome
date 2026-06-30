@@ -310,14 +310,36 @@ function hasStayEnded(req: RequestData): boolean {
   return req.departure_date <= getLocalYMD()
 }
 
+type Fact = { icon: keyof typeof Feather.glyphMap; value: string }
+
+// Rider summary the host sees on a stay request. Rating/reviewCount are the rider-direction
+// figures (reviews where they were the guest); the rest is profile colour.
+type RiderInfo = {
+  rating: number | null
+  reviewCount: number
+  memberSince: string | null
+  nationality: string | null
+  bio: string | null
+  motorcycle: string | null
+}
+type RiderCardInfo = RiderInfo & { name: string | null; avatar: string | null }
+
+function memberSinceLabel(iso: string | null): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return null
+  return `Member since ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`
+}
+
 // ── RequestCard ───────────────────────────────────────────────────────────
 
 function RequestCard({
-  req, body, isHost, onRespond, responding, onShowMap, onNavigateApprox, onWithdraw, withdrawing, onCancelStay, cancelling,
+  req, body, isHost, rider, onRespond, responding, onShowMap, onNavigateApprox, onWithdraw, withdrawing, onCancelStay, cancelling,
 }: {
   req: RequestData
   body: string | null
   isHost: boolean
+  rider?: RiderCardInfo | null
   onRespond: (id: string, status: 'ACCEPTED' | 'REJECTED') => void
   responding?: boolean
   onShowMap?: () => void
@@ -330,6 +352,7 @@ function RequestCard({
   const C = useTheme()
   const rc = useMemo(() => makeRc(C), [C])
   const STATUS = useMemo(() => makeStatus(C), [C])
+  const [showPlace, setShowPlace] = useState(false)
   // Same derived rule as the conversation list: a pending knock whose arrival day has
   // passed reads as Expired here too — and stops offering live actions on it.
   const expired = isExpiredPending(req.status, req.arrival_date)
@@ -348,6 +371,8 @@ function RequestCard({
   const pricing = labelList(loc?.pricings, PRICING_LABELS, loc?.pricing)
   // One consistent Feather icon per fact (icon = friendly cue, value = the point).
   // Bike safety renders as its own coloured SafetyIcon row above the facts.
+  // RIDER view shows everything together (place + when); HOST view splits the request
+  // details (when/who) from the host's own listing, which collapses under "Your place".
   const facts = ([
     place ? { icon: 'map-pin', value: place } : null,
     { icon: 'calendar', value: `${fmtDateStr(req.arrival_date)} → ${fmtDateStr(req.departure_date)}` },
@@ -356,7 +381,33 @@ function RequestCard({
     sleep ? { icon: 'moon', value: sleep } : null,
     amenities ? { icon: 'coffee', value: amenities } : null,
     pricing ? { icon: 'tag', value: pricing } : null,
-  ].filter(Boolean) as { icon: keyof typeof Feather.glyphMap; value: string }[])
+  ].filter(Boolean) as Fact[])
+  const requestFacts = ([
+    { icon: 'calendar', value: `${fmtDateStr(req.arrival_date)} → ${fmtDateStr(req.departure_date)}` },
+    req.arrival_time ? { icon: 'clock', value: `Arrival ~ ${req.arrival_time}` } : null,
+    { icon: 'users', value: `${guestsLabel}${vehicle ? ` · ${vehicle}` : ''}` },
+  ].filter(Boolean) as Fact[])
+  const placeFacts = ([
+    place ? { icon: 'map-pin', value: place } : null,
+    sleep ? { icon: 'moon', value: sleep } : null,
+    amenities ? { icon: 'coffee', value: amenities } : null,
+    pricing ? { icon: 'tag', value: pricing } : null,
+  ].filter(Boolean) as Fact[])
+  // Host-side rider bike line: prefer their saved motorcycle, else the per-request flag.
+  const riderBike = rider?.motorcycle || (req.guest_vehicle === 'moto' ? 'Moto' : null)
+
+  const safetyRow = safetyLevel ? (
+    <View style={rc.fact}>
+      <View style={rc.factIcon}><SafetyIcon level={safetyLevel} size={17} color={SAFETY[safetyLevel].color} strokeWidth={2.2} /></View>
+      <Text style={[rc.factValue, { color: SAFETY[safetyLevel].color, fontWeight: '700' }]}>{SAFETY[safetyLevel].label}</Text>
+    </View>
+  ) : null
+  const notesRow = loc?.notes ? (
+    <View style={rc.fact}>
+      <Feather name="file-text" size={16} color={C.accent} style={rc.factIcon} />
+      <Text style={[rc.factValue, rc.factNotes]}>{loc.notes}</Text>
+    </View>
+  ) : null
 
   return (
     <View style={rc.card}>
@@ -371,118 +422,153 @@ function RequestCard({
         </View>
       </View>
 
-      {/* Privacy block — guest side only */}
-      {isGuest && req.status === 'PENDING' && !expired && (
-        <View style={[rc.privacyBlock, { backgroundColor: C.accentSoft, borderColor: C.accentBorder }]}>
-          <Text style={rc.privacyIcon}>🔒</Text>
-          <Text style={[rc.privacyText, { color: C.textMuted }]}>
-            Approx. area for now. The host sends the exact meeting point in chat when you agree.
-          </Text>
-        </View>
-      )}
-      {isGuest && req.status === 'ACCEPTED' && (
-        <View style={[rc.privacyBlock, { backgroundColor: C.successSoft, borderColor: C.successBorder }]}>
-          <Text style={rc.privacyIcon}>📍</Text>
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text style={[rc.privacyText, { color: C.success, fontWeight: '700' }]}>REQUEST ACCEPTED</Text>
-            <Text style={[rc.privacyText, { color: C.textMuted }]}>
-              The exact spot is shared by the host in chat, so both sides know the stay is confirmed.
-            </Text>
+      {isHost ? (
+        <>
+          {/* WHO is asking — rider identity + trust signals */}
+          {rider ? (
+            <View style={rc.rider}>
+              <Avatar url={rider.avatar} name={rider.name} size={46} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={rc.riderName} numberOfLines={1}>{rider.name || 'Rider'}</Text>
+                <View style={rc.riderMetaRow}>
+                  {rider.rating != null ? <Text style={rc.riderRating}>★ {rider.rating.toFixed(1)}</Text> : null}
+                  <Text style={rc.riderMeta} numberOfLines={1}>
+                    {rider.rating != null
+                      ? `${rider.reviewCount} ${rider.reviewCount === 1 ? 'review' : 'reviews'} as rider`
+                      : 'No rider reviews yet'}
+                  </Text>
+                </View>
+                {[riderBike, rider.nationality, memberSinceLabel(rider.memberSince)].filter(Boolean).length ? (
+                  <Text style={rc.riderMeta} numberOfLines={1}>
+                    {[riderBike, rider.nationality, memberSinceLabel(rider.memberSince)].filter(Boolean).join('  ·  ')}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          ) : null}
+          {rider?.bio ? <Text style={rc.riderBio} numberOfLines={4}>{rider.bio}</Text> : null}
+
+          {/* THE MESSAGE — the host decides on this, so it leads */}
+          {body ? (
+            <View style={rc.msgHero}>
+              <Text style={rc.msgHeroLabel}>THEIR MESSAGE</Text>
+              <Text style={rc.msgHeroText}>{body}</Text>
+            </View>
+          ) : null}
+
+          {req.photo_url ? <RequestPhoto path={req.photo_url} style={rc.photo} /> : null}
+
+          {/* WHEN + how many */}
+          <View style={rc.facts}>
+            {requestFacts.map((f, i) => (
+              <View key={i} style={rc.fact}>
+                <Feather name={f.icon} size={16} color={C.accent} style={rc.factIcon} />
+                <Text style={rc.factValue}>{f.value}</Text>
+              </View>
+            ))}
           </View>
-        </View>
-      )}
-      {/* Details — friendly icon + value rows (value is the focus, icon is the cue) */}
-      <View style={rc.facts}>
-        {safetyLevel ? (
-          <View style={rc.fact}>
-            <View style={rc.factIcon}><SafetyIcon level={safetyLevel} size={17} color={SAFETY[safetyLevel].color} strokeWidth={2.2} /></View>
-            <Text style={[rc.factValue, { color: SAFETY[safetyLevel].color, fontWeight: '700' }]}>{SAFETY[safetyLevel].label}</Text>
+
+          {/* The host's OWN listing — collapsed, so it doesn't repeat what they offer */}
+          {(placeFacts.length || safetyRow || notesRow) ? (
+            <View style={rc.placeBox}>
+              <TouchableOpacity style={rc.placeToggle} onPress={() => setShowPlace(v => !v)} accessibilityRole="button">
+                <Feather name="home" size={15} color={C.textMuted} />
+                <Text style={rc.placeToggleText}>Your place</Text>
+                <Feather name={showPlace ? 'chevron-up' : 'chevron-down'} size={16} color={C.textMuted} />
+              </TouchableOpacity>
+              {showPlace ? (
+                <View style={[rc.facts, { marginTop: 10 }]}>
+                  {safetyRow}
+                  {placeFacts.map((f, i) => (
+                    <View key={i} style={rc.fact}>
+                      <Feather name={f.icon} size={16} color={C.accent} style={rc.factIcon} />
+                      <Text style={rc.factValue}>{f.value}</Text>
+                    </View>
+                  ))}
+                  {notesRow}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+
+          {/* Host actions */}
+          {req.status === 'PENDING' && !expired && (
+            <View style={rc.actions}>
+              <TouchableOpacity style={[rc.acceptBtn, responding && rc.actionDisabled]} onPress={() => onRespond(req.id, 'ACCEPTED')} disabled={responding}>
+                <Text style={rc.acceptTxt}>{responding ? '...' : '✓ ACCEPT'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[rc.rejectBtn, responding && rc.actionDisabled]} onPress={() => onRespond(req.id, 'REJECTED')} disabled={responding}>
+                <Text style={rc.rejectTxt}>{responding ? '...' : '✕ DECLINE'}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          {req.status === 'ACCEPTED' && onCancelStay && (
+            <TouchableOpacity style={[rc.withdrawBtn, cancelling && rc.actionDisabled]} onPress={() => onCancelStay(req.id)} disabled={cancelling} accessibilityRole="button">
+              <Text style={rc.withdrawTxt}>{cancelling ? '...' : 'Cancel this stay'}</Text>
+            </TouchableOpacity>
+          )}
+        </>
+      ) : (
+        <>
+          {/* RIDER view — the place you're asking about */}
+          {req.status === 'PENDING' && !expired && (
+            <View style={[rc.privacyBlock, { backgroundColor: C.accentSoft, borderColor: C.accentBorder }]}>
+              <Text style={rc.privacyIcon}>🔒</Text>
+              <Text style={[rc.privacyText, { color: C.textMuted }]}>
+                Approx. area for now. The host sends the exact meeting point in chat when you agree.
+              </Text>
+            </View>
+          )}
+          {req.status === 'ACCEPTED' && (
+            <View style={[rc.privacyBlock, { backgroundColor: C.successSoft, borderColor: C.successBorder }]}>
+              <Text style={rc.privacyIcon}>📍</Text>
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text style={[rc.privacyText, { color: C.success, fontWeight: '700' }]}>REQUEST ACCEPTED</Text>
+                <Text style={[rc.privacyText, { color: C.textMuted }]}>
+                  The exact spot is shared by the host in chat, so both sides know the stay is confirmed.
+                </Text>
+              </View>
+            </View>
+          )}
+          <View style={rc.facts}>
+            {safetyRow}
+            {facts.map((f, i) => (
+              <View key={i} style={rc.fact}>
+                <Feather name={f.icon} size={16} color={C.accent} style={rc.factIcon} />
+                <Text style={rc.factValue}>{f.value}</Text>
+              </View>
+            ))}
+            {notesRow}
           </View>
-        ) : null}
-        {facts.map((f, i) => (
-          <View key={i} style={rc.fact}>
-            <Feather name={f.icon} size={16} color={C.accent} style={rc.factIcon} />
-            <Text style={rc.factValue}>{f.value}</Text>
-          </View>
-        ))}
-        {loc?.notes ? (
-          <View style={rc.fact}>
-            <Feather name="file-text" size={16} color={C.accent} style={rc.factIcon} />
-            <Text style={[rc.factValue, rc.factNotes]}>{loc.notes}</Text>
-          </View>
-        ) : null}
-      </View>
 
-      {/* Approximate area: in-app map + open in external navigation (both fuzzed) */}
-      {onShowMap ? (
-        <TouchableOpacity style={rc.mapBtn} onPress={onShowMap} accessibilityRole="button">
-          <Feather name="map" size={15} color={C.accent} />
-          <Text style={rc.mapBtnText}>Show approximate area on map</Text>
-          <Feather name="chevron-right" size={16} color={C.accent} />
-        </TouchableOpacity>
-      ) : null}
-      {onNavigateApprox ? (
-        <TouchableOpacity style={rc.mapBtn} onPress={onNavigateApprox} accessibilityRole="button">
-          <Feather name="navigation" size={15} color={C.accent} />
-          <Text style={rc.mapBtnText}>Navigate to approximate area</Text>
-          <Feather name="external-link" size={15} color={C.accent} />
-        </TouchableOpacity>
-      ) : null}
+          {onShowMap ? (
+            <TouchableOpacity style={rc.mapBtn} onPress={onShowMap} accessibilityRole="button">
+              <Feather name="map" size={15} color={C.accent} />
+              <Text style={rc.mapBtnText}>Show approximate area on map</Text>
+              <Feather name="chevron-right" size={16} color={C.accent} />
+            </TouchableOpacity>
+          ) : null}
+          {onNavigateApprox ? (
+            <TouchableOpacity style={rc.mapBtn} onPress={onNavigateApprox} accessibilityRole="button">
+              <Feather name="navigation" size={15} color={C.accent} />
+              <Text style={rc.mapBtnText}>Navigate to approximate area</Text>
+              <Feather name="external-link" size={15} color={C.accent} />
+            </TouchableOpacity>
+          ) : null}
 
-      {/* Message text */}
-      {body ? (
-        <View style={rc.msgBlock}>
-          <Text style={rc.msgText}>“{body}”</Text>
-        </View>
-      ) : null}
+          {body ? (
+            <View style={rc.msgBlock}>
+              <Text style={rc.msgText}>“{body}”</Text>
+            </View>
+          ) : null}
+          {req.photo_url ? <RequestPhoto path={req.photo_url} style={rc.photo} /> : null}
 
-      {/* Photo (private bucket → short-lived signed URL) */}
-      {req.photo_url ? (
-        <RequestPhoto path={req.photo_url} style={rc.photo} />
-      ) : null}
-
-      {/* Host actions */}
-      {isHost && req.status === 'PENDING' && !expired && (
-        <View style={rc.actions}>
-          <TouchableOpacity
-            style={[rc.acceptBtn, responding && rc.actionDisabled]}
-            onPress={() => onRespond(req.id, 'ACCEPTED')}
-            disabled={responding}
-          >
-            <Text style={rc.acceptTxt}>{responding ? '...' : '✓ ACCEPT'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[rc.rejectBtn, responding && rc.actionDisabled]}
-            onPress={() => onRespond(req.id, 'REJECTED')}
-            disabled={responding}
-          >
-            <Text style={rc.rejectTxt}>{responding ? '...' : '✕ DECLINE'}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Guest can withdraw their own request while it is still pending */}
-      {isGuest && req.status === 'PENDING' && onWithdraw && !expired && (
-        <TouchableOpacity
-          style={[rc.withdrawBtn, withdrawing && rc.actionDisabled]}
-          onPress={() => onWithdraw(req.id)}
-          disabled={withdrawing}
-          accessibilityRole="button"
-        >
-          <Text style={rc.withdrawTxt}>{withdrawing ? '...' : 'Withdraw request'}</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Host can call off an already-accepted stay (life happens). Frees the night slot. */}
-      {isHost && req.status === 'ACCEPTED' && onCancelStay && (
-        <TouchableOpacity
-          style={[rc.withdrawBtn, cancelling && rc.actionDisabled]}
-          onPress={() => onCancelStay(req.id)}
-          disabled={cancelling}
-          accessibilityRole="button"
-        >
-          <Text style={rc.withdrawTxt}>{cancelling ? '...' : 'Cancel this stay'}</Text>
-        </TouchableOpacity>
+          {req.status === 'PENDING' && onWithdraw && !expired && (
+            <TouchableOpacity style={[rc.withdrawBtn, withdrawing && rc.actionDisabled]} onPress={() => onWithdraw(req.id)} disabled={withdrawing} accessibilityRole="button">
+              <Text style={rc.withdrawTxt}>{withdrawing ? '...' : 'Withdraw request'}</Text>
+            </TouchableOpacity>
+          )}
+        </>
       )}
     </View>
   )
@@ -534,6 +620,25 @@ function makeRc(C: ThemeColors) { return StyleSheet.create({
   rejectTxt: { color: C.error, fontWeight: '700', fontSize: 13 },
   withdrawBtn: { borderRadius: 100, padding: 11, alignItems: 'center', borderWidth: 1, borderColor: C.border },
   withdrawTxt: { color: C.textMuted, fontWeight: '700', fontSize: 13 },
+  // Host view: rider identity + trust
+  rider: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  riderName: { color: C.text, fontSize: 16, fontWeight: '800' },
+  riderMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  riderRating: { color: C.accent, fontSize: 13, fontWeight: '800' },
+  riderMeta: { color: C.textMuted, fontSize: 12, lineHeight: 16, flexShrink: 1 },
+  riderBio: { color: C.textMuted, fontSize: 13, lineHeight: 19, fontStyle: 'italic', fontFamily: FONT.body },
+  // Host view: the rider's message, given prominence as the decision driver
+  msgHero: {
+    backgroundColor: C.accentSoft, borderRadius: 14,
+    borderWidth: 1, borderColor: C.accentBorder,
+    paddingHorizontal: 14, paddingVertical: 12, gap: 5,
+  },
+  msgHeroLabel: { color: C.accent, fontSize: 10, fontWeight: '900', letterSpacing: 0.6 },
+  msgHeroText: { color: C.text, fontSize: 15, lineHeight: 22, fontFamily: FONT.body },
+  // Host view: collapsible "Your place"
+  placeBox: { borderTopWidth: 1, borderTopColor: C.border, paddingTop: 10 },
+  placeToggle: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  placeToggleText: { flex: 1, color: C.textMuted, fontSize: 13, fontWeight: '700' },
 }) }
 
 // ── Main Screen ───────────────────────────────────────────────────────────
@@ -543,6 +648,7 @@ export default function RequestsScreen() {
   const styles = useMemo(() => makeStyles(C), [C])
   const [convs, setConvs] = useState<ConvRow[]>([])
   const [selected, setSelected] = useState<ConvRow | null>(null)
+  const [riderInfo, setRiderInfo] = useState<RiderInfo | null>(null)   // host view: the other party's rider trust panel
   const [messages, setMessages] = useState<MsgRow[]>([])
   const [text, setText] = useState('')
   const [inputHeight, setInputHeight] = useState(INPUT_MIN_H)
@@ -1092,6 +1198,39 @@ export default function RequestsScreen() {
     }
   }
 
+  // Rider trust panel for the host view: the other party's profile + their rider-direction
+  // rating. Reviews are public; rider-direction = reviews where they were the GUEST, i.e. the
+  // reviewee is NOT the owner of that review's place (owner read from the public listing view).
+  // stay_requests are RLS-scoped to my own, so the count here is "reviews as rider", not a
+  // cross-host stay tally.
+  async function loadRiderInfo(conv: ConvRow, userId: string) {
+    const otherId = conv.other.id
+    if (!otherId) return
+    const [{ data: rp }, { data: orevs }] = await Promise.all([
+      supabase.from('profiles').select('nationality, bio, created_at, motorcycle').eq('id', otherId).maybeSingle(),
+      supabase.from('reviews').select('rating, location_id').eq('reviewee_id', otherId),
+    ])
+    if (currentUserIdRef.current !== userId || selectedConvIdRef.current !== conv.id) return
+    const locIds = [...new Set((orevs || []).map((r: any) => r.location_id).filter(Boolean))] as string[]
+    const ownerById: Record<string, string> = {}
+    if (locIds.length) {
+      const { data: locs } = await supabase.from('host_locations_public').select('id, user_id').in('id', locIds)
+      locs?.forEach((l: any) => { ownerById[l.id] = l.user_id })
+    }
+    if (currentUserIdRef.current !== userId || selectedConvIdRef.current !== conv.id) return
+    const riderRevs = (orevs || []).filter((r: any) => r.location_id && ownerById[r.location_id] && ownerById[r.location_id] !== otherId)
+    const reviewCount = riderRevs.length
+    const rating = reviewCount ? riderRevs.reduce((sum: number, r: any) => sum + r.rating, 0) / reviewCount : null
+    setRiderInfo({
+      rating,
+      reviewCount,
+      memberSince: rp?.created_at ?? null,
+      nationality: rp?.nationality?.trim() || null,
+      bio: rp?.bio?.trim() || null,
+      motorcycle: rp?.motorcycle?.trim() || null,
+    })
+  }
+
   async function openConv(conv: ConvRow) {
     const userId = currentUserIdRef.current
     if (!userId || (conv.user_a !== userId && conv.user_b !== userId)) return
@@ -1106,6 +1245,8 @@ export default function RequestsScreen() {
     void markRead(conv.id, conv.last_message_at)
     setActionError(null)
     setMessages([])
+    setRiderInfo(null)
+    void loadRiderInfo(conv, userId)
     const { data: msgData } = await supabase
       .from('messages')
       .select(`
@@ -1864,6 +2005,16 @@ export default function RequestsScreen() {
                     req={m.request}
                     body={m.body}
 	                    isHost={isHost}
+	                    rider={isHost && selected ? {
+	                      name: selected.other.full_name ?? null,
+	                      avatar: selected.other.avatar_url ?? null,
+	                      rating: riderInfo?.rating ?? null,
+	                      reviewCount: riderInfo?.reviewCount ?? 0,
+	                      memberSince: riderInfo?.memberSince ?? null,
+	                      nationality: riderInfo?.nationality ?? null,
+	                      bio: riderInfo?.bio ?? null,
+	                      motorcycle: riderInfo?.motorcycle ?? null,
+	                    } : null}
 	                    onRespond={(id, status) => status === 'ACCEPTED' ? setAcceptTarget(id) : respondToRequest(id, status)}
 	                    responding={respondingFor === m.request.id}
 	                    onWithdraw={withdrawRequest}

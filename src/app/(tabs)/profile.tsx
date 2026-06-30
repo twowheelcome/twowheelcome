@@ -32,6 +32,9 @@ export default function ProfileScreen() {
   const [editingNat, setEditingNat] = useState(false)
   const [natInput, setNatInput] = useState('')
   const [savingNat, setSavingNat] = useState(false)
+  const [editingMoto, setEditingMoto] = useState(false)
+  const [motoInput, setMotoInput] = useState('')
+  const [savingMoto, setSavingMoto] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [avatarError, setAvatarError] = useState<string | null>(null)
   const [reviews, setReviews] = useState<{ rating: number; body: string | null; reviewer_name: string | null; created_at: string }[]>([])
@@ -67,6 +70,9 @@ export default function ProfileScreen() {
     setEditingNat(false)
     setNatInput('')
     setSavingNat(false)
+    setEditingMoto(false)
+    setMotoInput('')
+    setSavingMoto(false)
     setUploadingAvatar(false)
     setAvatarError(null)
     setReviews([])
@@ -81,7 +87,7 @@ export default function ProfileScreen() {
     userIdRef.current = resolvedUser.id
     setUser(resolvedUser)
     const [p, h, r] = await Promise.all([
-      supabase.from('profiles').select('id, full_name, bio, avatar_url, nationality').eq('id', resolvedUser.id).maybeSingle(),
+      supabase.from('profiles').select('id, full_name, bio, avatar_url, nationality, motorcycle').eq('id', resolvedUser.id).maybeSingle(),
       supabase.from('host_locations').select('id, paused').eq('user_id', resolvedUser.id).order('created_at', { ascending: true }),
       // Reviews received by this user. reviewer_id has no FK to profiles, so a PostgREST
       // embed fails — fetch the reviewers' names in a separate query (like the public profile).
@@ -93,6 +99,7 @@ export default function ProfileScreen() {
     setNameInput(p.data?.full_name || '')
     setBioInput(p.data?.bio || '')
     setNatInput(p.data?.nationality || '')
+    setMotoInput(p.data?.motorcycle || '')
     const revRows = (r.data || []) as any[]
     const reviewerIds = [...new Set(revRows.map(rev => rev.reviewer_id).filter(Boolean))]
     const reviewerMap: Record<string, string> = {}
@@ -151,6 +158,16 @@ export default function ProfileScreen() {
     if (error) { console.warn('save nationality error:', error.message); setAvatarError('Could not save your nationality. Please try again.'); return }
     setProfile((p: any) => ({ ...p, nationality: trimmed || null }))
     setEditingNat(false)
+  }
+
+  async function saveMotorcycle() {
+    setSavingMoto(true)
+    const trimmed = motoInput.trim()
+    const { error } = await supabase.from('profiles').update({ motorcycle: trimmed || '' }).eq('id', user.id)
+    setSavingMoto(false)
+    if (error) { console.warn('save motorcycle error:', error.message); setAvatarError('Could not save your motorcycle. Please try again.'); return }
+    setProfile((p: any) => ({ ...p, motorcycle: trimmed || '' }))
+    setEditingMoto(false)
   }
 
   async function saveBio() {
@@ -356,6 +373,39 @@ export default function ProfileScreen() {
                   </TouchableOpacity>
                 )}
               </View>
+            )}
+
+            {/* Motorcycle — right under the rating + nationality line. */}
+            {editingMoto ? (
+              <View style={[styles.nameEdit, { marginTop: 6 }]}>
+                <TextInput
+                  style={styles.nameInput}
+                  value={motoInput}
+                  onChangeText={setMotoInput}
+                  placeholder="Your motorcycle — e.g. BMW GS"
+                  placeholderTextColor={C.textFaint}
+                  maxLength={60}
+                  autoFocus
+                />
+                <View style={styles.nameActions}>
+                  <TouchableOpacity style={styles.saveNameBtn} onPress={saveMotorcycle} disabled={savingMoto}>
+                    <Text style={styles.saveNameBtnText}>{savingMoto ? '...' : 'Save'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => { setMotoInput(profile?.motorcycle || ''); setEditingMoto(false) }}>
+                    <Text style={styles.cancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : profile?.motorcycle ? (
+              <TouchableOpacity style={[styles.metaRow, { marginTop: 4 }]} onPress={() => setEditingMoto(true)} activeOpacity={0.7}>
+                <Text style={styles.profileMeta}>🏍 {profile.motorcycle}</Text>
+                <Feather name="edit-2" size={11} color={C.textDim} style={{ marginLeft: 5 }} />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={[styles.natAddBtn, { marginTop: 4 }]} onPress={() => setEditingMoto(true)} activeOpacity={0.7}>
+                <Feather name="plus" size={12} color={C.accent} />
+                <Text style={styles.natAddText}>Add motorcycle</Text>
+              </TouchableOpacity>
             )}
           </View>
         </View>
