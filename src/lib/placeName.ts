@@ -21,8 +21,14 @@ const PARK_TITLE: Record<string, string> = {
   street: 'Street spot',
 }
 
+// Best → most basic, matching bestSafety() in SafetyBlock. A place can offer several parking
+// options; the name always reflects the BEST one (so it agrees with the safety shown on cards),
+// not whichever happens to be first in the array.
+const PARK_RANK = ['garage_locked', 'locked_garage', 'carport', 'yard', 'fenced_yard', 'street']
 function primaryParking(loc: PlaceLike): string | undefined {
-  return loc.parkings?.length ? loc.parkings[0] : (loc.parking ?? undefined)
+  const list = loc.parkings?.length ? loc.parkings : (loc.parking ? [loc.parking] : [])
+  if (!list.length) return undefined
+  return PARK_RANK.find(k => list.includes(k)) ?? list[0]
 }
 
 // "Prague (Smíchov)" — the city with the optional experimental district chip.

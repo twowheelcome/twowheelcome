@@ -365,36 +365,27 @@ function RequestCard({
   const guestsLabel = req.guests_count === 1 ? '1 rider' : `${req.guests_count} riders`
   const isGuest = !isHost
   const loc = req.location
-  const place = loc ? cityCountry(loc) : ''
+  // The place's display name = best parking + city (+ district), e.g. "Garage in Chabařovice, CZ".
+  // Always the BEST parking, so it agrees with the bike-safety shown below.
+  const placeTitle = loc ? placeNameWithCountry(loc) : null
   const parkingArr: string[] = loc?.parkings?.length ? loc.parkings : (loc?.parking ? [loc.parking] : [])
   const safetyLevel = parkingArr.length ? bestSafety(parkingArr) : null
   const sleep = labelList(sortSleep(loc?.sleep_types), SLEEP_LABELS)
   const amenities = labelList(loc?.amenities, AMENITY_LABELS)
   const pricing = labelList(loc?.pricings, PRICING_LABELS, loc?.pricing)
-  // One consistent Feather icon per fact (icon = friendly cue, value = the point).
-  // Bike safety renders as its own coloured SafetyIcon row above the facts.
-  // RIDER view shows everything together (place + when); HOST view splits the request
-  // details (when/who) from the host's own listing, which collapses under "Your place".
-  const facts = ([
-    place ? { icon: 'map-pin', value: place } : null,
-    { icon: 'calendar', value: `${fmtDateStr(req.arrival_date)} → ${fmtDateStr(req.departure_date)}` },
-    req.arrival_time ? { icon: 'clock', value: `Arrival ~ ${req.arrival_time}` } : null,
-    { icon: 'users', value: `${guestsLabel}${vehicle ? ` · ${vehicle}` : ''}` },
-    sleep ? { icon: 'moon', value: sleep } : null,
-    amenities ? { icon: 'coffee', value: amenities } : null,
-    pricing ? { icon: 'tag', value: pricing } : null,
-  ].filter(Boolean) as Fact[])
+  // Request facts (when / how many) stay visible; the listing extras (sleep/services/price)
+  // + bike safety collapse under a details toggle in both views.
   const requestFacts = ([
     { icon: 'calendar', value: `${fmtDateStr(req.arrival_date)} → ${fmtDateStr(req.departure_date)}` },
     req.arrival_time ? { icon: 'clock', value: `Arrival ~ ${req.arrival_time}` } : null,
     { icon: 'users', value: `${guestsLabel}${vehicle ? ` · ${vehicle}` : ''}` },
   ].filter(Boolean) as Fact[])
-  const placeFacts = ([
-    place ? { icon: 'map-pin', value: place } : null,
+  const detailFacts = ([
     sleep ? { icon: 'moon', value: sleep } : null,
     amenities ? { icon: 'coffee', value: amenities } : null,
     pricing ? { icon: 'tag', value: pricing } : null,
   ].filter(Boolean) as Fact[])
+  const hasDetails = !!(safetyLevel || detailFacts.length || loc?.notes)
   // Host-side rider bike line: prefer their saved motorcycle, else the generic "Moto".
   const riderBike = rider?.motorcycle?.trim() || 'Moto'
 
@@ -470,18 +461,18 @@ function RequestCard({
             ))}
           </View>
 
-          {/* The host's OWN listing — collapsed, so it doesn't repeat what they offer */}
-          {(placeFacts.length || safetyRow || notesRow) ? (
+          {/* The host's OWN place — name always visible (which place is this?), details collapsed */}
+          {loc ? (
             <View style={rc.placeBox}>
-              <TouchableOpacity style={rc.placeToggle} onPress={() => setShowPlace(v => !v)} accessibilityRole="button">
+              <TouchableOpacity style={rc.placeToggle} onPress={() => hasDetails && setShowPlace(v => !v)} disabled={!hasDetails} accessibilityRole="button">
                 <Feather name="home" size={15} color={C.textMuted} />
-                <Text style={rc.placeToggleText}>Your place</Text>
-                <Feather name={showPlace ? 'chevron-up' : 'chevron-down'} size={16} color={C.textMuted} />
+                <Text style={rc.placeToggleText} numberOfLines={1}>{placeTitle ?? 'Your place'}</Text>
+                {hasDetails ? <Feather name={showPlace ? 'chevron-up' : 'chevron-down'} size={16} color={C.textMuted} /> : null}
               </TouchableOpacity>
-              {showPlace ? (
+              {showPlace && hasDetails ? (
                 <View style={[rc.facts, { marginTop: 10 }]}>
                   {safetyRow}
-                  {placeFacts.map((f, i) => (
+                  {detailFacts.map((f, i) => (
                     <View key={i} style={rc.fact}>
                       <Feather name={f.icon} size={16} color={C.accent} style={rc.factIcon} />
                       <Text style={rc.factValue}>{f.value}</Text>
@@ -533,14 +524,18 @@ function RequestCard({
             </View>
           )}
           <View style={rc.facts}>
-            {safetyRow}
-            {facts.map((f, i) => (
+            {placeTitle ? (
+              <View style={rc.fact}>
+                <Feather name="home" size={16} color={C.accent} style={rc.factIcon} />
+                <Text style={[rc.factValue, { fontWeight: '700' }]}>{placeTitle}</Text>
+              </View>
+            ) : null}
+            {requestFacts.map((f, i) => (
               <View key={i} style={rc.fact}>
                 <Feather name={f.icon} size={16} color={C.accent} style={rc.factIcon} />
                 <Text style={rc.factValue}>{f.value}</Text>
               </View>
             ))}
-            {notesRow}
           </View>
 
           {onShowMap ? (
@@ -564,6 +559,29 @@ function RequestCard({
             </View>
           ) : null}
           {req.photo_url ? <RequestPhoto path={req.photo_url} style={rc.photo} /> : null}
+
+          {/* The rest of the listing — collapsed by default */}
+          {hasDetails ? (
+            <View style={rc.placeBox}>
+              <TouchableOpacity style={rc.placeToggle} onPress={() => setShowPlace(v => !v)} accessibilityRole="button">
+                <Feather name="list" size={15} color={C.textMuted} />
+                <Text style={rc.placeToggleText}>Place details</Text>
+                <Feather name={showPlace ? 'chevron-up' : 'chevron-down'} size={16} color={C.textMuted} />
+              </TouchableOpacity>
+              {showPlace ? (
+                <View style={[rc.facts, { marginTop: 10 }]}>
+                  {safetyRow}
+                  {detailFacts.map((f, i) => (
+                    <View key={i} style={rc.fact}>
+                      <Feather name={f.icon} size={16} color={C.accent} style={rc.factIcon} />
+                      <Text style={rc.factValue}>{f.value}</Text>
+                    </View>
+                  ))}
+                  {notesRow}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
 
           {req.status === 'PENDING' && onWithdraw && !expired && (
             <TouchableOpacity style={[rc.withdrawBtn, withdrawing && rc.actionDisabled]} onPress={() => onWithdraw(req.id)} disabled={withdrawing} accessibilityRole="button">
