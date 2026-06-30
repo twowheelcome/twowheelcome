@@ -441,7 +441,7 @@ function RequestCard({
                   </Text>
                 </View>
                 {[riderBike, rider.nationality, memberSinceLabel(rider.memberSince)].filter(Boolean).length ? (
-                  <Text style={rc.riderMeta} numberOfLines={1}>
+                  <Text style={rc.riderMeta}>
                     {[riderBike, rider.nationality, memberSinceLabel(rider.memberSince)].filter(Boolean).join('  ·  ')}
                   </Text>
                 ) : null}
