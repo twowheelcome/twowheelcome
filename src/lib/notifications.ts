@@ -8,6 +8,12 @@ import { placeNameWithCountry } from './placeName'
 //  - reviews left on me (new review)
 //  - accepted stays that have ended and I haven't reviewed (pending review — always actionable)
 // Read/unread is a single profiles.notifications_seen_at timestamp.
+//
+// "Clear all" + auto-expiry: announcement events (knock/accepted/rejected/cancelled/review) are
+// hidden when older than the cutoff = max(profiles.notifications_cleared_at, now − 45 days). No
+// data is deleted — the derived events are just not shown. review_due (a pending TODO) is EXEMPT:
+// it always shows until the review is written (then it drops out naturally).
+const EXPIRY_DAYS = 45
 
 export type NotifLink =
   | { kind: 'chat'; convId: string | null; reviewRequestId?: string }
@@ -31,7 +37,7 @@ export async function loadNotifications(userId: string): Promise<NotifResult> {
   const today = getLocalYMD()
 
   const [{ data: prof }, { data: reqs }, { data: revs }, { data: myRevs }] = await Promise.all([
-    supabase.from('profiles').select('notifications_seen_at').eq('id', userId).maybeSingle(),
+    supabase.from('profiles').select('notifications_seen_at, notifications_cleared_at').eq('id', userId).maybeSingle(),
     supabase.from('stay_requests')
       .select('id, status, host_id, guest_id, conversation_id, departure_date, location_id, location_city, location_country')
       .or(`guest_id.eq.${userId},host_id.eq.${userId}`),
@@ -41,6 +47,9 @@ export async function loadNotifications(userId: string): Promise<NotifResult> {
 
   const seenAt: string | null = prof?.notifications_seen_at ?? null
   const isUnread = (at: string) => (seenAt ? new Date(at).getTime() > new Date(seenAt).getTime() : true)
+  // Hide announcement events older than the cutoff (Clear all timestamp, or 45-day expiry).
+  const clearedMs = prof?.notifications_cleared_at ? new Date(prof.notifications_cleared_at).getTime() : 0
+  const cutoffMs = Math.max(clearedMs, Date.now() - EXPIRY_DAYS * 24 * 60 * 60 * 1000)
 
   const reqList = (reqs ?? []) as any[]
   const reqMap: Record<string, any> = {}
@@ -126,11 +135,20 @@ export async function loadNotifications(userId: string): Promise<NotifResult> {
     }
   }
 
-  events.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
-  return { events, unreadCount: events.filter(e => e.unread).length }
+  // review_due is a pending TODO — always keep it. Everything else respects the cutoff.
+  const visible = events.filter(e => e.type === 'review_due' || new Date(e.at).getTime() > cutoffMs)
+  visible.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+  return { events: visible, unreadCount: visible.filter(e => e.unread).length }
 }
 
 export async function markNotificationsSeen(userId: string): Promise<void> {
   const { error } = await supabase.from('profiles').update({ notifications_seen_at: new Date().toISOString() }).eq('id', userId)
   if (error) console.warn('markNotificationsSeen error:', error.message)
+}
+
+// "Clear all": hide every announcement event up to now (review_due survives). Derived-only —
+// nothing is deleted.
+export async function clearAllNotifications(userId: string): Promise<void> {
+  const { error } = await supabase.from('profiles').update({ notifications_cleared_at: new Date().toISOString() }).eq('id', userId)
+  if (error) console.warn('clearAllNotifications error:', error.message)
 }

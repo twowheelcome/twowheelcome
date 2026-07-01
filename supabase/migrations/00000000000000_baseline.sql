@@ -66,7 +66,8 @@ CREATE TABLE IF NOT EXISTS profiles (
   accepted_terms_at timestamptz,
   terms_version text,
   notifications_seen_at timestamptz,
-  motorcycle text DEFAULT ''::text
+  motorcycle text DEFAULT ''::text,
+  notifications_cleared_at timestamptz
 );
 ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_nationality_length;
 ALTER TABLE profiles ADD CONSTRAINT profiles_nationality_length CHECK (((nationality IS NULL) OR (char_length(nationality) <= 60)));
@@ -763,9 +764,9 @@ GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON profiles 
 -- push_token is deliberately NOT readable (written only via set_push_token / own UPDATE),
 -- and notify_email/notify_push stay off the public surface, matching production.
 GRANT SELECT (id, full_name, bio, avatar_url, nationality, motorcycle, created_at) ON profiles TO anon;
-GRANT SELECT (id, full_name, bio, avatar_url, nationality, motorcycle, created_at, notifications_seen_at) ON profiles TO authenticated;
+GRANT SELECT (id, full_name, bio, avatar_url, nationality, motorcycle, created_at, notifications_seen_at, notifications_cleared_at) ON profiles TO authenticated;
 GRANT INSERT (id, full_name, bio, avatar_url, push_token, nationality, motorcycle) ON profiles TO authenticated;
-GRANT UPDATE (full_name, bio, avatar_url, push_token, nationality, motorcycle, notifications_seen_at) ON profiles TO authenticated;
+GRANT UPDATE (full_name, bio, avatar_url, push_token, nationality, motorcycle, notifications_seen_at, notifications_cleared_at) ON profiles TO authenticated;
 GRANT DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON request_notification_events TO service_role;
 -- Notification centre (bell): a participant may read the notification-event log for their
 -- OWN requests (drives the bell feed; distinguishes host-cancel from guest-withdraw).

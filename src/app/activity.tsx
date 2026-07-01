@@ -8,7 +8,7 @@ import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 import { FONT } from '../lib/theme'
 import { AppHeader, HeaderBackButton } from '../components/AppHeader'
 import { pendingChatStore } from '../lib/pendingChatStore'
-import { loadNotifications, markNotificationsSeen, type NotifEvent, type NotifType } from '../lib/notifications'
+import { loadNotifications, markNotificationsSeen, clearAllNotifications, type NotifEvent, type NotifType } from '../lib/notifications'
 import { refreshNotificationCount } from '../lib/notificationStore'
 
 const ICON: Record<NotifType, ComponentProps<typeof Feather>['name']> = {
@@ -48,6 +48,17 @@ export default function ActivityScreen() {
     return () => { active = false }
   }, []))
 
+  // Clear all hides announcement events (review_due survives and stays visible).
+  const hasClearable = events.some(e => e.type !== 'review_due')
+  async function clearAll() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await clearAllNotifications(user.id)
+    const { events: ev } = await loadNotifications(user.id)
+    setEvents(ev)
+    await refreshNotificationCount(user.id)
+  }
+
   function open(e: NotifEvent) {
     if (e.link.kind === 'reviews') { router.push('/reviews'); return }
     if (e.link.kind === 'chat') {
@@ -59,7 +70,14 @@ export default function ActivityScreen() {
 
   return (
     <View style={styles.container}>
-      <AppHeader left={<HeaderBackButton />}>
+      <AppHeader
+        left={<HeaderBackButton />}
+        right={hasClearable ? (
+          <TouchableOpacity onPress={clearAll} accessibilityRole="button" accessibilityLabel="Clear all notifications" hitSlop={8}>
+            <Text style={styles.clearAll}>Clear all</Text>
+          </TouchableOpacity>
+        ) : undefined}
+      >
         <Text style={styles.headerTitle}>Notifications</Text>
       </AppHeader>
 
@@ -94,6 +112,7 @@ function makeStyles(C: ThemeColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: C.bg },
     headerTitle: { color: C.text, fontSize: 20, fontFamily: FONT.headBold, textAlign: 'center' },
+    clearAll: { color: C.accent, fontSize: 13, fontWeight: '700' },
     center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 8 },
     emptyEmoji: { fontSize: 40 },
     emptyTitle: { color: C.text, fontSize: 18, fontWeight: '800' },
