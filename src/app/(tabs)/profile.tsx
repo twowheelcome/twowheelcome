@@ -9,7 +9,7 @@ import { useTheme, type ThemeColors } from '../../lib/ThemeContext'
 import { UserChip, refreshUserChip } from '../../components/UserChip'
 import { NotificationBell } from '../../components/NotificationBell'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
-import { compressBikePhoto } from '../../lib/compressImage'
+import { compressBikePhoto, withTimeout, UNPROCESSABLE, type PickedImage } from '../../lib/compressImage'
 import { FONT } from '../../lib/theme'
 import { getLocalYMD } from '../../lib/date'
 import { thumbnailUrl } from '../../lib/imageThumb'
@@ -194,26 +194,29 @@ export default function ProfileScreen() {
     })
     if (result.canceled) return
     const asset = result.assets[0]
-    const ext = asset.uri.split('.').pop()?.toLowerCase() || 'jpg'
-    const response = await fetch(asset.uri)
-    const blob = await response.blob()
-    await uploadAvatar(blob, ext)
+    // Web keeps the proven File→compress path; native passes uri + size so the resize runs and
+    // the upload body is an ArrayBuffer (a RN Blob body would hang forever).
+    if (Platform.OS === 'web') {
+      const blob = await (await fetch(asset.uri)).blob()
+      await uploadAvatar(blob as File)
+    } else {
+      await uploadAvatar({ uri: asset.uri, width: asset.width ?? 0, height: asset.height ?? 0 })
+    }
   }
 
-  async function uploadAvatar(file: File | Blob, extHint?: string) {
+  async function uploadAvatar(input: File | PickedImage) {
     if (!user) return
     setUploadingAvatar(true)
     setAvatarError(null)
     try {
-      // Downscale + compress before upload (web compresses; native falls back to original),
-      // so avatars don't bloat storage — same treatment as bike/listing photos.
-      const uploadBlob = await compressBikePhoto(file as File)
-      const compressed = uploadBlob !== file
-      const ext = compressed ? 'jpg' : (extHint ?? ((file as File).name?.split('.').pop() || 'jpg'))
-      const path = `${user.id}/avatar.${ext}`
-      const contentType = compressed ? 'image/jpeg' : ((file as File).type || `image/${ext}`)
-      const { error: upErr } = await supabase.storage.from('avatars').upload(path, uploadBlob, { upsert: true, contentType })
-      if (upErr) { console.warn('avatar upload error:', upErr.message); setAvatarError('Could not upload the photo. Please try again.'); return }
+      const path = `${user.id}/avatar.jpg`
+      // Hard timeout around compression + upload so the spinner can't hang (iOS Safari decode).
+      await withTimeout((async () => {
+        // Downscale + compress; Blob (web) / ArrayBuffer (native) so uploads complete.
+        const { data, contentType } = await compressBikePhoto(input)
+        const { error: upErr } = await supabase.storage.from('avatars').upload(path, data, { upsert: true, contentType })
+        if (upErr) throw new Error('upload-failed')
+      })(), 45000, 'upload-timeout')
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
       const url = `${publicUrl}?t=${Date.now()}`
       const { error: dbErr } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id)
@@ -221,8 +224,13 @@ export default function ProfileScreen() {
       setProfile((p: any) => ({ ...p, avatar_url: url }))
       refreshUserChip()
     } catch (e: unknown) {
-      console.warn('avatar exception:', e instanceof Error ? e.message : e)
-      setAvatarError('Could not upload the photo. Please try again.')
+      const msg = e instanceof Error ? e.message : String(e)
+      console.warn('avatar exception:', msg)
+      setAvatarError(
+        msg === UNPROCESSABLE ? "We couldn't process this photo. Try a different one (a JPEG works best)."
+        : msg === 'upload-timeout' ? 'Upload timed out — check your connection and try again.'
+        : 'Could not upload the photo. Please try again.',
+      )
     } finally {
       setUploadingAvatar(false)
     }

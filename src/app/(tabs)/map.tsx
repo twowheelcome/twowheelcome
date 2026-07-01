@@ -17,7 +17,7 @@ import { placeName } from '../../lib/placeName'
 import { ContributionBadge } from '../../components/ContributionBadge'
 import { SafetyIcon } from '../../components/SafetyIcon'
 import { Avatar } from '../../components/Avatar'
-import { compressBikePhoto } from '../../lib/compressImage'
+import { compressBikePhoto, withTimeout, UNPROCESSABLE } from '../../lib/compressImage'
 import { AppHeader, HeaderBackButton } from '../../components/AppHeader'
 import { UserChip } from '../../components/UserChip'
 import { NotificationBell } from '../../components/NotificationBell'
@@ -373,25 +373,23 @@ export default function MapScreen() {
     try {
       let uploadedPhotoUrl: string | null = null
       if (photoFile) {
-        // Downscale + compress before upload (best-effort; falls back to the original).
-        const uploadBlob = await compressBikePhoto(photoFile)
-        const ext = uploadBlob === photoFile ? (photoFile.name.split('.').pop() || 'jpg') : 'jpg'
-        const contentType = (uploadBlob as Blob).type || 'image/jpeg'
-        let upErr: unknown = null
-        for (let attempt = 0; attempt < 2; attempt++) {
-          const name = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-          const { error } = await supabase.storage.from('request-photos').upload(name, uploadBlob, { contentType })
-          if (!error) {
-            // request-photos is a private bucket — store the object PATH, not a public URL.
-            // The photo is rendered via a short-lived signed URL (see RequestPhoto).
-            uploadedPhotoUrl = name
-            upErr = null
-            break
-          }
-          upErr = error
-        }
-        if (upErr) {
-          setSendError("Couldn't upload your bike photo. Check your connection and try again — or remove the photo to send without it.")
+        try {
+          // Hard timeout around compression + upload so the send can't hang (iOS Safari decode).
+          uploadedPhotoUrl = await withTimeout((async () => {
+            const { data, contentType } = await compressBikePhoto(photoFile)
+            const ext = contentType === 'image/jpeg' ? 'jpg' : (photoFile.name.split('.').pop() || 'jpg')
+            for (let attempt = 0; attempt < 2; attempt++) {
+              const name = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+              // request-photos is a private bucket — store the object PATH, not a public URL.
+              const { error } = await supabase.storage.from('request-photos').upload(name, data, { contentType })
+              if (!error) return name
+            }
+            throw new Error('upload-failed')
+          })(), 45000, 'upload-timeout')
+        } catch (e: any) {
+          setSendError(e?.message === UNPROCESSABLE
+            ? "We couldn't process that photo. Try a different one, or remove it to send without."
+            : "Couldn't upload your bike photo. Check your connection and try again — or remove the photo to send without it.")
           setSending(false)
           return
         }

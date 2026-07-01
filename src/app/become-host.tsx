@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { router, useLocalSearchParams } from 'expo-router'
 import type { Pin } from '../components/LocationPicker'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
-import { compressBikePhoto, type PickedImage } from '../lib/compressImage'
+import { compressBikePhoto, withTimeout, UNPROCESSABLE, type PickedImage } from '../lib/compressImage'
 import { FONT } from '../lib/theme'
 import { SafetyIcon } from '../components/SafetyIcon'
 import { getSafetyKey } from '../components/SafetyBlock'
@@ -212,28 +212,23 @@ export default function BecomeHostScreen() {
     try {
       const picked = await pickImageInput()
       if (!picked) return
-      const blob = await compressBikePhoto(picked)   // downscales on web AND native
       const path = `${uid}/${makeId()}.jpg`
-      // Race the upload against a timeout so a stalled connection can't spin forever.
-      let timer: ReturnType<typeof setTimeout> | undefined
-      const timeout = new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error('upload-timeout')), UPLOAD_TIMEOUT_MS)
-      })
-      try {
-        const { error } = await Promise.race([
-          supabase.storage.from(LISTING_BUCKET).upload(path, blob, { contentType: (blob as Blob).type || 'image/jpeg', cacheControl: '3600' }),
-          timeout,
-        ])
-        if (error) { console.warn('listing photo upload error:', error.message); setSaveError('Could not upload the photo. Please try again.'); return }
-      } finally {
-        clearTimeout(timer)
-      }
+      // Hard timeout around the WHOLE flow (compression + upload). On web the compression step
+      // itself can hang (iOS Safari image decode), so timing only the upload isn't enough.
+      await withTimeout((async () => {
+        // Downscales on web AND native; Blob (web) / ArrayBuffer (native) so uploads complete.
+        const { data, contentType } = await compressBikePhoto(picked)
+        const { error } = await supabase.storage.from(LISTING_BUCKET).upload(path, data, { contentType, cacheControl: '3600' })
+        if (error) throw new Error('upload-failed')
+      })(), UPLOAD_TIMEOUT_MS, 'upload-timeout')
       setLocations(prev => prev.map((l, i) => i === index ? { ...l, photos: [...l.photos, path].slice(0, MAX_LISTING_PHOTOS) } : l))
     } catch (e: any) {
       console.warn('listing photo exception:', e?.message)
-      setSaveError(e?.message === 'upload-timeout'
-        ? 'Upload timed out — check your connection and try again.'
-        : 'Could not upload the photo. Please try again.')
+      setSaveError(
+        e?.message === UNPROCESSABLE ? "We couldn't process this photo. Try a different one (a JPEG works best)."
+        : e?.message === 'upload-timeout' ? 'Upload timed out — check your connection and try again.'
+        : 'Could not upload the photo. Please try again.',
+      )
     } finally {
       setUploadingPhotoFor(null)
     }
