@@ -179,26 +179,20 @@ export default function BecomeHostScreen() {
   }
 
   async function pickImageInput(): Promise<File | PickedImage | null> {
-    if (Platform.OS === 'web') {
-      return new Promise<File | null>(resolve => {
-        const input = (globalThis as any).document.createElement('input')
-        input.type = 'file'
-        input.accept = 'image/*'
-        let settled = false
-        const done = (file: File | null) => { if (!settled) { settled = true; resolve(file) } }
-        input.onchange = () => done(input.files?.[0] ?? null)
-        // Cancel handling (where supported) so dismissing the picker resolves instead of hanging.
-        input.oncancel = () => done(null)
-        input.click()
-      })
-    }
+    // expo-image-picker on BOTH platforms (same as the avatar picker). On web it appends a real
+    // <input> to the DOM and funnels cancel→change, so the "first attempt does nothing" bug of a
+    // detached raw input is gone; cancel is reported via res.canceled.
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (perm.status !== 'granted') return null
-    // quality 0.7 + the downscale in compressBikePhoto keep the upload small; we pass the
-    // asset's real pixel size so the resize actually runs on native.
+    // quality 0.7 + the downscale in compressBikePhoto keep the upload small.
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 })
     if (res.canceled || !res.assets[0]) return null
     const a = res.assets[0]
+    if (Platform.OS === 'web') {
+      // Web: hand the compressor a real Blob (createImageBitmap path), like uploadAvatar does.
+      return (await (await fetch(a.uri)).blob()) as File
+    }
+    // Native: pass uri + real pixel size so the resize runs; body becomes an ArrayBuffer.
     return { uri: a.uri, width: a.width ?? 0, height: a.height ?? 0 }
   }
 
