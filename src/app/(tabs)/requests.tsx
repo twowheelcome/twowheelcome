@@ -151,10 +151,11 @@ const PRICING_LABELS: Record<string, string> = {
 
 // Review hero bits
 const STAR_LABELS: Record<number, string> = { 1: 'Rough night', 2: 'Okay', 3: 'Good', 4: 'Great', 5: 'Family now' }
+// Display order only: worst → best (left → right). Stored values are unchanged.
 const SAFE_OPTS = [
-  { value: 'secure', icon: '🔒', label: 'Yes, secure' },
-  { value: 'soso',   icon: '😐', label: 'So-so' },
   { value: 'not',    icon: '⚠️', label: 'Not really' },
+  { value: 'soso',   icon: '😐', label: 'So-so' },
+  { value: 'secure', icon: '🔒', label: 'Yes, secure' },
 ] as const
 
 // Same Feather icon set the request card uses, keyed by the meeting-point line label.
