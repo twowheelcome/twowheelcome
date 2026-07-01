@@ -513,7 +513,7 @@ export default function HostMap({
         <button
           onClick={onSatelliteToggle}
           style={{
-            position: 'absolute', bottom: 104, left: 16, zIndex: 1000,
+            position: 'absolute', bottom: 20, left: 16, zIndex: 1000,
             background: satellite ? C.accent : C.surface,
             border: `2px solid ${satellite ? C.accent : C.border}`,
             borderRadius: 100, padding: '9px 16px',
