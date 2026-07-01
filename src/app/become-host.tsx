@@ -184,7 +184,11 @@ export default function BecomeHostScreen() {
         const input = (globalThis as any).document.createElement('input')
         input.type = 'file'
         input.accept = 'image/*'
-        input.onchange = () => resolve(input.files?.[0] ?? null)
+        let settled = false
+        const done = (file: File | null) => { if (!settled) { settled = true; resolve(file) } }
+        input.onchange = () => done(input.files?.[0] ?? null)
+        // Cancel handling (where supported) so dismissing the picker resolves instead of hanging.
+        input.oncancel = () => done(null)
         input.click()
       })
     }
@@ -208,10 +212,12 @@ export default function BecomeHostScreen() {
       return
     }
     setSaveError('')
+    // Pick BEFORE showing any spinner: the file picker (esp. iOS Safari) may never resolve on
+    // cancel, and it's outside the timeout — so the spinner must not be running during it.
+    const picked = await pickImageInput()
+    if (!picked) return   // cancelled → nothing happens, no spinner
     setUploadingPhotoFor(loc.id ?? String(index))
     try {
-      const picked = await pickImageInput()
-      if (!picked) return
       const path = `${uid}/${makeId()}.jpg`
       // Hard timeout around the WHOLE flow (compression + upload). On web the compression step
       // itself can hang (iOS Safari image decode), so timing only the upload isn't enough.
