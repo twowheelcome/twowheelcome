@@ -1018,7 +1018,7 @@ GRANT  EXECUTE ON FUNCTION public.delete_host_location(uuid) TO authenticated;
 
 -- ── Storage (buckets + object policies) ──
 INSERT INTO storage.buckets (id, name, public) VALUES ('avatars','avatars',true) ON CONFLICT (id) DO UPDATE SET public=excluded.public;
-INSERT INTO storage.buckets (id, name, public) VALUES ('listing-photos','listing-photos',true) ON CONFLICT (id) DO UPDATE SET public=excluded.public;
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types) VALUES ('listing-photos','listing-photos',true, 8388608, ARRAY['image/jpeg','image/png','image/webp','image/heic','image/heif']) ON CONFLICT (id) DO UPDATE SET public=excluded.public, file_size_limit=excluded.file_size_limit, allowed_mime_types=excluded.allowed_mime_types;
 INSERT INTO storage.buckets (id, name, public) VALUES ('request-photos','request-photos',false) ON CONFLICT (id) DO UPDATE SET public=excluded.public;
 CREATE POLICY "storage_listing_delete" ON storage.objects FOR DELETE TO public USING (((bucket_id = 'listing-photos'::text) AND (owner_id = (auth.uid())::text)));
 CREATE POLICY "storage_listing_insert" ON storage.objects FOR INSERT TO public WITH CHECK (((bucket_id = 'listing-photos'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)));

@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { router, useLocalSearchParams } from 'expo-router'
 import type { Pin } from '../components/LocationPicker'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
-import { compressBikePhoto } from '../lib/compressImage'
+import { compressBikePhoto, type PickedImage } from '../lib/compressImage'
 import { FONT } from '../lib/theme'
 import { SafetyIcon } from '../components/SafetyIcon'
 import { getSafetyKey } from '../components/SafetyBlock'
@@ -13,6 +13,7 @@ import { AddressSearch } from '../components/AddressSearch'
 
 const LISTING_BUCKET = 'listing-photos'
 const MAX_LISTING_PHOTOS = 3
+const UPLOAD_TIMEOUT_MS = 45000   // cap a stalled upload so the spinner can never hang forever
 const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'JPY', 'CAD', 'AUD', 'CZK']
 
 function makePARKING(C: ThemeColors) {
@@ -177,9 +178,9 @@ export default function BecomeHostScreen() {
     return supabase.storage.from(LISTING_BUCKET).getPublicUrl(path).data.publicUrl
   }
 
-  async function pickImageBlob(): Promise<Blob | null> {
+  async function pickImageInput(): Promise<File | PickedImage | null> {
     if (Platform.OS === 'web') {
-      return new Promise(resolve => {
+      return new Promise<File | null>(resolve => {
         const input = (globalThis as any).document.createElement('input')
         input.type = 'file'
         input.accept = 'image/*'
@@ -189,9 +190,12 @@ export default function BecomeHostScreen() {
     }
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (perm.status !== 'granted') return null
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9 })
+    // quality 0.7 + the downscale in compressBikePhoto keep the upload small; we pass the
+    // asset's real pixel size so the resize actually runs on native.
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 })
     if (res.canceled || !res.assets[0]) return null
-    return await (await fetch(res.assets[0].uri)).blob()
+    const a = res.assets[0]
+    return { uri: a.uri, width: a.width ?? 0, height: a.height ?? 0 }
   }
 
   async function addPhoto(index: number) {
@@ -206,16 +210,30 @@ export default function BecomeHostScreen() {
     setSaveError('')
     setUploadingPhotoFor(loc.id ?? String(index))
     try {
-      const raw = await pickImageBlob()
-      if (!raw) return
-      const blob = await compressBikePhoto(raw as File)   // web compresses; native falls back to original
+      const picked = await pickImageInput()
+      if (!picked) return
+      const blob = await compressBikePhoto(picked)   // downscales on web AND native
       const path = `${uid}/${makeId()}.jpg`
-      const { error } = await supabase.storage.from(LISTING_BUCKET).upload(path, blob, { contentType: (blob as Blob).type || 'image/jpeg' })
-      if (error) { console.warn('listing photo upload error:', error.message); setSaveError('Could not upload the photo. Please try again.'); return }
+      // Race the upload against a timeout so a stalled connection can't spin forever.
+      let timer: ReturnType<typeof setTimeout> | undefined
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('upload-timeout')), UPLOAD_TIMEOUT_MS)
+      })
+      try {
+        const { error } = await Promise.race([
+          supabase.storage.from(LISTING_BUCKET).upload(path, blob, { contentType: (blob as Blob).type || 'image/jpeg', cacheControl: '3600' }),
+          timeout,
+        ])
+        if (error) { console.warn('listing photo upload error:', error.message); setSaveError('Could not upload the photo. Please try again.'); return }
+      } finally {
+        clearTimeout(timer)
+      }
       setLocations(prev => prev.map((l, i) => i === index ? { ...l, photos: [...l.photos, path].slice(0, MAX_LISTING_PHOTOS) } : l))
     } catch (e: any) {
       console.warn('listing photo exception:', e?.message)
-      setSaveError('Could not upload the photo. Please try again.')
+      setSaveError(e?.message === 'upload-timeout'
+        ? 'Upload timed out — check your connection and try again.'
+        : 'Could not upload the photo. Please try again.')
     } finally {
       setUploadingPhotoFor(null)
     }
