@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Feather } from '@expo/vector-icons'
 import { router, useFocusEffect } from 'expo-router'
 import { supabase } from '../lib/supabase'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
@@ -20,8 +21,14 @@ type Place = {
   pricing: string | null
   price_amount: number | null
   price_currency: string | null
+  photos: string[] | null
   paused: boolean
   hasActiveRequest?: boolean   // a live PENDING/ACCEPTED stay — the only thing blocking delete
+}
+
+const LISTING_BUCKET = 'listing-photos'
+function listingPhotoUrl(path: string): string {
+  return supabase.storage.from(LISTING_BUCKET).getPublicUrl(path).data.publicUrl
 }
 
 const PARK_TITLE: Record<string, string> = {
@@ -55,7 +62,7 @@ export default function MyPlacesScreen() {
     // hidden from the public view).
     const { data } = await supabase
       .from('host_locations')
-      .select('id, location_city, location_country, parking, parkings, sleep_types, pricings, pricing, price_amount, price_currency, paused')
+      .select('id, location_city, location_country, parking, parkings, sleep_types, pricings, pricing, price_amount, price_currency, photos, paused')
       .eq('user_id', user.id)
       .order('created_at', { ascending: true })
     const list = (data as Place[]) || []
@@ -152,6 +159,14 @@ export default function MyPlacesScreen() {
 
                   <SafetyBlock parkings={placeParkings(p)} />
 
+                  {p.photos?.length ? (
+                    <View style={styles.thumbRow}>
+                      {p.photos.slice(0, 3).map(path => (
+                        <Image key={path} source={{ uri: listingPhotoUrl(path) }} style={styles.thumb} resizeMode="cover" />
+                      ))}
+                    </View>
+                  ) : null}
+
                   {sleep ? <Text style={styles.sleep}>🛏 {sleep}</Text> : null}
                   <ContributionBadge loc={p} compact />
 
@@ -170,18 +185,25 @@ export default function MyPlacesScreen() {
                     )}
                   </TouchableOpacity>
 
-                  <Text style={styles.editHint}>Tap the card to edit this place →</Text>
-
                   {p.hasActiveRequest ? (
-                    <Text style={styles.lockNote}>🔒 This place has an active request — resolve it first, then you can delete.</Text>
+                    <>
+                      <Text style={styles.editHint}>Tap the card to edit this place →</Text>
+                      <Text style={styles.lockNote}>🔒 This place has an active request — resolve it first, then you can delete.</Text>
+                    </>
                   ) : (
-                    <TouchableOpacity
-                      style={styles.deleteBtn}
-                      onPress={() => { setError(null); setConfirmDelete(p) }}
-                      accessibilityRole="button"
-                    >
-                      <Text style={styles.deleteText}>Delete this place</Text>
-                    </TouchableOpacity>
+                    <View style={styles.cardFooter}>
+                      <Text style={styles.editHint}>Tap the card to edit →</Text>
+                      <TouchableOpacity
+                        style={styles.deleteBtn}
+                        onPress={() => { setError(null); setConfirmDelete(p) }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Delete this place"
+                        hitSlop={6}
+                      >
+                        <Feather name="trash-2" size={14} color={C.error} />
+                        <Text style={styles.deleteText}>Delete</Text>
+                      </TouchableOpacity>
+                    </View>
                   )}
                 </TouchableOpacity>
               )
@@ -237,12 +259,17 @@ function makeStyles(C: ThemeColors) {
     badgePaused: { backgroundColor: C.warningSoft, borderColor: C.warningBorder },
     badgeText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
     sleep: { color: C.textMuted, fontSize: 14, fontFamily: FONT.body },
+    thumbRow: { flexDirection: 'row', gap: 8 },
+    thumb: { width: 76, height: 76, borderRadius: 12, backgroundColor: C.elevated },
     toggleBtn: { height: 46, borderRadius: 100, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
     togglePause: { backgroundColor: C.warningSoft, borderColor: C.warningBorder },
     toggleResume: { backgroundColor: C.greenSoft, borderColor: C.green },
     toggleText: { fontSize: 14, fontWeight: '800' },
-    editHint: { color: C.textDim, fontSize: 12, textAlign: 'center', fontFamily: FONT.body },
-    deleteBtn: { alignItems: 'center', paddingVertical: 6 },
+    editHint: { color: C.textDim, fontSize: 12, fontFamily: FONT.body, flexShrink: 1 },
+    // Delete sits apart from the tap-to-edit card: its own row under a divider, bordered,
+    // right-aligned, destructive colour + trash icon — so it can't be hit by mistake.
+    cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderTopWidth: 1, borderTopColor: C.border, paddingTop: 12 },
+    deleteBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: C.errorBorder, borderRadius: 100, paddingHorizontal: 14, paddingVertical: 8 },
     deleteText: { color: C.error, fontSize: 13, fontWeight: '700' },
     lockNote: { color: C.textDim, fontSize: 12, textAlign: 'center', lineHeight: 17, fontFamily: FONT.body },
     addBtn: { borderWidth: 1, borderColor: C.accent, borderRadius: 100, padding: 14, alignItems: 'center', borderStyle: 'dashed', marginTop: 2 },

@@ -2056,7 +2056,7 @@ export default function RequestsScreen() {
 	                        onPress={() => submitReview(stay.id)}
 	                        disabled={!stars || submittingStayId === stay.id}
 	                      >
-	                        <Text style={styles.reviewSubmitText}>{submittingStayId === stay.id ? 'Posting…' : 'POST REVIEW'}</Text>
+	                        <Text style={[styles.reviewSubmitText, (!stars || submittingStayId === stay.id) && styles.reviewSubmitTextDisabled]}>{submittingStayId === stay.id ? 'Posting…' : 'POST REVIEW'}</Text>
 	                      </TouchableOpacity>
 	                    </View>
 	                  )
@@ -2791,8 +2791,10 @@ function makeStyles(C: ThemeColors) { return StyleSheet.create({
   reviewSubmit: {
     backgroundColor: C.accent, borderRadius: 100, padding: 13, alignItems: 'center',
   },
-  reviewSubmitDisabled: { backgroundColor: C.elevated },
+  reviewSubmitDisabled: { backgroundColor: C.elevated, borderWidth: 1, borderColor: C.border },
   reviewSubmitText: { color: C.white, fontWeight: '700', fontSize: 13, letterSpacing: 1 },
+  // Disabled state has a light (elevated) background — keep the label readable, not white-on-white.
+  reviewSubmitTextDisabled: { color: C.textDim },
   reviewDone: {
     backgroundColor: C.accentSoft, borderRadius: 14, borderWidth: 1, borderColor: C.accentBorder,
     padding: 12, alignItems: 'center', alignSelf: 'center', maxWidth: '92%',
