@@ -26,6 +26,13 @@ export default function Root({ children }: PropsWithChildren) {
 
         <ScrollViewStyleReset />
 
+        {/* Register the web-push service worker (no-op if unsupported; catch keeps it fail-safe). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}",
+          }}
+        />
+
         {/* Pre-hydration: paint the body in the right theme so dark-mode users don't
             get a white flash before React mounts (mirrors ThemeContext's resolution). */}
         <style dangerouslySetInnerHTML={{ __html: 'html,body{background:#F7F1E6}' }} />
