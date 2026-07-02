@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { router, Stack } from 'expo-router'
 import * as SplashScreen from 'expo-splash-screen'
 import * as Notifications from 'expo-notifications'
@@ -52,10 +52,24 @@ function AppStack() {
 
 export default function RootLayout() {
   const notifSubRef = useRef<Notifications.Subscription | null>(null)
+  const handledNotifIds = useRef<Set<string>>(new Set())
   const [fontsLoaded] = useFonts({
     Oswald_500Medium, Oswald_600SemiBold, Oswald_700Bold,
     Inter_400Regular, Inter_500Medium, Inter_600SemiBold,
   })
+
+  // Route a tapped notification to its deep link (e.g. /(tabs)/requests?openConv=…). Deduped by
+  // notification id so a cold-start tap (getLastNotificationResponseAsync) and the live listener
+  // never double-navigate.
+  const handleNotifResponse = useCallback((response: Notifications.NotificationResponse | null) => {
+    if (!response) return
+    const id = response.notification.request.identifier
+    if (id) {
+      if (handledNotifIds.current.has(id)) return
+      handledNotifIds.current.add(id)
+    }
+    router.push(safeNotifRoute(response.notification.request.content.data?.url) as never)
+  }, [])
 
   useEffect(() => {
     // Hide the splash only once fonts are ready, so the UI doesn't flash in system font first.
@@ -84,12 +98,21 @@ export default function RootLayout() {
       }
     })
 
-    notifSubRef.current = Notifications.addNotificationResponseReceivedListener(response => {
-      router.push(safeNotifRoute(response.notification.request.content.data?.url) as never)
-    })
+    notifSubRef.current = Notifications.addNotificationResponseReceivedListener(handleNotifResponse)
 
     return () => { subscription.unsubscribe(); notifSubRef.current?.remove() }
-  }, [])
+  }, [handleNotifResponse])
+
+  // Cold start: the app was launched by tapping a notification (listener wasn't mounted yet).
+  // Handle the last response once the nav tree is up (fonts loaded → AppStack rendered).
+  useEffect(() => {
+    if (!fontsLoaded) return
+    let active = true
+    Notifications.getLastNotificationResponseAsync()
+      .then(r => { if (active) handleNotifResponse(r) })
+      .catch(() => {})
+    return () => { active = false }
+  }, [fontsLoaded, handleNotifResponse])
 
   if (!fontsLoaded) return null
 

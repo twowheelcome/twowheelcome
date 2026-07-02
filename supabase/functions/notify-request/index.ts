@@ -152,7 +152,7 @@ Deno.serve(async req => {
   const safeGuestName = escapeHtml(guestName)
   const safeMessage = escapeHtml(request.message)
 
-  const dateInfo = escapeHtml(`${request.arrival_date} → ${request.departure_date}`)
+  const dateInfo = escapeHtml(`${fmtStayDate(request.arrival_date)} → ${fmtStayDate(request.departure_date)}`)
   const conversationId = typeof request.conversation_id === 'string' ? request.conversation_id : ''
   const webChatUrl = conversationId
     ? `${APP_URL}/requests?openConv=${encodeURIComponent(conversationId)}`
