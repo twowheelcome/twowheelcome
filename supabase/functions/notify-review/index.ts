@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { sendWebPushToUser } from '../_shared/webpush.ts'
 
 const RESEND_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -104,18 +105,24 @@ Deno.serve(async (req) => {
     const pushUrl = stay.conversation_id
       ? '/(tabs)/requests?openConv=' + encodeURIComponent(stay.conversation_id) + '&reviewRequest=' + encodeURIComponent(stay.id)
       : '/(tabs)/requests'
+    // Web push opens a web route (relative → stays inside the installed PWA).
+    const webPushUrl = stay.conversation_id
+      ? '/requests?openConv=' + encodeURIComponent(stay.conversation_id) + '&reviewRequest=' + encodeURIComponent(stay.id)
+      : '/requests'
 
     // Respect each recipient's notification preferences (default on when unset).
     if (!reviewedSet.has(stay.id + ':' + stay.guest_id)) {
       const email = emailMap[stay.guest_id]
       if (email && guestProfile?.notify_email !== false) tasks.push(sendEmail(email, 'How was your stay? - TWOWHEELCOME', guestHtml(hostName, webUrl)))
       if (guestProfile?.push_token && guestProfile?.notify_push !== false) tasks.push(sendPush(guestProfile.push_token, 'How was your stay?', 'Leave a review for ' + (hostProfile?.full_name || 'your host'), pushUrl))
+      if (guestProfile?.notify_push !== false) tasks.push(sendWebPushToUser(admin, stay.guest_id, { title: 'How was your stay?', body: 'Leave a review for ' + (hostProfile?.full_name || 'your host'), url: webPushUrl }))
     }
 
     if (!reviewedSet.has(stay.id + ':' + stay.host_id)) {
       const email = emailMap[stay.host_id]
       if (email && hostProfile?.notify_email !== false) tasks.push(sendEmail(email, 'How was this rider? - TWOWHEELCOME', hostHtml(guestName, webUrl)))
       if (hostProfile?.push_token && hostProfile?.notify_push !== false) tasks.push(sendPush(hostProfile.push_token, 'How was this rider?', 'Leave a review for ' + (guestProfile?.full_name || 'this rider'), pushUrl))
+      if (hostProfile?.notify_push !== false) tasks.push(sendWebPushToUser(admin, stay.host_id, { title: 'How was this rider?', body: 'Leave a review for ' + (guestProfile?.full_name || 'this rider'), url: webPushUrl }))
     }
   }
 

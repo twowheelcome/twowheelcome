@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { sendWebPushToUser } from '../_shared/webpush.ts'
 
 const RESEND_KEY = Deno.env.get('RESEND_API_KEY')!
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -153,6 +154,10 @@ Deno.serve(async req => {
   const pushChatUrl = conversationId
     ? `/(tabs)/requests?openConv=${encodeURIComponent(conversationId)}`
     : '/(tabs)/requests'
+  // Web push opens a web route (relative → stays inside the installed PWA).
+  const webPushUrl = conversationId
+    ? `/requests?openConv=${encodeURIComponent(conversationId)}`
+    : '/requests'
 
   if (event === 'new_request') {
     await Promise.all([
@@ -173,6 +178,11 @@ Deno.serve(async req => {
         `${guestName} wants to stay — ${request.arrival_date} → ${request.departure_date}`,
         pushChatUrl,
       ) : Promise.resolve(),
+      hostWantsPush ? sendWebPushToUser(admin, request.host_id, {
+        title: '🚪 Someone\'s knocking!',
+        body: `${guestName} wants to stay — ${request.arrival_date} → ${request.departure_date}`,
+        url: webPushUrl,
+      }) : Promise.resolve(),
     ])
   }
 
@@ -195,6 +205,11 @@ Deno.serve(async req => {
         `${hostName} accepted. Exact spot comes in chat.`,
         pushChatUrl,
       ) : Promise.resolve(),
+      guestWantsPush ? sendWebPushToUser(admin, request.guest_id, {
+        title: 'Request accepted',
+        body: `${hostName} accepted. Exact spot comes in chat.`,
+        url: webPushUrl,
+      }) : Promise.resolve(),
     ])
   }
 
@@ -215,6 +230,11 @@ Deno.serve(async req => {
         `${hostName} can't host right now. Try another host on the map.`,
         pushChatUrl,
       ) : Promise.resolve(),
+      guestWantsPush ? sendWebPushToUser(admin, request.guest_id, {
+        title: 'No luck this time 🤙',
+        body: `${hostName} can't host right now. Try another host on the map.`,
+        url: webPushUrl,
+      }) : Promise.resolve(),
     ])
   }
 
@@ -237,6 +257,11 @@ Deno.serve(async req => {
         `${hostName} had to cancel your stay — ${request.arrival_date} → ${request.departure_date}`,
         pushChatUrl,
       ) : Promise.resolve(),
+      guestWantsPush ? sendWebPushToUser(admin, request.guest_id, {
+        title: 'Your stay was cancelled',
+        body: `${hostName} had to cancel your stay — ${request.arrival_date} → ${request.departure_date}`,
+        url: webPushUrl,
+      }) : Promise.resolve(),
     ])
   }
 
