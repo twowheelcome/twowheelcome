@@ -36,6 +36,12 @@ function getBearerToken(req: Request): string | null {
   return match?.[1] ?? null
 }
 
+// Canonical app date format: YYYY-MM-DD → DD.MM.YY (matches fmtDateStr in the app).
+function fmtStayDate(s: string): string {
+  const [y, m, d] = (s || '').split('-')
+  return y && m && d ? `${d}.${m}.${y.slice(2)}` : s
+}
+
 function escapeHtml(value: unknown): string {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -158,6 +164,8 @@ Deno.serve(async req => {
   const webPushUrl = conversationId
     ? `/requests?openConv=${encodeURIComponent(conversationId)}`
     : '/requests'
+  // Dates in push bodies use the app's canonical DD.MM.YY (both Expo + web push).
+  const stayRange = `${fmtStayDate(request.arrival_date)} → ${fmtStayDate(request.departure_date)}`
 
   if (event === 'new_request') {
     await Promise.all([
@@ -175,12 +183,12 @@ Deno.serve(async req => {
       hostProfile?.push_token && hostWantsPush ? sendPush(
         hostProfile.push_token,
         '🚪 Someone\'s knocking!',
-        `${guestName} wants to stay — ${request.arrival_date} → ${request.departure_date}`,
+        `${guestName} wants to stay — ${stayRange}`,
         pushChatUrl,
       ) : Promise.resolve(),
       hostWantsPush ? sendWebPushToUser(admin, request.host_id, {
         title: '🚪 Someone\'s knocking!',
-        body: `${guestName} wants to stay — ${request.arrival_date} → ${request.departure_date}`,
+        body: `${guestName} wants to stay — ${stayRange}`,
         url: webPushUrl,
       }) : Promise.resolve(),
     ])
@@ -254,12 +262,12 @@ Deno.serve(async req => {
       guestProfile?.push_token && guestWantsPush ? sendPush(
         guestProfile.push_token,
         'Your stay was cancelled',
-        `${hostName} had to cancel your stay — ${request.arrival_date} → ${request.departure_date}`,
+        `${hostName} had to cancel your stay — ${stayRange}`,
         pushChatUrl,
       ) : Promise.resolve(),
       guestWantsPush ? sendWebPushToUser(admin, request.guest_id, {
         title: 'Your stay was cancelled',
-        body: `${hostName} had to cancel your stay — ${request.arrival_date} → ${request.departure_date}`,
+        body: `${hostName} had to cancel your stay — ${stayRange}`,
         url: webPushUrl,
       }) : Promise.resolve(),
     ])
