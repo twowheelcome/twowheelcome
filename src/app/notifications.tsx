@@ -1,10 +1,11 @@
 import { useCallback, useMemo, useState } from 'react'
-import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native'
 import { useFocusEffect } from 'expo-router'
 import { supabase } from '../lib/supabase'
 import { useTheme, type ThemeColors } from '../lib/ThemeContext'
 import { FONT } from '../lib/theme'
 import { AppHeader, HeaderBackButton } from '../components/AppHeader'
+import { enableWebPush, disableWebPush, isWebPushEnabled, isIos } from '../lib/webPush'
 
 export default function NotificationsScreen() {
   const C = useTheme()
@@ -14,6 +15,9 @@ export default function NotificationsScreen() {
   const [push, setPush] = useState(true)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [webPushOn, setWebPushOn] = useState(false)
+  const [webBusy, setWebBusy] = useState(false)
+  const [webNote, setWebNote] = useState<string | null>(null)
 
   useFocusEffect(
     useCallback(() => {
@@ -35,9 +39,31 @@ export default function NotificationsScreen() {
         }
         setLoading(false)
       })()
+      if (Platform.OS === 'web') isWebPushEnabled().then(on => { if (active) setWebPushOn(on) })
       return () => { active = false }
     }, []),
   )
+
+  async function toggleWebPush() {
+    if (!userId || webBusy) return
+    setWebBusy(true)
+    setWebNote(null)
+    if (webPushOn) {
+      await disableWebPush()
+      setWebPushOn(false)
+      setWebBusy(false)
+      return
+    }
+    const r = await enableWebPush(userId)
+    setWebBusy(false)
+    if (r === 'subscribed') { setWebPushOn(true); return }
+    setWebNote(
+      r === 'needs-install' ? 'On iPhone/iPad: open the Share menu → “Add to Home Screen”, launch the app from there, then enable notifications.'
+      : r === 'denied' ? 'Notifications are blocked for this site in your browser settings. Allow them, then try again.'
+      : r === 'unsupported' ? 'This browser doesn’t support web notifications.'
+      : 'Could not enable notifications. Please try again.',
+    )
+  }
 
   async function update(field: 'notify_email' | 'notify_push', value: boolean) {
     if (!userId) return
@@ -96,6 +122,30 @@ export default function NotificationsScreen() {
           </View>
         )}
 
+        {Platform.OS === 'web' && !loading ? (
+          <View style={styles.section}>
+            <View style={styles.row}>
+              <View style={styles.rowText}>
+                <Text style={styles.rowTitle}>Web notifications (this device)</Text>
+                <Text style={styles.rowSub}>
+                  Alerts on this device even when the tab is closed{isIos() ? ' — add the app to your Home Screen first (iPhone/iPad).' : '.'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.webBtn, webPushOn && styles.webBtnOn]}
+                onPress={toggleWebPush}
+                disabled={webBusy}
+                accessibilityRole="button"
+              >
+                {webBusy
+                  ? <ActivityIndicator size="small" color={webPushOn ? C.white : C.accent} />
+                  : <Text style={[styles.webBtnText, webPushOn && styles.webBtnTextOn]}>{webPushOn ? 'Enabled ✓' : 'Enable'}</Text>}
+              </TouchableOpacity>
+            </View>
+            {webNote ? <Text style={[styles.rowSub, { paddingHorizontal: 14, paddingBottom: 12 }]}>{webNote}</Text> : null}
+          </View>
+        ) : null}
+
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <Text style={styles.note}>
@@ -120,6 +170,10 @@ function makeStyles(C: ThemeColors) {
     rowTitle: { color: C.text, fontSize: 16, fontWeight: '800' },
     rowSub: { color: C.textMuted, fontSize: 13, lineHeight: 18 },
     divider: { height: 1, backgroundColor: C.border, marginHorizontal: 14 },
+    webBtn: { borderWidth: 1, borderColor: C.accent, borderRadius: 100, paddingHorizontal: 16, paddingVertical: 9, minWidth: 92, alignItems: 'center' },
+    webBtnOn: { backgroundColor: C.accent },
+    webBtnText: { color: C.accent, fontSize: 13, fontWeight: '800' },
+    webBtnTextOn: { color: C.white },
     error: { color: C.error, fontSize: 14, lineHeight: 20 },
     note: { color: C.textDim, fontSize: 13, lineHeight: 19, marginTop: 4 },
   })
