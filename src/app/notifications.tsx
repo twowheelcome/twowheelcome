@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native'
 import { useFocusEffect } from 'expo-router'
 import { supabase } from '../lib/supabase'
@@ -18,6 +18,29 @@ export default function NotificationsScreen() {
   const [webPushOn, setWebPushOn] = useState(false)
   const [webBusy, setWebBusy] = useState(false)
   const [webNote, setWebNote] = useState<string | null>(null)
+  const [testBusy, setTestBusy] = useState(false)
+  const [installEvt, setInstallEvt] = useState<{ prompt: () => void } | null>(null)
+
+  // Capture the Android/Chrome install prompt so we can offer an "Install app" button.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return
+    const onBip = (e: Event) => { e.preventDefault(); setInstallEvt(e as unknown as { prompt: () => void }) }
+    window.addEventListener('beforeinstallprompt', onBip)
+    return () => window.removeEventListener('beforeinstallprompt', onBip)
+  }, [])
+
+  async function sendTest() {
+    if (testBusy) return
+    setTestBusy(true)
+    setWebNote(null)
+    try {
+      const { error: fnErr } = await supabase.functions.invoke('web-push-send', { body: {} })
+      setWebNote(fnErr ? 'Could not send a test notification. Please try again.' : 'Test notification sent — check this device.')
+    } catch {
+      setWebNote('Could not send a test notification. Please try again.')
+    }
+    setTestBusy(false)
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -142,6 +165,37 @@ export default function NotificationsScreen() {
                   : <Text style={[styles.webBtnText, webPushOn && styles.webBtnTextOn]}>{webPushOn ? 'Enabled ✓' : 'Enable'}</Text>}
               </TouchableOpacity>
             </View>
+
+            {webPushOn ? (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.row}>
+                  <View style={styles.rowText}>
+                    <Text style={styles.rowTitle}>Send a test</Text>
+                    <Text style={styles.rowSub}>Fire a test notification to this device.</Text>
+                  </View>
+                  <TouchableOpacity style={styles.webBtn} onPress={sendTest} disabled={testBusy} accessibilityRole="button">
+                    {testBusy ? <ActivityIndicator size="small" color={C.accent} /> : <Text style={styles.webBtnText}>Send test</Text>}
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : null}
+
+            {installEvt ? (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.row}>
+                  <View style={styles.rowText}>
+                    <Text style={styles.rowTitle}>Install app</Text>
+                    <Text style={styles.rowSub}>Add twowheelcome to your device for a full-screen app + notifications.</Text>
+                  </View>
+                  <TouchableOpacity style={styles.webBtn} onPress={() => { installEvt.prompt(); setInstallEvt(null) }} accessibilityRole="button">
+                    <Text style={styles.webBtnText}>Install</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : null}
+
             {webNote ? <Text style={[styles.rowSub, { paddingHorizontal: 14, paddingBottom: 12 }]}>{webNote}</Text> : null}
           </View>
         ) : null}
